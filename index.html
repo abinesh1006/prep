@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow"><title>Interview Study Library</title>
+<style>
+:root { --bg:#f5f7fa; --card:#ffffff; --fg:#17202b; --muted:#5b6675; --line:#d9e0ea; --accent:#1f5fbf; --bad:#c9372c; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root { --bg:#12161c; --card:#1a2029; --fg:#e2e8f0; --muted:#97a3b4; --line:#2c3542; --accent:#7fb0ff; --bad:#ff8a80; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 'Segoe UI', system-ui, -apple-system, sans-serif; }
+main { max-width: 760px; margin: 0 auto; padding: 40px max(16px, env(safe-area-inset-right, 0px)) 60px max(16px, env(safe-area-inset-left, 0px)); }
+h1 { font-size: 28px; margin: 0 0 6px; text-wrap: balance; } .lede { color: var(--muted); margin: 0 0 28px; }
+form { display: flex; flex-wrap: wrap; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
+form label { width: 100%; font-weight: 600; }
+input { flex: 1 1 220px; min-width: 0; font-size: 16px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); }
+button { font-size: 16px; padding: 10px 18px; border: 0; border-radius: 8px; background: var(--accent); color: var(--bg); font-weight: 600; cursor: pointer; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.err { width: 100%; color: var(--bad); margin: 0; min-height: 1.5em; }
+ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.vol { display: flex; gap: 14px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.num { flex: 0 0 auto; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding-top: 3px; width: 44px; }
+.vol-body { flex: 1; min-width: 0; } .vol-body p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+.vol-title { font-weight: 600; font-size: 17px; color: var(--fg); text-decoration: none; } .vol-title:hover { color: var(--accent); }
+.pdf { flex: 0 0 auto; font-size: 13px; color: var(--accent); text-decoration: none; border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; }
+.complete { margin-top: 18px; font-size: 15px; } .complete a { color: var(--accent); }
+.lock { margin-top: 24px; background: none; color: var(--muted); border: 1px solid var(--line); font-size: 14px; padding: 6px 12px; }
+</style></head>
+<body><main>
+  <h1>Senior Java &amp; Spring Boot Interview Guide</h1>
+  <p class="lede">Java 21, Spring Boot 3, SQL, microservices and AI integration, with real RefinePoint scenarios. 8 volumes, 835 pages.</p>
+  <form id="gate">
+    <label for="pw">Password</label>
+    <input id="pw" type="password" autocomplete="current-password" autofocus>
+    <button type="submit">Open library</button>
+    <p class="err" id="err" role="alert"></p>
+  </form>
+  <section id="library" hidden>
+    <ul>
+      <li class="vol">
+        <span class="num">Vol 1</span>
+        <div class="vol-body"><a class="vol-title" href="read/01-Core-Java-and-OOP.html">Core Java &amp; OOP (Java 21)</a><p>OOP, SOLID, language internals, collections internals, functional Java, Java 9–21 features</p></div>
+        <a class="pdf" href="pdf/01-Core-Java-and-OOP.pdf">PDF</a>
+      </li>
+      <li class="vol">
+        <span class="num">Vol 2</span>
+        <div class="vol-body"><a class="vol-title" href="read/02-Concurrency-and-JVM.html">Concurrency &amp; JVM Internals</a><p>Java Memory Model, java.util.concurrent, virtual threads, class loading, GC, performance troubleshooting</p></div>
+        <a class="pdf" href="pdf/02-Concurrency-and-JVM.pdf">PDF</a>
+      </li>
+      <li class="vol">
+        <span class="num">Vol 3</span>
+        <div class="vol-body"><a class="vol-title" href="read/03-Design-Patterns-and-Architecture.html">Design Patterns &amp; Clean Architecture</a><p>GoF patterns in real Spring code, DDD, hexagonal architecture, refactoring</p></div>
+        <a class="pdf" href="pdf/03-Design-Patterns-and-Architecture.pdf">PDF</a>
+      </li>
+      <li class="vol">
+        <span class="num">Vol 4</span>
+        <div class="vol-body"><a class="vol-title" href="read/04-Spring-and-Spring-Boot.html">Spring &amp; Spring Boot Internals</a><p>IoC, AOP, Boot auto-configuration, MVC, WebFlux, Data JPA, transactions, security</p></div>
+        <a class="pdf" href="pdf/04-Spring-and-Spring-Boot.pdf">PDF</a>
+      </li>
+      <li class="vol">
+        <span class="num">Vol 5</span>
+        <div class="vol-body"><a class="vol-title" href="read/05-SQL-and-Databases.html">SQL &amp; Database Internals</a><p>Query writing, indexes, execution plans, MVCC, isolation, locking, PostgreSQL, caching, Redis</p></div>
+        <a class="pdf" href="pdf/05-SQL-and-Databases.pdf">PDF</a>
+      </li>
+      <li class="vol">
+        <span class="num">Vol 6</span>
+        <div class="vol-body"><a class="vol-title" href="read/06-Microservices-and-System-Design.html">Microservices, Kafka &amp; System Design</a><p>Distributed patterns, messaging, system design rounds, Docker/Kubernetes, observability, testing</p></div>
+        <a class="pdf" href="pdf/06-Microservices-and-System-Design.pdf">PDF</a>
+      </li>
+      <li class="vol">
+        <span class="num">Vol 7</span>
+        <div class="vol-body"><a class="vol-title" href="read/07-AI-Integration-for-Java-Engineers.html">AI Integration for Java Engineers</a><p>LLM fundamentals, calling models from Spring, tool calling, structured output, RAG, vectors, agents, MCP, safety</p></div>
+        <a class="pdf" href="pdf/07-AI-Integration-for-Java-Engineers.pdf">PDF</a>
+      </li>
+      <li class="vol">
+        <span class="num">Vol 8</span>
+        <div class="vol-body"><a class="vol-title" href="read/08-Real-Project-Leadership-and-Revision.html">Real Project, Leadership &amp; Revision</a><p>RefinePoint case study, senior/lead questions, coding round, rapid-fire revision</p></div>
+        <a class="pdf" href="pdf/08-Real-Project-Leadership-and-Revision.pdf">PDF</a>
+      </li>
+    </ul>
+    <p class="complete">All volumes in one file: <a href="pdf/00-Complete-Interview-Guide.pdf">Complete guide PDF (835 pages)</a></p>
+    <button class="lock" id="lock" type="button">Lock this device</button>
+  </section>
+</main>
+<script>
+const HASH = 'a3d44149dfbcf98a62812396da400bdf999a6baabd0ea2faede614c826fa820b';
+const gate = document.getElementById('gate'), lib = document.getElementById('library');
+function show() { gate.hidden = true; lib.hidden = false; }
+try { if (localStorage.getItem('rp_study') === HASH) show(); } catch (e) {}
+async function sha256(s) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+gate.addEventListener('submit', async e => {
+  e.preventDefault();
+  if (await sha256(document.getElementById('pw').value) === HASH) {
+    try { localStorage.setItem('rp_study', HASH); } catch (e) {}
+    show();
+  } else {
+    document.getElementById('err').textContent = 'Wrong password. Try again.';
+  }
+});
+document.getElementById('lock').addEventListener('click', () => { try { localStorage.removeItem('rp_study'); } catch (e) {} location.reload(); });
+</script>
+</body></html>
