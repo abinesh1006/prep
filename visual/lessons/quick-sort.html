@@ -176,12 +176,260 @@ void quickSort(int[] a, int lo, int hi) {
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/move-zeroes/">283. Move Zeroes</a> — a partition with "non-zero" as the test.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-colors/">75. Sort Colors</a> — three-way partition (0s, 1s, 2s).</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-an-array/">912. Sort an Array</a> — quick sort with a random pivot.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/kth-largest-element-in-an-array/">215. Kth Largest Element in an Array</a> — the second animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/k-closest-points-to-origin/">973. K Closest Points to Origin</a> — quickselect on distance.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/wiggle-sort-ii/">324. Wiggle Sort II</a> — find the median by quickselect first.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/move-zeroes/">283. Move Zeroes</a> — a partition with "non-zero" as the test.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Move every 0 to the end while the other numbers keep their order, in place. This is a <b>partition</b>, like the one in quick sort, with the test "is it non-zero?". A slow pointer <code>w</code> marks where the next non-zero should go; a fast pointer scans. Each non-zero is swapped down to <code>w</code>, so the zeros drift to the back.</p>
+<h4>Brute force first</h4>
+<p>Copy the non-zeros into a new array, then fill the rest with zeros. O(n) time but O(n) extra space, and the problem asks for in place.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Set <code>w = 0</code>.</li><li>Scan <code>i</code> from 0 to n − 1.</li><li>If <code>nums[i] != 0</code>, swap <code>nums[i]</code> with <code>nums[w]</code> and do <code>w++</code>.</li><li>At the end, <code>[0, w)</code> holds the non-zeros in order and the rest are zeros.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public void moveZeroes(int[] nums) {
+        int w = 0; // next slot for a non-zero
+        for (int i = 0; i &lt; nums.length; i++) {
+            if (nums[i] != 0) {
+                int t = nums[i];
+                nums[i] = nums[w];
+                nums[w] = t;
+                w++;
+            }
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — one pass, swaps in place.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>[0,1,0,3,12]
+i=1 (1):  swap with w=0 -&gt; [1,0,0,3,12] w=1
+i=3 (3):  swap with w=1 -&gt; [1,3,0,0,12] w=2
+i=4 (12): swap with w=2 -&gt; [1,3,12,0,0] w=3</code></pre>
+<h4>Watch out</h4>
+<p>Quick sort's partition is not stable, but this one is, because <code>w</code> only ever points at a zero (or at <code>i</code> itself), so non-zeros are never jumped over each other.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-colors/">75. Sort Colors</a> — three-way partition (0s, 1s, 2s).<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Sort an array of 0s, 1s and 2s in one pass and in place. This is the <b>three-way partition</b> (the "Dutch national flag"): keep three zones, 0s on the left, 2s on the right, 1s in the middle, and an unknown zone being scanned. <code>lo</code> is where the next 0 goes, <code>hi</code> is where the next 2 goes, <code>i</code> scans.</p>
+<h4>Brute force first</h4>
+<p>Count the 0s, 1s and 2s, then write them back. Two passes, O(n); fine, but the follow-up asks for one pass.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>lo = 0</code>, <code>i = 0</code>, <code>hi = n - 1</code>.</li><li>While <code>i &lt;= hi</code>:</li><li>If <code>nums[i] == 0</code>, swap it with <code>nums[lo]</code>, then <code>lo++</code> and <code>i++</code>.</li><li>If <code>nums[i] == 1</code>, it is already in the middle zone: <code>i++</code>.</li><li>If <code>nums[i] == 2</code>, swap it with <code>nums[hi]</code> and <code>hi--</code>; do <b>not</b> move <code>i</code>, the swapped-in number is still unchecked.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public void sortColors(int[] nums) {
+        int lo = 0, i = 0, hi = nums.length - 1;
+        while (i &lt;= hi) {
+            if (nums[i] == 0) swap(nums, lo++, i++);
+            else if (nums[i] == 1) i++;
+            else swap(nums, i, hi--); // recheck nums[i]
+        }
+    }
+
+    private void swap(int[] a, int x, int y) {
+        int t = a[x]; a[x] = a[y]; a[y] = t;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — every step grows a finished zone by one.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>[2,0,2,1,1,0]   lo=0 i=0 hi=5
+2 -&gt; swap i,hi  [0,0,2,1,1,2] hi=4
+0 -&gt; swap lo,i  lo=1 i=1;  0 -&gt; lo=2 i=2
+2 -&gt; swap i,hi  [0,0,1,1,2,2] hi=3
+1 -&gt; i=3;  1 -&gt; i=4 &gt; hi, stop</code></pre>
+<h4>Watch out</h4>
+<p>After swapping with <code>hi</code>, keep <code>i</code> where it is: the number that came from the right has not been looked at yet. Swapping with <code>lo</code> can move <code>i</code>, because everything behind <code>i</code> is already a 0 or 1.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-an-array/">912. Sort an Array</a> — quick sort with a random pivot.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p><b>Quick sort</b>: pick a pivot, partition the range into "less than pivot", "equal to pivot" and "greater than pivot", then sort the less and greater parts the same way. A <b>random</b> pivot makes the bad O(n²) case (always picking the smallest item) almost impossible, and the three-way split handles arrays full of equal numbers.</p>
+<h4>Brute force first</h4>
+<p>Insertion sort is O(n²). A quick sort that always uses the first item as pivot is also O(n²) on sorted input and times out.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>sort(lo, hi)</code>: if the range has fewer than 2 items, return.</li><li>Pick a random index in <code>[lo, hi]</code>; its value is the pivot <code>p</code>.</li><li>Three-way partition (like Sort Colors): <code>lt</code> = next slot for "&lt; p", <code>gt</code> = next slot for "&gt; p", <code>i</code> scans.</li><li>Now <code>[lo, lt)</code> &lt; p, <code>[lt, gt]</code> == p, <code>(gt, hi]</code> &gt; p.</li><li>Recurse on <code>[lo, lt - 1]</code> and <code>[gt + 1, hi]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private final Random rnd = new Random();
+
+    public int[] sortArray(int[] nums) {
+        sort(nums, 0, nums.length - 1);
+        return nums;
+    }
+
+    private void sort(int[] a, int lo, int hi) {
+        if (lo &gt;= hi) return;
+        int p = a[lo + rnd.nextInt(hi - lo + 1)];
+        int lt = lo, i = lo, gt = hi;
+        while (i &lt;= gt) {
+            if (a[i] &lt; p) swap(a, lt++, i++);
+            else if (a[i] &gt; p) swap(a, i, gt--);
+            else i++; // equal to pivot: stays in the middle
+        }
+        sort(a, lo, lt - 1);  // the smaller numbers
+        sort(a, gt + 1, hi);  // the bigger numbers
+    }
+
+    private void swap(int[] a, int x, int y) {
+        int t = a[x]; a[x] = a[y]; a[y] = t;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log n) expected, O(n²) only with extremely bad luck · <b>Space</b> O(log n) expected for the recursion.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>[5,1,1,2,0,0], pivot = 1 (random)
+partition -&gt; [0,0,1,1,2,5]  less=[0,0] equal=[1,1] more=[2,5]
+sort less -&gt; [0,0];  sort more -&gt; [2,5]
+result [0,0,1,1,2,5]</code></pre>
+<h4>Watch out</h4>
+<p>A two-way partition with many equal values (e.g. 50,000 copies of 2) still goes quadratic; the three-way split puts all equals in the middle and never touches them again. Merge sort (see that lesson) is the guaranteed O(n log n) choice.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/kth-largest-element-in-an-array/">215. Kth Largest Element in an Array</a> — the second animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>The k-th largest is the item that would sit at index <code>n - k</code> if the array were sorted. <b>Quickselect</b> partitions around a random pivot like quick sort, but then only continues into the one side that contains index <code>n - k</code>. On average the range halves each time, so the total work is about n + n/2 + n/4 + ... = 2n.</p>
+<h4>Brute force first</h4>
+<p>Sort and return <code>nums[n - k]</code>: O(n log n). A min-heap of size k is O(n log k) and is the other common answer.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>target = n - k</code>; search the range <code>[lo, hi] = [0, n - 1]</code>.</li><li>Pick a random pivot and three-way partition the range: <code>[lo, lt)</code> smaller, <code>[lt, gt]</code> equal, <code>(gt, hi]</code> bigger.</li><li>If <code>target</code> is inside <code>[lt, gt]</code>, the pivot is the answer.</li><li>If <code>target &lt; lt</code>, keep only the left part (<code>hi = lt - 1</code>); otherwise keep only the right part (<code>lo = gt + 1</code>).</li><li>Repeat.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private final Random rnd = new Random();
+
+    public int findKthLargest(int[] nums, int k) {
+        int target = nums.length - k; // index when sorted
+        int lo = 0, hi = nums.length - 1;
+        while (true) {
+            int p = nums[lo + rnd.nextInt(hi - lo + 1)];
+            int lt = lo, i = lo, gt = hi;
+            while (i &lt;= gt) {
+                if (nums[i] &lt; p) swap(nums, lt++, i++);
+                else if (nums[i] &gt; p) swap(nums, i, gt--);
+                else i++;
+            }
+            if (target &lt; lt) hi = lt - 1;      // go left
+            else if (target &gt; gt) lo = gt + 1; // go right
+            else return p; // target sits among the pivots
+        }
+    }
+
+    private void swap(int[] a, int x, int y) {
+        int t = a[x]; a[x] = a[y]; a[y] = t;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) average, O(n²) worst · <b>Space</b> O(1) — one side is dropped after each partition.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>nums = [3,2,1,5,6,4], k = 2 -&gt; target index 4
+pivot 3: [2,1,3,6,4,5] lt=2 gt=2, 4 &gt; 2 -&gt; lo=3
+pivot 5: [..,4,5,6]    lt=4 gt=4, target 4 -&gt; return 5</code></pre>
+<h4>Watch out</h4>
+<p>Convert "k-th largest" to index <code>n - k</code>; off-by-one here is the usual bug. LeetCode has a test with many equal numbers that makes a two-way quickselect slow; the three-way partition fixes it.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/k-closest-points-to-origin/">973. K Closest Points to Origin</a> — quickselect on distance.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Return any <code>k</code> points closest to (0,0). Distance compares the same as squared distance <code>x² + y²</code>, so no square root is needed. Use <b>quickselect on the squared distance</b>: arrange the points so the k closest are in the first k slots (in any order), then copy them out.</p>
+<h4>Brute force first</h4>
+<p>Sort all points by distance and take the first k: O(n log n). A max-heap of size k is O(n log k).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Search <code>[lo, hi] = [0, n - 1]</code> for the split at index <code>k</code>.</li><li>Pick a random pivot point, take its distance <code>pd</code>, and partition: points with distance &lt; pd to the left (Lomuto style), then put the pivot right after them at index <code>p</code>.</li><li>If <code>p == k</code>, stop: the first k slots hold the k closest. If <code>p &lt; k</code>, the first <code>p + 1</code> are settled, so continue on the right (<code>lo = p + 1</code>). If <code>p &gt; k</code>, continue on the left (<code>hi = p - 1</code>).</li><li>Return the first k points.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private final Random rnd = new Random();
+
+    public int[][] kClosest(int[][] points, int k) {
+        int lo = 0, hi = points.length - 1;
+        while (lo &lt; hi) {
+            int p = partition(points, lo, hi);
+            if (p == k) break;
+            if (p &lt; k) lo = p + 1; // need more on the left
+            else hi = p - 1;
+        }
+        return Arrays.copyOfRange(points, 0, k);
+    }
+
+    // puts a random pivot at its final place, returns it
+    private int partition(int[][] a, int lo, int hi) {
+        swap(a, lo + rnd.nextInt(hi - lo + 1), hi);
+        int pd = dist(a[hi]), w = lo;
+        for (int i = lo; i &lt; hi; i++)
+            if (dist(a[i]) &lt; pd) swap(a, i, w++);
+        swap(a, w, hi); // pivot goes right after smaller
+        return w;
+    }
+
+    private int dist(int[] p) {
+        return p[0] * p[0] + p[1] * p[1];
+    }
+
+    private void swap(int[][] a, int x, int y) {
+        int[] t = a[x]; a[x] = a[y]; a[y] = t;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) average · <b>Space</b> O(1) besides the output — only one side is kept after each partition.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>points = [[3,3],[5,-1],[-2,4]], k = 2  (dists 18, 26, 20)
+pivot [5,-1] (26): 18, 20 go left -&gt; pivot lands at index 2
+p = 2 == k -&gt; stop, return [[3,3],[-2,4]]</code></pre>
+<h4>Watch out</h4>
+<p>When <code>p == k</code>, everything left of index k is no farther than the pivot, so the first k are correct. Coordinates are at most 10<sup>4</sup>, so <code>x² + y²</code> fits in <code>int</code>.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/wiggle-sort-ii/">324. Wiggle Sort II</a> — find the median by quickselect first.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Reorder so that <code>nums[0] &lt; nums[1] &gt; nums[2] &lt; nums[3]...</code>. Split the numbers into a small half and a big half around the <b>median</b>: small ones go to even indexes (valleys), big ones to odd indexes (peaks). Find the median with quickselect, three-way partition around it, then fill both halves in <b>reverse</b> order so that copies of the median land as far apart as possible and never touch.</p>
+<h4>Brute force first</h4>
+<p>Sort a copy (O(n log n)), then fill even slots from the middle of the copy backwards and odd slots from the end backwards. Same filling as below, just with a full sort instead of quickselect.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Copy the array; quickselect the copy for the median (index <code>(n - 1) / 2</code>).</li><li>Three-way partition the copy around the median: smaller, then equal, then bigger. Now the first <code>(n + 1) / 2</code> items are the small half and the median copies sit at its end and at the start of the big half.</li><li>Even slots: <code>nums[0], nums[2], ...</code> take the small half from its last item backwards.</li><li>Odd slots: <code>nums[1], nums[3], ...</code> take the big half from the last item backwards.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private final Random rnd = new Random();
+
+    public void wiggleSort(int[] nums) {
+        int n = nums.length;
+        int[] c = nums.clone();
+        int med = select(c, (n - 1) / 2);
+        partition3(c, med); // small | median | big
+        int s = (n + 1) / 2 - 1; // last of the small half
+        int b = n - 1;           // last of the big half
+        for (int i = 0; i &lt; n; i++)
+            nums[i] = (i % 2 == 0) ? c[s--] : c[b--];
+    }
+
+    // quickselect: value at index t if a were sorted
+    private int select(int[] a, int t) {
+        int lo = 0, hi = a.length - 1;
+        while (true) {
+            int p = a[lo + rnd.nextInt(hi - lo + 1)];
+            int lt = lo, i = lo, gt = hi;
+            while (i &lt;= gt) {
+                if (a[i] &lt; p) swap(a, lt++, i++);
+                else if (a[i] &gt; p) swap(a, i, gt--);
+                else i++;
+            }
+            if (t &lt; lt) hi = lt - 1;
+            else if (t &gt; gt) lo = gt + 1;
+            else return p;
+        }
+    }
+
+    // smaller than m, then equal, then bigger
+    private void partition3(int[] a, int m) {
+        int lt = 0, i = 0, gt = a.length - 1;
+        while (i &lt;= gt) {
+            if (a[i] &lt; m) swap(a, lt++, i++);
+            else if (a[i] &gt; m) swap(a, i, gt--);
+            else i++;
+        }
+    }
+
+    private void swap(int[] a, int x, int y) {
+        int t = a[x]; a[x] = a[y]; a[y] = t;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) average · <b>Space</b> O(n) for the copy. The follow-up's O(1) space version partitions in place through "virtual indexes" <code>(1 + 2·i) % (n | 1)</code>; same idea, harder to get right.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>nums = [1,5,1,1,6,4], n = 6, median (index 2) = 1
+partitioned copy: [1,1,1 | 6,5,4]  (big half in any order)
+even slots get 1,1,1 ; odd slots take 4,5,6 (from the end)
+result [1,4,1,5,1,6], a valid wiggle</code></pre>
+<h4>Watch out</h4>
+<p>Filling forwards (<code>[1,4,1,5,1,6]</code> style) fails when the median repeats, e.g. <code>[4,5,5,6]</code> gives <code>4,5,5,6</code> with two 5s side by side. Reversing both halves gives <code>5,6,4,5</code>, which is valid.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

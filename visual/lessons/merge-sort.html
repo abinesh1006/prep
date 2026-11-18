@@ -154,12 +154,258 @@
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/merge-sorted-array/">88. Merge Sorted Array</a> — the merge step, filled from the back.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/merge-two-sorted-lists/">21. Merge Two Sorted Lists</a> — same merge on linked lists.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-an-array/">912. Sort an Array</a> — write merge sort from memory.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-list/">148. Sort List</a> — merge sort on a linked list (find middle with fast/slow).</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/count-of-smaller-numbers-after-self/">315. Count of Smaller Numbers After Self</a> — count during the merge.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/reverse-pairs/">493. Reverse Pairs</a> — count pairs across halves before merging.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/merge-sorted-array/">88. Merge Sorted Array</a> — the merge step, filled from the back.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p><code>nums1</code> has <code>m</code> real numbers and <code>n</code> empty slots at the end; <code>nums2</code> has <code>n</code> numbers; both are sorted. Merge <code>nums2</code> into <code>nums1</code> in place. If we filled from the front we would overwrite numbers we still need, so <b>fill from the back</b>: the biggest remaining number goes into the last empty slot. This is the merge step of merge sort, run backwards.</p>
+<h4>Brute force first</h4>
+<p>Copy <code>nums2</code> into the empty slots and sort the whole array. O((m+n) log(m+n)).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Point <code>i</code> at the last real number of nums1 (<code>m - 1</code>), <code>j</code> at the last of nums2 (<code>n - 1</code>), and <code>k</code> at the last slot (<code>m + n - 1</code>).</li><li>While <code>j &gt;= 0</code> (nums2 still has numbers):</li><li>If <code>i &gt;= 0</code> and <code>nums1[i] &gt; nums2[j]</code>, put <code>nums1[i]</code> at <code>k</code> and move <code>i</code> left.</li><li>Otherwise put <code>nums2[j]</code> at <code>k</code> and move <code>j</code> left.</li><li>Move <code>k</code> left. Leftover nums1 numbers are already in place.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public void merge(int[] nums1, int m, int[] nums2, int n) {
+        int i = m - 1, j = n - 1, k = m + n - 1;
+        while (j &gt;= 0) {
+            // bigger of the two tails goes to the back
+            if (i &gt;= 0 &amp;&amp; nums1[i] &gt; nums2[j])
+                nums1[k--] = nums1[i--];
+            else
+                nums1[k--] = nums2[j--];
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m + n) · <b>Space</b> O(1) — each number is placed once, in place.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>nums1 = [1,2,3,0,0,0], nums2 = [2,5,6]
+k=5: 3 vs 6 -&gt; 6   [1,2,3,0,0,6]
+k=4: 3 vs 5 -&gt; 5   [1,2,3,0,5,6]
+k=3: 3 vs 2 -&gt; 3   [1,2,3,3,5,6]
+k=2: 2 vs 2 -&gt; 2 (from nums2), j done -&gt; [1,2,2,3,5,6]</code></pre>
+<h4>Watch out</h4>
+<p>Loop on <code>j &gt;= 0</code>, not on both pointers: once nums2 is used up, the rest of nums1 is already correct. Check <code>i &gt;= 0</code> before reading <code>nums1[i]</code> (case <code>m = 0</code>).</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/merge-two-sorted-lists/">21. Merge Two Sorted Lists</a> — same merge on linked lists.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Two sorted linked lists, one sorted result. Look at the two front nodes, take the smaller, and repeat; when one list runs out, attach the rest of the other. A <b>dummy head</b> node (a fake first node) means we never need a special case for the first link.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make a <code>dummy</code> node and a <code>tail</code> pointer at it.</li><li>While both lists have nodes, link the smaller front node after <code>tail</code>, move that list forward, and move <code>tail</code> forward.</li><li>Attach whichever list is not empty to <code>tail.next</code>.</li><li>Return <code>dummy.next</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public ListNode mergeTwoLists(ListNode a, ListNode b) {
+        ListNode dummy = new ListNode(0); // fake head
+        ListNode tail = dummy;
+        while (a != null &amp;&amp; b != null) {
+            if (a.val &lt;= b.val) { tail.next = a; a = a.next; }
+            else { tail.next = b; b = b.next; }
+            tail = tail.next;
+        }
+        tail.next = (a != null) ? a : b; // the leftover
+        return dummy.next;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n + m) · <b>Space</b> O(1) — we relink existing nodes, no new ones besides the dummy.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>a = 1-2-4, b = 1-3-4
+1(a) 1(b) 2(a) 3(b) 4(a) | a empty, attach b's 4
+result 1-1-2-3-4-4</code></pre>
+<h4>Watch out</h4>
+<p>Forgetting the leftover attach loses the tail of the longer list. Using <code>&lt;=</code> takes from the first list on ties, which keeps the merge stable (equal values keep their order).</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-an-array/">912. Sort an Array</a> — write merge sort from memory.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Sort in O(n log n) without built-in sort. <b>Merge sort</b>: split the array in half, sort each half the same way, then merge the two sorted halves by repeatedly taking the smaller front item. A half of size 1 is already sorted, which stops the splitting.</p>
+<h4>Brute force first</h4>
+<p>Bubble or insertion sort is O(n²) and times out on 5 · 10<sup>4</sup> numbers.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make one helper array <code>tmp</code> of size n, reused by every merge.</li><li><code>sort(lo, hi)</code>: if the range has one item, return. Otherwise <code>mid = (lo + hi) / 2</code>, sort <code>[lo, mid]</code>, sort <code>[mid+1, hi]</code>.</li><li>Merge: <code>i</code> walks the left half, <code>j</code> the right half; copy the smaller into <code>tmp</code>; then copy the leftovers.</li><li>Copy <code>tmp[lo..hi]</code> back into <code>nums</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private int[] tmp;
+
+    public int[] sortArray(int[] nums) {
+        tmp = new int[nums.length];
+        sort(nums, 0, nums.length - 1);
+        return nums;
+    }
+
+    private void sort(int[] a, int lo, int hi) {
+        if (lo &gt;= hi) return; // 0 or 1 item: sorted
+        int mid = lo + (hi - lo) / 2;
+        sort(a, lo, mid);
+        sort(a, mid + 1, hi);
+        merge(a, lo, mid, hi);
+    }
+
+    // merge sorted a[lo..mid] and a[mid+1..hi]
+    private void merge(int[] a, int lo, int mid, int hi) {
+        int i = lo, j = mid + 1, k = lo;
+        while (i &lt;= mid &amp;&amp; j &lt;= hi)
+            tmp[k++] = (a[i] &lt;= a[j]) ? a[i++] : a[j++];
+        while (i &lt;= mid) tmp[k++] = a[i++];
+        while (j &lt;= hi) tmp[k++] = a[j++];
+        for (k = lo; k &lt;= hi; k++) a[k] = tmp[k];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log n) · <b>Space</b> O(n) — log n levels of splitting, each level merges n items; plus the helper array.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>[5,2,3,1]
+split  [5,2] [3,1] -&gt; [5][2] [3][1]
+merge  [2,5] [1,3]
+merge  1 (right) 2 (left) 3 (right) 5 (left) -&gt; [1,2,3,5]</code></pre>
+<h4>Watch out</h4>
+<p>Allocate <code>tmp</code> once, not inside every merge, or the many small allocations slow it down a lot. Quick sort also works here but needs a random pivot (see the quick sort lesson); merge sort is always O(n log n).</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-list/">148. Sort List</a> — merge sort on a linked list (find middle with fast/slow).<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Sort a linked list in O(n log n). Linked lists cannot jump to an index, but merge sort only needs two things that lists do well: <b>find the middle</b> (slow pointer moves 1, fast moves 2; when fast reaches the end, slow is in the middle) and <b>merge two sorted lists</b>. Split, sort each half, merge.</p>
+<h4>Brute force first</h4>
+<p>Copy the values into an array, sort it, write them back. O(n log n) time but O(n) extra space, and interviewers want the list version.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If the list has 0 or 1 nodes, it is sorted: return it.</li><li>Find the middle: <code>slow = head</code>, <code>fast = head.next</code>; move slow 1 and fast 2 until fast runs out.</li><li>Cut the list after <code>slow</code>: <code>right = slow.next</code>, <code>slow.next = null</code>.</li><li>Sort both halves recursively.</li><li>Merge the two sorted halves with a dummy head (problem 21).</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public ListNode sortList(ListNode head) {
+        if (head == null || head.next == null) return head;
+        // fast starts one ahead so slow stops at the
+        // end of the left half
+        ListNode slow = head, fast = head.next;
+        while (fast != null &amp;&amp; fast.next != null) {
+            slow = slow.next;
+            fast = fast.next.next;
+        }
+        ListNode right = slow.next;
+        slow.next = null; // cut into two lists
+        return merge(sortList(head), sortList(right));
+    }
+
+    private ListNode merge(ListNode a, ListNode b) {
+        ListNode dummy = new ListNode(0), tail = dummy;
+        while (a != null &amp;&amp; b != null) {
+            if (a.val &lt;= b.val) { tail.next = a; a = a.next; }
+            else { tail.next = b; b = b.next; }
+            tail = tail.next;
+        }
+        tail.next = (a != null) ? a : b;
+        return dummy.next;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log n) · <b>Space</b> O(log n) — the recursion is log n deep; nodes are relinked, not copied.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>4-2-1-3
+middle: slow=2 -&gt; left 4-2, right 1-3
+4-2 -&gt; 4 | 2 -&gt; merge 2-4
+1-3 -&gt; 1 | 3 -&gt; merge 1-3
+merge 2-4 with 1-3 -&gt; 1-2-3-4</code></pre>
+<h4>Watch out</h4>
+<p>Start <code>fast</code> at <code>head.next</code>, not <code>head</code>: with two nodes, starting at head leaves slow on the second node, the left half never shrinks, and the recursion never ends. Remember to cut with <code>slow.next = null</code>.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/count-of-smaller-numbers-after-self/">315. Count of Smaller Numbers After Self</a> — count during the merge.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>For each number, count how many numbers to its right are smaller. For <code>[5,2,6,1]</code> the answer is <code>[2,1,1,0]</code>. Run merge sort on the <b>indexes</b>. While merging a left half with a right half, a right-half item that is taken before a left item is smaller and was to its right. So when a left item is placed, add the number of right items already placed. Pattern: <b>count during the merge</b>.</p>
+<h4>Brute force first</h4>
+<p>For each i, scan all j &gt; i and count <code>nums[j] &lt; nums[i]</code>. O(n²), too slow for 10<sup>5</sup>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Keep an array <code>idx</code> of original positions and sort it by value with merge sort, so we always know where a number came from.</li><li>In the merge, keep <code>rightTaken</code> = how many right-half items have been copied so far.</li><li>If the right item is smaller than the left item, copy it and do <code>rightTaken++</code>.</li><li>Otherwise copy the left item and add <code>rightTaken</code> to its count: exactly those right items are smaller and came after it.</li><li>Leftover left items also get <code>rightTaken</code> added.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private int[] count, idx, tmp;
+
+    public List&lt;Integer&gt; countSmaller(int[] nums) {
+        int n = nums.length;
+        count = new int[n];
+        idx = new int[n];
+        tmp = new int[n];
+        for (int i = 0; i &lt; n; i++) idx[i] = i;
+        sort(nums, 0, n - 1);
+        List&lt;Integer&gt; res = new ArrayList&lt;&gt;();
+        for (int c : count) res.add(c);
+        return res;
+    }
+
+    // sorts idx[lo..hi] by nums value
+    private void sort(int[] nums, int lo, int hi) {
+        if (lo &gt;= hi) return;
+        int mid = lo + (hi - lo) / 2;
+        sort(nums, lo, mid);
+        sort(nums, mid + 1, hi);
+        int i = lo, j = mid + 1, k = lo;
+        int rightTaken = 0; // smaller items from the right
+        while (i &lt;= mid &amp;&amp; j &lt;= hi) {
+            if (nums[idx[j]] &lt; nums[idx[i]]) {
+                rightTaken++;
+                tmp[k++] = idx[j++];
+            } else {
+                count[idx[i]] += rightTaken;
+                tmp[k++] = idx[i++];
+            }
+        }
+        while (i &lt;= mid) {
+            count[idx[i]] += rightTaken;
+            tmp[k++] = idx[i++];
+        }
+        while (j &lt;= hi) tmp[k++] = idx[j++];
+        for (k = lo; k &lt;= hi; k++) idx[k] = tmp[k];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log n) · <b>Space</b> O(n) — normal merge sort plus a constant amount of work per copy. A Fenwick tree (binary indexed tree) over the values also solves it in O(n log n).</p>
+<h4>Dry run</h4>
+<pre class="code"><code>nums = [5,2,6,1]
+merge [5] [2]: 2 &lt; 5 -&gt; rightTaken=1; place 5: count[5] += 1
+merge [6] [1]: 1 &lt; 6 -&gt; rightTaken=1; place 6: count[6] += 1
+merge [2,5] [1,6]: 1 first (rightTaken=1);
+  place 2: +1, place 5: +1; then 6
+counts: 5-&gt;2, 2-&gt;1, 6-&gt;1, 1-&gt;0  =&gt; [2,1,1,0]</code></pre>
+<h4>Watch out</h4>
+<p>Use strict <code>&lt;</code> when deciding to take the right item: equal numbers are not "smaller", so on a tie take the left one first. Sorting the values directly loses track of where each came from, which is why we sort indexes.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/reverse-pairs/">493. Reverse Pairs</a> — count pairs across halves before merging.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Count pairs <code>i &lt; j</code> with <code>nums[i] &gt; 2 · nums[j]</code>. Use merge sort: once both halves are sorted, every pair with i in the left and j in the right can be counted with <b>two pointers</b>, because as the left value grows, the number of right values it beats can only grow. Count first, then merge as usual.</p>
+<h4>Brute force first</h4>
+<p>Check every pair. O(n²), too slow for 5 · 10<sup>4</sup> numbers.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Merge sort the array; the answer is pairs inside the left half + pairs inside the right half + pairs across.</li><li>For the cross pairs (both halves already sorted): set <code>j = mid + 1</code>. For each left item <code>i</code>, move <code>j</code> forward while <code>nums[i] &gt; 2 · nums[j]</code>.</li><li>Add <code>j - (mid + 1)</code>: that many right items are small enough for <code>nums[i]</code>.</li><li>Then merge the halves normally.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private int[] tmp;
+
+    public int reversePairs(int[] nums) {
+        tmp = new int[nums.length];
+        return sort(nums, 0, nums.length - 1);
+    }
+
+    private int sort(int[] a, int lo, int hi) {
+        if (lo &gt;= hi) return 0;
+        int mid = lo + (hi - lo) / 2;
+        int cnt = sort(a, lo, mid) + sort(a, mid + 1, hi);
+        // both halves sorted: count cross pairs
+        int j = mid + 1;
+        for (int i = lo; i &lt;= mid; i++) {
+            while (j &lt;= hi &amp;&amp; a[i] &gt; 2L * a[j]) j++;
+            cnt += j - (mid + 1);
+        }
+        // normal merge
+        int i = lo, k = lo;
+        j = mid + 1;
+        while (i &lt;= mid &amp;&amp; j &lt;= hi)
+            tmp[k++] = (a[i] &lt;= a[j]) ? a[i++] : a[j++];
+        while (i &lt;= mid) tmp[k++] = a[i++];
+        while (j &lt;= hi) tmp[k++] = a[j++];
+        for (k = lo; k &lt;= hi; k++) a[k] = tmp[k];
+        return cnt;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log n) · <b>Space</b> O(n) — the counting pass is linear per level, like the merge.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>nums = [1,3,2,3,1]
+left [1,3,2] -&gt; no pair inside (3 &gt; 2*2 is false) -&gt; 0
+right [3,1]  -&gt; 3 &gt; 2*1 -&gt; 1 pair
+cross: left sorted [1,2,3], right sorted [1,3]
+  1: none, 2: none, 3 &gt; 2*1 -&gt; 1
+total 0 + 1 + 1 = 2</code></pre>
+<h4>Watch out</h4>
+<p><code>2 * nums[j]</code> overflows <code>int</code> when values are near 2<sup>31</sup>; write <code>2L * a[j]</code>. Count before merging, while the two halves are still separate.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

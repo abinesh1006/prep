@@ -195,14 +195,260 @@
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/assign-cookies/">455. Assign Cookies</a> — sort both, give the smallest cookie that satisfies.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock-ii/">122. Best Time to Buy and Sell Stock II</a> — take every rising day.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/jump-game/">55. Jump Game</a> — the first animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/jump-game-ii/">45. Jump Game II</a> — BFS by ranges: jumps++ when i passes the current range end.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/gas-station/">134. Gas Station</a> — the second animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/partition-labels/">763. Partition Labels</a> — the third animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/hand-of-straights/">846. Hand of Straights</a> — always start a run from the smallest card left.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/candy/">135. Candy</a> — one pass left to right, one right to left, take the max.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/assign-cookies/">455. Assign Cookies</a> — sort both, give the smallest cookie that satisfies.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Child <code>i</code> is happy with a cookie of size at least <code>g[i]</code>; each child gets at most one cookie. Maximize happy children. <b>Greedy</b>: sort both lists and give each cookie, smallest first, to the least greedy child still waiting if it is big enough. A small cookie that cannot please the least greedy child cannot please anyone, so skip it.</p>
+<h4>Brute force first</h4>
+<p>Try every way to match cookies to children. Exponential.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Sort <code>g</code> (greed) and <code>s</code> (cookie sizes).</li><li><code>child = 0</code>; walk the cookies from smallest to largest.</li><li>If the cookie is big enough for <code>g[child]</code>, that child is happy: <code>child++</code>.</li><li>Either way, the cookie is used or useless; move on.</li><li>Return <code>child</code>, the number of happy children.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findContentChildren(int[] g, int[] s) {
+        Arrays.sort(g);
+        Arrays.sort(s);
+        int child = 0;
+        int n = g.length;
+        for (int i = 0; i &lt; s.length &amp;&amp; child &lt; n; i++) {
+            // fits the least greedy child left?
+            if (s[i] &gt;= g[child]) child++;
+        }
+        return child;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log n + m log m) · <b>Space</b> O(log n) for the sorts — one walk after sorting.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>g = [1,2], s = [1,2,3]
+cookie 1 &gt;= 1 -&gt; child 1 happy (child=1)
+cookie 2 &gt;= 2 -&gt; child 2 happy (child=2), all children done
+answer 2</code></pre>
+<h4>Watch out</h4>
+<p>Stop when all children are served (<code>child &lt; g.length</code>), or <code>g[child]</code> goes out of bounds. Empty cookie list returns 0.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock-ii/">122. Best Time to Buy and Sell Stock II</a> — take every rising day.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>You may buy and sell as often as you like (holding at most one share). Any rising stretch, like 1 → 5, can be split into daily steps 1→2→3→4→5 with the same total. So the best profit is simply the <b>sum of every daily rise</b>: take each day where the price goes up, skip each day where it goes down.</p>
+<h4>Brute force first</h4>
+<p>Try every set of buy and sell days with recursion. Exponential. A small DP (holding / not holding) is O(n) too, but greedy is shorter.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>profit = 0</code>.</li><li>For each day <code>i</code> from 1 on, compare with the day before.</li><li>If <code>prices[i] &gt; prices[i - 1]</code>, add the difference.</li><li>Return <code>profit</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maxProfit(int[] prices) {
+        int profit = 0;
+        for (int i = 1; i &lt; prices.length; i++) {
+            // take every rise from yesterday to today
+            if (prices[i] &gt; prices[i - 1])
+                profit += prices[i] - prices[i - 1];
+        }
+        return profit;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — one pass.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>prices = [7,1,5,3,6,4]
+1-&gt;5: +4,  3-&gt;6: +3,  others fall
+answer 7</code></pre>
+<h4>Watch out</h4>
+<p>This only works because there is no limit on the number of trades and no fee. With "at most k trades" or a fee, it becomes a DP problem.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/jump-game/">55. Jump Game</a> — the first animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>From index <code>i</code> you can jump up to <code>nums[i]</code> steps. Can you reach the last index? Walk left to right and keep <code>far</code>, the farthest index reachable so far. If you ever stand on an index beyond <code>far</code>, you are stuck. <b>Greedy reach</b>: we never need to know which jumps, only how far we can get.</p>
+<h4>Brute force first</h4>
+<p>Recursion that tries every jump length from every index. Exponential; with memo it is O(n²).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>far = 0</code>.</li><li>For each index <code>i</code>: if <code>i &gt; far</code>, return false (we cannot even get here).</li><li>Update <code>far = max(far, i + nums[i])</code>.</li><li>If <code>far &gt;= n - 1</code>, return true early.</li><li>After the loop, return true.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean canJump(int[] nums) {
+        int far = 0; // farthest index we can reach
+        for (int i = 0; i &lt; nums.length; i++) {
+            if (i &gt; far) return false; // stuck before i
+            far = Math.max(far, i + nums[i]);
+            if (far &gt;= nums.length - 1) return true;
+        }
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — one pass with one number.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>[3,2,1,0,4]
+i=0 far=3, i=1 far=3, i=2 far=3, i=3 far=3
+i=4: 4 &gt; 3 -&gt; false
+[2,3,1,1,4]: i=0 far=2, i=1 far=4 &gt;= 4 -&gt; true</code></pre>
+<h4>Watch out</h4>
+<p>A single item <code>[0]</code> is already at the end, so it is true. Zeros are the only way to get stuck; the check <code>i &gt; far</code> catches them.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/jump-game-ii/">45. Jump Game II</a> — BFS by ranges: jumps++ when i passes the current range end.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Now reaching the end is guaranteed; find the fewest jumps. Think in layers, like <b>BFS by ranges</b>: with 0 jumps you can stand on index 0; with 1 jump on everything up to <code>nums[0]</code>; with 2 jumps on everything the previous layer can reach, and so on. Walk left to right, track the farthest reach of the current layer, and add a jump each time <code>i</code> passes the end of the current layer.</p>
+<h4>Brute force first</h4>
+<p>DP: <code>jumps[j] = min(jumps[i] + 1)</code> over every <code>i</code> that can reach <code>j</code>. O(n²).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>jumps = 0</code>, <code>end = 0</code> (last index reachable with <code>jumps</code> jumps), <code>far = 0</code>.</li><li>For <code>i</code> from 0 to <code>n - 2</code> (we never jump from the last index): <code>far = max(far, i + nums[i])</code>.</li><li>If <code>i == end</code>, the current layer is used up: take a jump (<code>jumps++</code>) and set <code>end = far</code>.</li><li>Return <code>jumps</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int jump(int[] nums) {
+        int jumps = 0, end = 0, far = 0;
+        // stop before the last index: no jump from there
+        for (int i = 0; i &lt; nums.length - 1; i++) {
+            far = Math.max(far, i + nums[i]);
+            if (i == end) {   // layer finished
+                jumps++;
+                end = far;    // next layer reaches here
+            }
+        }
+        return jumps;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — each index is seen once.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>[2,3,1,1,4]
+i=0: far=2, i==end(0) -&gt; jumps=1, end=2
+i=1: far=4
+i=2: far=4, i==end(2) -&gt; jumps=2, end=4
+i=3: far=4  (loop stops before index 4) -&gt; answer 2</code></pre>
+<h4>Watch out</h4>
+<p>Loop to <code>n - 2</code>, not <code>n - 1</code>: if you process the last index too, <code>i == end</code> can add one extra jump (for <code>[0]</code> you would get 1 instead of 0).</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/gas-station/">134. Gas Station</a> — the second animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Station <code>i</code> gives <code>gas[i]</code>, and driving to the next costs <code>cost[i]</code>. Find the start that lets you drive the full circle. Two facts: if total gas &lt; total cost, no start works. And if you start at <code>s</code> and run dry at station <code>i</code>, no station between <code>s</code> and <code>i</code> works either (each would arrive with even less fuel), so <b>restart at i + 1</b>.</p>
+<h4>Brute force first</h4>
+<p>Try every start and simulate the full loop. O(n²).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Keep <code>total</code> (sum of <code>gas - cost</code> over all stations), <code>tank</code> (fuel since the current start), and <code>start = 0</code>.</li><li>For each station, add <code>gas[i] - cost[i]</code> to both.</li><li>If <code>tank &lt; 0</code>, we cannot get past station i: set <code>start = i + 1</code> and <code>tank = 0</code>.</li><li>At the end, return <code>start</code> if <code>total &gt;= 0</code>, else -1.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int canCompleteCircuit(int[] gas, int[] cost) {
+        int total = 0, tank = 0, start = 0;
+        for (int i = 0; i &lt; gas.length; i++) {
+            int diff = gas[i] - cost[i];
+            total += diff;
+            tank += diff;
+            if (tank &lt; 0) {     // ran dry leaving station i
+                start = i + 1;  // nothing in [start..i] works
+                tank = 0;
+            }
+        }
+        return total &gt;= 0 ? start : -1;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — one pass around the circle.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>gas = [1,2,3,4,5], cost = [3,4,5,1,2] -&gt; diff [-2,-2,-2,3,3]
+i=0 tank=-2 -&gt; start=1; i=1 -2 -&gt; start=2; i=2 -2 -&gt; start=3
+i=3 tank=3, i=4 tank=6; total = 0 &gt;= 0 -&gt; answer 3</code></pre>
+<h4>Watch out</h4>
+<p>We never check the wrap-around part from the start back to it. The total check covers it: if the total is not negative, the deficit before <code>start</code> is paid by the surplus after it.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/partition-labels/">763. Partition Labels</a> — the third animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Cut the string into as many pieces as possible so each letter appears in only one piece; return the piece sizes. First record the <b>last position</b> of every letter. Walk the string and keep <code>end</code> = the farthest last position of any letter seen in the current piece. When <code>i</code> reaches <code>end</code>, no letter of this piece appears later: cut here.</p>
+<h4>Brute force first</h4>
+<p>For each possible cut point, check whether the letters on the left appear on the right. O(n²) or worse.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Fill <code>last[c]</code> = the last index of letter c.</li><li><code>start = 0</code>, <code>end = 0</code>.</li><li>For each <code>i</code>: <code>end = max(end, last[s[i]])</code>.</li><li>If <code>i == end</code>, the piece <code>[start, i]</code> is closed: add <code>i - start + 1</code> and set <code>start = i + 1</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;Integer&gt; partitionLabels(String s) {
+        int[] last = new int[26];
+        for (int i = 0; i &lt; s.length(); i++)
+            last[s.charAt(i) - 'a'] = i;
+        List&lt;Integer&gt; res = new ArrayList&lt;&gt;();
+        int start = 0, end = 0;
+        for (int i = 0; i &lt; s.length(); i++) {
+            // this piece must reach the letter's last copy
+            end = Math.max(end, last[s.charAt(i) - 'a']);
+            if (i == end) {              // safe to cut here
+                res.add(i - start + 1);
+                start = i + 1;
+            }
+        }
+        return res;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — two passes and an array of 26.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>s = "ababcbacadefegdehijhklij"
+last: a=8, b=5, c=7 ... end grows to 8 at i=8 -&gt; cut, size 9
+next piece "defegde" ends at 15 -&gt; size 7
+"hijhklij" -&gt; size 8;  answer [9,7,8]</code></pre>
+<h4>Watch out</h4>
+<p>Update <code>end</code> before checking <code>i == end</code>, otherwise a letter at position i that appears later is missed.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/hand-of-straights/">846. Hand of Straights</a> — always start a run from the smallest card left.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Can the cards be split into groups of <code>groupSize</code> consecutive numbers? The <b>smallest card left</b> must start a group (nothing smaller exists to put it in), so the group <code>smallest, smallest+1, ...</code> is forced. Greedy: repeatedly take the smallest card, remove one of each of the next <code>groupSize</code> values, and fail if one is missing. A <code>TreeMap</code> (a sorted map) keeps the counts in order.</p>
+<h4>Brute force first</h4>
+<p>Try all ways to split into groups with backtracking. Exponential.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If <code>n % groupSize != 0</code>, return false.</li><li>Count each card in a TreeMap.</li><li>While the map is not empty, take the smallest key <code>x</code>.</li><li>For <code>x, x+1, ..., x+groupSize-1</code>: if a value is missing, return false; otherwise lower its count by one and remove it when it hits 0.</li><li>If the map empties, return true.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean isNStraightHand(int[] hand, int groupSize) {
+        if (hand.length % groupSize != 0) return false;
+        TreeMap&lt;Integer, Integer&gt; cnt = new TreeMap&lt;&gt;();
+        for (int c : hand) cnt.merge(c, 1, Integer::sum);
+        while (!cnt.isEmpty()) {
+            // the smallest card must start a group
+            int x = cnt.firstKey();
+            for (int v = x; v &lt; x + groupSize; v++) {
+                Integer c = cnt.get(v);
+                if (c == null) return false; // gap in the run
+                if (c == 1) cnt.remove(v);
+                else cnt.put(v, c - 1);
+            }
+        }
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log n) · <b>Space</b> O(n) — each card is removed once from a sorted map.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>hand = [1,2,3,6,2,3,4,7,8], groupSize = 3
+counts {1:1, 2:2, 3:2, 4:1, 6:1, 7:1, 8:1}
+take 1: use 1,2,3 -&gt; {2:1, 3:1, 4:1, 6,7,8}
+take 2: use 2,3,4 -&gt; {6,7,8};  take 6: use 6,7,8 -&gt; empty -&gt; true</code></pre>
+<h4>Watch out</h4>
+<p>Check <code>n % groupSize</code> first; it is a quick false. Starting a group from any card other than the smallest can fail even when an answer exists.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/candy/">135. Candy</a> — one pass left to right, one right to left, take the max.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Every child gets at least one candy, and a child with a higher rating than a neighbour must get more than that neighbour. Handle the two sides separately: a <b>left-to-right pass</b> fixes "more than the left neighbour", a <b>right-to-left pass</b> fixes "more than the right neighbour". Each child takes the max of the two, which satisfies both with the fewest candies.</p>
+<h4>Brute force first</h4>
+<p>Give everyone 1 and keep sweeping, fixing any broken pair, until nothing changes. O(n²).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Give everyone 1 candy.</li><li>Left to right: if <code>ratings[i] &gt; ratings[i - 1]</code>, set <code>candy[i] = candy[i - 1] + 1</code>.</li><li>Right to left: if <code>ratings[i] &gt; ratings[i + 1]</code>, set <code>candy[i] = max(candy[i], candy[i + 1] + 1)</code>.</li><li>Return the sum.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int candy(int[] ratings) {
+        int n = ratings.length;
+        int[] c = new int[n];
+        Arrays.fill(c, 1);
+        // more than the left neighbour
+        for (int i = 1; i &lt; n; i++)
+            if (ratings[i] &gt; ratings[i - 1])
+                c[i] = c[i - 1] + 1;
+        // more than the right neighbour, keep the left rule
+        for (int i = n - 2; i &gt;= 0; i--)
+            if (ratings[i] &gt; ratings[i + 1])
+                c[i] = Math.max(c[i], c[i + 1] + 1);
+        int sum = 0;
+        for (int x : c) sum += x;
+        return sum;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — two passes and one array.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>ratings = [1,0,2]
+start      [1,1,1]
+left pass  [1,1,2]   (2 &gt; 0)
+right pass [2,1,2]   (1 &gt; 0)
+sum 5</code></pre>
+<h4>Watch out</h4>
+<p>Use <code>max</code> in the second pass: overwriting with <code>c[i + 1] + 1</code> can break the rule the first pass set up (a peak needs to beat both sides). Equal neighbours have no rule between them, so <code>[1,2,2]</code> gives 1+2+1 = 4.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

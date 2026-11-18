@@ -163,11 +163,181 @@
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/">153. Find Minimum in Rotated Sorted Array</a> — first animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/search-in-rotated-sorted-array/">33. Search in Rotated Sorted Array</a> — second animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/search-in-rotated-sorted-array-ii/">81. Search in Rotated Sorted Array II</a> — duplicates: when ends are equal, shrink by one.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-peak-element/">162. Find Peak Element</a> — another "not sorted, still halvable" array.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/find-minimum-in-rotated-sorted-array-ii/">154. Find Minimum in Rotated Sorted Array II</a> — find-min with <code>hi--</code> on ties.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/">153. Find Minimum in Rotated Sorted Array</a> — first animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>A sorted array was rotated, like <code>[3,4,5,1,2]</code>: two sorted runs, and the minimum is where the second run starts. Compare the middle with the <b>last</b> item: if <code>nums[mid] &gt; nums[hi]</code>, mid is in the left (high) run and the drop is to its right; otherwise mid is in the right (low) run, so the minimum is mid or to its left. Pattern: <b>binary search on a rotated array</b>.</p>
+<h4>Brute force first</h4>
+<p>Scan for the smallest value. O(n).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Keep <code>lo = 0</code>, <code>hi = n - 1</code>; the minimum is always in <code>[lo, hi]</code>.</li><li>While <code>lo &lt; hi</code>, take <code>mid</code>.</li><li>If <code>nums[mid] &gt; nums[hi]</code>, the minimum is right of mid: <code>lo = mid + 1</code>.</li><li>Otherwise mid could be the minimum: <code>hi = mid</code>.</li><li>When they meet, return <code>nums[lo]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findMin(int[] nums) {
+        int lo = 0, hi = nums.length - 1;
+        while (lo &lt; hi) {
+            int mid = lo + (hi - lo) / 2;
+            // mid in the high run: the drop is to the right
+            if (nums[mid] &gt; nums[hi]) lo = mid + 1;
+            else hi = mid; // mid in the low run
+        }
+        return nums[lo];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(log n) · <b>Space</b> O(1) — each step halves the range.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>nums = [4,5,6,7,0,1,2]
+lo=0 hi=6 mid=3: 7 &gt; 2 -&gt; lo=4
+lo=4 hi=6 mid=5: 1 &lt; 2 -&gt; hi=5
+lo=4 hi=5 mid=4: 0 &lt; 1 -&gt; hi=4
+return nums[4] = 0</code></pre>
+<h4>Watch out</h4>
+<p>Compare with <code>nums[hi]</code>, not <code>nums[lo]</code>: an array that is not rotated at all (<code>[1,2,3]</code>) breaks the <code>nums[lo]</code> version. A one-item array returns at once.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/search-in-rotated-sorted-array/">33. Search in Rotated Sorted Array</a> — second animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find a target in a rotated sorted array like <code>[4,5,6,7,0,1,2]</code> in O(log n). Cut at mid: <b>one of the two halves is always fully sorted</b>. Check which one (compare <code>nums[lo]</code> with <code>nums[mid]</code>); if the target lies inside that sorted half's range, search there, otherwise search the other half.</p>
+<h4>Brute force first</h4>
+<p>Scan every item. O(n). Another way is to find the minimum first (problem 153) and then run normal binary search on the correct run; also O(log n), just two passes.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>lo = 0</code>, <code>hi = n - 1</code>; while <code>lo &lt;= hi</code> take <code>mid</code>.</li><li>If <code>nums[mid]</code> is the target, return mid.</li><li>If <code>nums[lo] &lt;= nums[mid]</code>, the left half is sorted: if <code>nums[lo] &lt;= target &lt; nums[mid]</code> go left (<code>hi = mid - 1</code>), else go right.</li><li>Otherwise the right half is sorted: if <code>nums[mid] &lt; target &lt;= nums[hi]</code> go right (<code>lo = mid + 1</code>), else go left.</li><li>If the range empties, return -1.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int search(int[] nums, int target) {
+        int lo = 0, hi = nums.length - 1;
+        while (lo &lt;= hi) {
+            int mid = lo + (hi - lo) / 2;
+            if (nums[mid] == target) return mid;
+            if (nums[lo] &lt;= nums[mid]) {
+                // left half [lo..mid] is sorted
+                if (nums[lo] &lt;= target &amp;&amp; target &lt; nums[mid])
+                    hi = mid - 1;
+                else
+                    lo = mid + 1;
+            } else {
+                // right half [mid..hi] is sorted
+                if (nums[mid] &lt; target &amp;&amp; target &lt;= nums[hi])
+                    lo = mid + 1;
+                else
+                    hi = mid - 1;
+            }
+        }
+        return -1;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(log n) · <b>Space</b> O(1) — one half is thrown away every step.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>nums = [4,5,6,7,0,1,2], target = 0
+lo=0 hi=6 mid=3 (7): left [4..7] sorted, 0 not in it -&gt; lo=4
+lo=4 hi=6 mid=5 (1): left [0..1] sorted, 0 in it    -&gt; hi=4
+lo=4 hi=4 mid=4 (0): found -&gt; return 4</code></pre>
+<h4>Watch out</h4>
+<p>Use <code>nums[lo] &lt;= nums[mid]</code> with <b>&lt;=</b>: when <code>lo == mid</code> (two items left) the "left half" is a single item and still counts as sorted. Keep one side of each range check strict, since <code>nums[mid]</code> was already tested.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/search-in-rotated-sorted-array-ii/">81. Search in Rotated Sorted Array II</a> — duplicates: when ends are equal, shrink by one.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Same as problem 33, but values may repeat, and we only return true or false. Duplicates break one thing: in <code>[1,0,1,1,1]</code>, <code>nums[lo]</code>, <code>nums[mid]</code> and <code>nums[hi]</code> are all 1, so we cannot tell which half is sorted. In that case just <b>shrink both ends by one</b>; they are not the target, so nothing is lost.</p>
+<h4>Brute force first</h4>
+<p>Scan every item. O(n), which is also the worst case of the smart version.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>lo = 0</code>, <code>hi = n - 1</code>; while <code>lo &lt;= hi</code> take <code>mid</code>.</li><li>If <code>nums[mid] == target</code>, return true.</li><li>If <code>nums[lo] == nums[mid] == nums[hi]</code>, we cannot decide: <code>lo++</code>, <code>hi--</code>, and loop again.</li><li>Else if <code>nums[lo] &lt;= nums[mid]</code>, the left half is sorted: go left if the target is inside it, else right.</li><li>Else the right half is sorted: go right if the target is inside it, else left.</li><li>Return false when the range is empty.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean search(int[] nums, int target) {
+        int lo = 0, hi = nums.length - 1;
+        while (lo &lt;= hi) {
+            int mid = lo + (hi - lo) / 2;
+            if (nums[mid] == target) return true;
+            boolean flat = nums[lo] == nums[mid]
+                    &amp;&amp; nums[mid] == nums[hi];
+            if (flat) {
+                lo++; // ends are not the target;
+                hi--; // drop them and look again
+            } else if (nums[lo] &lt;= nums[mid]) {
+                // left half is sorted
+                if (nums[lo] &lt;= target &amp;&amp; target &lt; nums[mid])
+                    hi = mid - 1;
+                else
+                    lo = mid + 1;
+            } else {
+                // right half is sorted
+                if (nums[mid] &lt; target &amp;&amp; target &lt;= nums[hi])
+                    lo = mid + 1;
+                else
+                    hi = mid - 1;
+            }
+        }
+        return false;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(log n) usually, O(n) worst case (all equal) · <b>Space</b> O(1) — the shrink step can only drop two items at a time.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>nums = [1,0,1,1,1], target = 0
+lo=0 hi=4 mid=2: 1,1,1 all equal -&gt; lo=1 hi=3
+lo=1 hi=3 mid=2: nums[1]=0 &lt;= 1, left [0,1] sorted,
+          0 in [0,1) -&gt; hi=1
+lo=1 hi=1 mid=1: found -&gt; true</code></pre>
+<h4>Watch out</h4>
+<p>Without the "all three equal" case, <code>nums[lo] &lt;= nums[mid]</code> wrongly says the left half is sorted for <code>[1,0,1,1,1]</code> and the 0 is missed. Say in the interview that the worst case is O(n).</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-peak-element/">162. Find Peak Element</a> — another "not sorted, still halvable" array.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>A peak is bigger than its neighbours; the outside of the array counts as minus infinity. Like a rotated array, this one is not sorted but can still be halved: if <code>nums[mid] &lt; nums[mid + 1]</code> we stand on an uphill slope, and climbing right must reach a peak. If not, mid or something on its left is a peak. Pattern: <b>binary search on a slope</b>.</p>
+<h4>Brute force first</h4>
+<p>Return the first <code>i</code> with <code>nums[i] &gt; nums[i + 1]</code>, or the last index. O(n).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>lo = 0</code>, <code>hi = n - 1</code>.</li><li>While <code>lo &lt; hi</code>, take <code>mid</code>.</li><li>If <code>nums[mid] &lt; nums[mid + 1]</code>, move right: <code>lo = mid + 1</code>.</li><li>Otherwise keep mid: <code>hi = mid</code>.</li><li>Return <code>lo</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findPeakElement(int[] nums) {
+        int lo = 0, hi = nums.length - 1;
+        while (lo &lt; hi) {
+            int mid = lo + (hi - lo) / 2;
+            // uphill: a peak is to the right
+            if (nums[mid] &lt; nums[mid + 1]) lo = mid + 1;
+            else hi = mid; // downhill: mid may be it
+        }
+        return lo;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(log n) · <b>Space</b> O(1) — half the range goes each step.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>nums = [1,2,3,1]
+lo=0 hi=3 mid=1: 2 &lt; 3 uphill   -&gt; lo=2
+lo=2 hi=3 mid=2: 3 &gt; 1 downhill -&gt; hi=2
+return 2</code></pre>
+<h4>Watch out</h4>
+<p>Neighbours are never equal in this problem; that is what makes the slope argument work. <code>mid + 1</code> is always inside the array because <code>mid &lt; hi</code> while <code>lo &lt; hi</code>.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/find-minimum-in-rotated-sorted-array-ii/">154. Find Minimum in Rotated Sorted Array II</a> — find-min with <code>hi--</code> on ties.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Same as problem 153 but values can repeat, like <code>[2,2,2,0,1]</code>. Compare <code>nums[mid]</code> with <code>nums[hi]</code>: bigger means the minimum is right of mid; smaller means it is mid or left. When they are <b>equal</b> we cannot tell, but we can safely drop <code>hi</code> (<code>hi--</code>), because <code>nums[mid]</code> has the same value and stays in range.</p>
+<h4>Brute force first</h4>
+<p>Scan for the smallest value. O(n), which is also the worst case here.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>lo = 0</code>, <code>hi = n - 1</code>; while <code>lo &lt; hi</code> take <code>mid</code>.</li><li>If <code>nums[mid] &gt; nums[hi]</code>: <code>lo = mid + 1</code>.</li><li>If <code>nums[mid] &lt; nums[hi]</code>: <code>hi = mid</code>.</li><li>If equal: <code>hi--</code>.</li><li>Return <code>nums[lo]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findMin(int[] nums) {
+        int lo = 0, hi = nums.length - 1;
+        while (lo &lt; hi) {
+            int mid = lo + (hi - lo) / 2;
+            if (nums[mid] &gt; nums[hi]) lo = mid + 1;
+            else if (nums[mid] &lt; nums[hi]) hi = mid;
+            else hi--; // tie: nums[mid] keeps the same value
+        }
+        return nums[lo];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(log n) usually, O(n) worst case (all equal) · <b>Space</b> O(1) — a tie only removes one item.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>nums = [2,2,2,0,1]
+lo=0 hi=4 mid=2: 2 &gt; 1 -&gt; lo=3
+lo=3 hi=4 mid=3: 0 &lt; 1 -&gt; hi=3
+return nums[3] = 0
+nums = [3,1,3]: mid=1: 1 &lt; 3 -&gt; hi=1; mid=0: 3 &gt; 1 -&gt; lo=1 -&gt; 1</code></pre>
+<h4>Watch out</h4>
+<p>On a tie, drop <code>hi</code>, never <code>lo</code> or <code>mid</code>: in <code>[3,1,3]</code> moving <code>lo</code> past mid could skip the 1. The question usually asks how duplicates change the time; the answer is O(n) worst case.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

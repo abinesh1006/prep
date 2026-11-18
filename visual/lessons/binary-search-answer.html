@@ -156,12 +156,251 @@ boolean canFinish(int[] piles, int k, int h) {
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/sqrtx/">69. Sqrt(x)</a> — last x with x·x ≤ n (use long).</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/koko-eating-bananas/">875. Koko Eating Bananas</a> — the animation above.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/capacity-to-ship-packages-within-d-days/">1011. Capacity To Ship Packages</a> — feasible = fill each day greedily, count days.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/minimum-number-of-days-to-make-m-bouquets/">1482. Minimum Days to Make m Bouquets</a> — feasible = count runs of bloomed flowers.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/magnetic-force-between-two-balls/">1552. Magnetic Force Between Two Balls</a> — maximize the minimum gap.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/split-array-largest-sum/">410. Split Array Largest Sum</a> — same as ship packages with k days.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/sqrtx/">69. Sqrt(x)</a> — last x with x·x ≤ n (use long).<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>We want the whole-number square root, rounded down: for 8 the answer is 2, because 2·2 = 4 ≤ 8 but 3·3 = 9 &gt; 8. The test "is <code>x·x ≤ n</code>?" is true for small x and false for big x, so we can <b>binary search on the answer</b> and find the last x where it is true.</p>
+<h4>Brute force first</h4>
+<p>Try x = 0, 1, 2, ... while <code>x·x ≤ n</code>. That is O(√n), about 46,000 steps for the largest int.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Search answers in <code>lo = 0</code>, <code>hi = x</code>.</li><li>Take <code>mid</code>, rounding <b>up</b>: <code>mid = lo + (hi - lo + 1) / 2</code>.</li><li>If <code>mid · mid ≤ x</code> (computed in <code>long</code>), mid works and maybe a bigger one does too: <code>lo = mid</code>.</li><li>Otherwise mid is too big: <code>hi = mid - 1</code>.</li><li>When <code>lo == hi</code>, that is the last x that works.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int mySqrt(int x) {
+        long lo = 0, hi = x;
+        while (lo &lt; hi) {
+            // round up, because lo = mid below
+            long mid = lo + (hi - lo + 1) / 2;
+            if (mid * mid &lt;= x) lo = mid; // mid fits
+            else hi = mid - 1;            // too big
+        }
+        return (int) lo;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(log x) · <b>Space</b> O(1) — about 31 steps for any int.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>x = 8
+lo=0 hi=8 mid=4: 16 &gt; 8  -&gt; hi=3
+lo=0 hi=3 mid=2:  4 &lt;= 8 -&gt; lo=2
+lo=2 hi=3 mid=3:  9 &gt; 8  -&gt; hi=2
+return 2</code></pre>
+<h4>Watch out</h4>
+<p>Two traps. <code>mid * mid</code> overflows an <code>int</code> for x near 2<sup>31</sup>, so use <code>long</code>. And when the update is <code>lo = mid</code>, the middle must round up, or <code>lo = 2, hi = 3</code> loops forever.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/koko-eating-bananas/">875. Koko Eating Bananas</a> — the animation above.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Koko picks one speed <code>k</code>; a pile of <code>p</code> bananas takes <code>ceil(p / k)</code> hours. Faster speeds always take fewer hours, so "can she finish in h hours at speed k?" is false for small k and true from some k onward. We <b>binary search the speed</b> for the first k that works. For <code>piles = [3,6,7,11], h = 8</code>, speed 4 takes 1+2+2+3 = 8 hours, speed 3 takes 10, so the answer is 4.</p>
+<h4>Brute force first</h4>
+<p>Try k = 1, 2, 3, ... and return the first speed that fits. That is O(max · n), up to 10<sup>9</sup> · 10<sup>4</sup> steps.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>The answer is between <code>1</code> and the biggest pile (at that speed every pile takes one hour).</li><li>Take <code>mid</code> as a speed and count hours: sum of <code>(p + mid - 1) / mid</code> over the piles.</li><li>If hours ≤ h, mid works; try slower: <code>hi = mid</code>.</li><li>Otherwise she needs to eat faster: <code>lo = mid + 1</code>.</li><li>When <code>lo == hi</code>, that is the slowest speed that works.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int minEatingSpeed(int[] piles, int h) {
+        int lo = 1, hi = 0;
+        for (int p : piles) hi = Math.max(hi, p);
+        while (lo &lt; hi) {
+            int mid = lo + (hi - lo) / 2;
+            if (hours(piles, mid) &lt;= h) hi = mid; // fits
+            else lo = mid + 1; // too slow
+        }
+        return lo;
+    }
+
+    // hours needed at speed k; long because it can be big
+    private long hours(int[] piles, int k) {
+        long total = 0;
+        for (int p : piles)
+            total += (p + k - 1) / k; // round up
+        return total;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log max) · <b>Space</b> O(1) — about 30 guesses, each one a pass over the piles.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>piles = [3,6,7,11], h = 8
+lo=1 hi=11 mid=6: 1+1+2+2 = 6 &lt;= 8  -&gt; hi=6
+lo=1 hi=6  mid=3: 1+2+3+4 = 10 &gt; 8  -&gt; lo=4
+lo=4 hi=6  mid=5: 1+2+2+3 = 8 &lt;= 8  -&gt; hi=5
+lo=4 hi=5  mid=4: 1+2+2+3 = 8 &lt;= 8  -&gt; hi=4
+return 4</code></pre>
+<h4>Watch out</h4>
+<p><code>(p + k - 1) / k</code> is the integer way to round up; <code>p / k</code> rounds down and gives wrong hours. Keep the hour total in a <code>long</code>: at speed 1 it can pass 2<sup>31</sup>.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/capacity-to-ship-packages-within-d-days/">1011. Capacity To Ship Packages</a> — feasible = fill each day greedily, count days.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Packages go in the given order; each day the ship takes packages until the next one would go over its capacity. A bigger ship never needs more days, so "can capacity c ship everything in <code>days</code> days?" turns from false to true at one point. We <b>binary search the capacity</b>. The smallest possible is the heaviest package (it must fit); the biggest needed is the total weight (one day).</p>
+<h4>Brute force first</h4>
+<p>Try every capacity from the heaviest package up to the total and return the first that fits. O(n · sum).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Set <code>lo</code> = heaviest package, <code>hi</code> = sum of all weights.</li><li>For a guess <code>mid</code>, count days greedily: add packages to today's load; when the next one would overflow, start a new day.</li><li>If the day count ≤ <code>days</code>, mid works; try smaller: <code>hi = mid</code>.</li><li>Otherwise the ship is too small: <code>lo = mid + 1</code>.</li><li>Return <code>lo</code> when they meet.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int shipWithinDays(int[] weights, int days) {
+        int lo = 0, hi = 0;
+        for (int w : weights) {
+            lo = Math.max(lo, w); // must fit the heaviest
+            hi += w;              // one day ships it all
+        }
+        while (lo &lt; hi) {
+            int mid = lo + (hi - lo) / 2;
+            if (daysNeeded(weights, mid) &lt;= days) hi = mid;
+            else lo = mid + 1;
+        }
+        return lo;
+    }
+
+    // fill each day greedily, count the days
+    private int daysNeeded(int[] weights, int cap) {
+        int d = 1, load = 0;
+        for (int w : weights) {
+            if (load + w &gt; cap) { d++; load = 0; }
+            load += w;
+        }
+        return d;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log sum) · <b>Space</b> O(1) — each guess is one pass over the weights.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>weights = [1..10], days = 5, lo = 10, hi = 55
+cap 32 -&gt; 2 days ok -&gt; hi=32 ... cap 15:
+[1,2,3,4,5] [6,7] [8] [9] [10] = 5 days ok
+cap 14 -&gt; [1..4]=10 [5,6]=11 [7] [8] [9] [10] = 6 days, too many
+answer 15</code></pre>
+<h4>Watch out</h4>
+<p>Start <code>lo</code> at the heaviest package, not 1: with a smaller capacity the greedy count would put an oversized package on its own day and report a wrong "fits".</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/minimum-number-of-days-to-make-m-bouquets/">1482. Minimum Days to Make m Bouquets</a> — feasible = count runs of bloomed flowers.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Flower <code>i</code> blooms on day <code>bloomDay[i]</code>. A bouquet needs <code>k</code> <b>adjacent</b> bloomed flowers. Waiting longer only gives more bloomed flowers, so "can we make m bouquets by day d?" flips from false to true once. We <b>binary search the day</b>. If <code>m · k</code> is more than the number of flowers, it is impossible: return -1.</p>
+<h4>Brute force first</h4>
+<p>Try every distinct bloom day in increasing order and check each. O(n²) in the worst case.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If <code>(long) m * k &gt; n</code>, return -1.</li><li>Search days in <code>lo</code> = earliest bloom, <code>hi</code> = latest bloom.</li><li>For a guess <code>mid</code>, walk the flowers: count a run of bloomed ones (<code>bloomDay[i] ≤ mid</code>); each time the run reaches k, make a bouquet and reset the run; an unbloomed flower resets the run to 0.</li><li>If bouquets ≥ m, mid works: <code>hi = mid</code>; else <code>lo = mid + 1</code>.</li><li>Return <code>lo</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int minDays(int[] bloomDay, int m, int k) {
+        if ((long) m * k &gt; bloomDay.length) return -1;
+        int lo = Integer.MAX_VALUE, hi = 0;
+        for (int d : bloomDay) {
+            lo = Math.min(lo, d);
+            hi = Math.max(hi, d);
+        }
+        while (lo &lt; hi) {
+            int mid = lo + (hi - lo) / 2;
+            if (bouquets(bloomDay, mid, k) &gt;= m) hi = mid;
+            else lo = mid + 1;
+        }
+        return lo;
+    }
+
+    // bouquets we can make on this day
+    private int bouquets(int[] bloomDay, int day, int k) {
+        int made = 0, run = 0;
+        for (int d : bloomDay) {
+            if (d &lt;= day) {
+                run++;
+                if (run == k) { made++; run = 0; }
+            } else {
+                run = 0; // a gap breaks adjacency
+            }
+        }
+        return made;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log maxDay) · <b>Space</b> O(1) — each guess is one pass.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>bloomDay = [1,10,3,10,2], m = 3, k = 1
+lo=1 hi=10 mid=5: bloomed 1,3,2 -&gt; 3 ok -&gt; hi=5
+lo=1 hi=5  mid=3: bloomed 1,3,2 -&gt; 3 ok -&gt; hi=3
+lo=1 hi=3  mid=2: bloomed 1,2   -&gt; 2    -&gt; lo=3; return 3</code></pre>
+<h4>Watch out</h4>
+<p><code>m * k</code> can be 10<sup>6</sup> · 10<sup>5</sup> and overflow <code>int</code>, so cast to <code>long</code> before multiplying. Reset the run on every unbloomed flower, or you count flowers that are not adjacent.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/magnetic-force-between-two-balls/">1552. Magnetic Force Between Two Balls</a> — maximize the minimum gap.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>We place <code>m</code> balls in baskets at the given positions and want the closest pair to be as far apart as possible. If we can keep every gap ≥ g, we can also keep every gap ≥ any smaller g, so "is gap g possible?" is true up to some point and false after. We <b>binary search the gap for the last one that works</b> (maximize the minimum).</p>
+<h4>Brute force first</h4>
+<p>Try every gap from 1 up to <code>max - min</code> and keep the last that works. O(n · range).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Sort the positions.</li><li>Search gaps in <code>lo = 1</code>, <code>hi = (last - first) / (m - 1)</code> (the gap cannot be bigger than an even split).</li><li>Check a gap <code>mid</code> greedily: put a ball in the first basket, then in every next basket at least <code>mid</code> away from the last ball; count balls.</li><li>If the count ≥ m, mid works, try bigger: <code>lo = mid</code>; else <code>hi = mid - 1</code>. Round the middle up.</li><li>Return <code>lo</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maxDistance(int[] position, int m) {
+        Arrays.sort(position);
+        int n = position.length;
+        int lo = 1;
+        int hi = (position[n - 1] - position[0]) / (m - 1);
+        while (lo &lt; hi) {
+            int mid = lo + (hi - lo + 1) / 2; // round up
+            if (canPlace(position, m, mid)) lo = mid;
+            else hi = mid - 1;
+        }
+        return lo;
+    }
+
+    // greedy: each ball goes in the first basket far enough
+    private boolean canPlace(int[] pos, int m, int gap) {
+        int count = 1, last = pos[0];
+        for (int i = 1; i &lt; pos.length; i++) {
+            if (pos[i] - last &gt;= gap) {
+                count++;
+                last = pos[i];
+            }
+        }
+        return count &gt;= m;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log n + n log range) · <b>Space</b> O(1) besides the sort — sorting, then one pass per guess.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>position = [1,2,3,4,7], m = 3 -&gt; lo=1 hi=3
+mid=2: balls at 1,3,7 -&gt; 3 balls ok -&gt; lo=2
+mid=3: balls at 1,4,7 -&gt; 3 balls ok -&gt; lo=3
+return 3</code></pre>
+<h4>Watch out</h4>
+<p>This searches for the <b>last</b> true, so it uses <code>lo = mid</code> and the middle must round up, or the loop never ends. Forgetting to sort makes the greedy check meaningless.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/split-array-largest-sum/">410. Split Array Largest Sum</a> — same as ship packages with k days.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Cut the array into <code>k</code> non-empty pieces that keep their order, and make the biggest piece sum as small as possible. Turn it around: "can every piece have sum ≤ S using at most k pieces?" A bigger S is always easier, so we <b>binary search S</b>. The check is the same greedy as shipping packages: fill a piece until the next number would pass S.</p>
+<h4>Brute force first</h4>
+<p>Try every way to place k − 1 cuts: that grows exponentially. A dynamic-programming solution is O(k · n²), still slower than needed.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Set <code>lo</code> = biggest number (a piece holds at least one), <code>hi</code> = total sum (one piece).</li><li>For a guess <code>mid</code>, count pieces greedily: add numbers to the current piece; when the next would pass mid, start a new piece.</li><li>If pieces ≤ k, mid works: <code>hi = mid</code>. Fewer pieces is fine, because a piece can always be split further without growing.</li><li>Otherwise mid is too small: <code>lo = mid + 1</code>.</li><li>Return <code>lo</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int splitArray(int[] nums, int k) {
+        int lo = 0, hi = 0;
+        for (int x : nums) {
+            lo = Math.max(lo, x);
+            hi += x;
+        }
+        while (lo &lt; hi) {
+            int mid = lo + (hi - lo) / 2;
+            if (pieces(nums, mid) &lt;= k) hi = mid;
+            else lo = mid + 1;
+        }
+        return lo;
+    }
+
+    // how many pieces if no piece may pass limit
+    private int pieces(int[] nums, int limit) {
+        int count = 1, sum = 0;
+        for (int x : nums) {
+            if (sum + x &gt; limit) { count++; sum = 0; }
+            sum += x;
+        }
+        return count;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log sum) · <b>Space</b> O(1) — one greedy pass per guess.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>nums = [7,2,5,10,8], k = 2 -&gt; lo=10 hi=32
+mid=21: [7,2,5] [10,8]   = 2 ok -&gt; hi=21
+mid=15: [7,2,5] [10] [8] = 3    -&gt; lo=16
+mid=18: [7,2,5] [10,8]   = 2 ok -&gt; hi=18
+mid=17: 3 pieces -&gt; lo=18; return 18</code></pre>
+<h4>Watch out</h4>
+<p>Start <code>lo</code> at the largest number, not 0; otherwise the greedy check is wrong when one number alone is bigger than the guess. The total sum fits in <code>int</code> here (at most 10<sup>3</sup> · 10<sup>6</sup>); use <code>long</code> if limits are bigger.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>
