@@ -290,13 +290,215 @@ Map&lt;Integer, Integer&gt; seen = <span class="k">new</span> HashMap&lt;&gt;();
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/contains-duplicate/">217. Contains Duplicate</a> — a set; return true the moment add() fails.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/valid-anagram/">242. Valid Anagram</a> — count letters in an int[26].</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/two-sum/">1. Two Sum</a> — exactly the animation above.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/group-anagrams/">49. Group Anagrams</a> — sorted letters as the key.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/top-k-frequent-elements/">347. Top K Frequent Elements</a> — count with a map, then bucket by count.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-consecutive-sequence/">128. Longest Consecutive Sequence</a> — only count from run starts.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/valid-sudoku/">36. Valid Sudoku</a> — one set per row, column and box.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/contains-duplicate/">217. Contains Duplicate</a> — a set; return true the moment add() fails.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Given numbers, say whether any value appears twice. <code>[1,2,3,1]</code> &rarr; true because 1 shows up twice. The insight: instead of comparing every pair, remember what you have already seen in a <b>hash set</b> (a bag that answers "have I seen this?" in O(1)). Pattern: <b>hashing to replace a nested loop</b>.</p>
+<h4>Brute force first</h4>
+<p>Compare every pair <code>i &lt; j</code>: O(n&sup2;) time. Too slow for n = 10<sup>5</sup>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make an empty <code>HashSet</code>.</li><li>Walk the array one number at a time.</li><li><code>set.add(x)</code> returns <code>false</code> if <code>x</code> was already inside: that is a duplicate, return true.</li><li>If the loop ends, no number repeated: return false.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean containsDuplicate(int[] nums) {
+        Set&lt;Integer&gt; seen = new HashSet&lt;&gt;();
+        for (int x : nums) {
+            // add() is false when x was already there
+            if (!seen.add(x)) return true;
+        }
+        return false;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(n) &mdash; each number is added once, and the set may hold all n.</p>
+<h4>Dry run</h4>
+<p><code>[1,2,3,1]</code>: add 1 &rarr; {1}; add 2 &rarr; {1,2}; add 3 &rarr; {1,2,3}; add 1 fails &rarr; return true.</p>
+<h4>Watch out</h4>
+<p>Sorting first and checking neighbours also works in O(n log n) time with O(1) extra space; mention it if the interviewer asks for less memory. A single-element array has no duplicate.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/valid-anagram/">242. Valid Anagram</a> — count letters in an int[26].<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Two words are anagrams if they use exactly the same letters the same number of times: <code>"anagram"</code> and <code>"nagaram"</code> &rarr; true. The insight: only 26 lowercase letters exist, so count them in an <code>int[26]</code>: +1 for each letter of s, &minus;1 for each letter of t. All zero at the end means anagram. Pattern: <b>counting array as a tiny hash map</b>.</p>
+<h4>Brute force first</h4>
+<p>Sort both strings and compare: O(n log n). Fine, but counting is O(n).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If the lengths differ, return false at once.</li><li>Make <code>int[] count = new int[26]</code>.</li><li>For each position i: <code>count[s.charAt(i) - 'a']++</code> and <code>count[t.charAt(i) - 'a']--</code>.</li><li>If every count is 0, return true; otherwise false.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean isAnagram(String s, String t) {
+        if (s.length() != t.length()) return false;
+        int[] count = new int[26];
+        for (int i = 0; i &lt; s.length(); i++) {
+            count[s.charAt(i) - 'a']++; // letter from s
+            count[t.charAt(i) - 'a']--; // letter from t
+        }
+        for (int c : count) {
+            if (c != 0) return false;
+        }
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one pass, and the array is always 26 slots.</p>
+<h4>Dry run</h4>
+<p><code>"rat"</code> vs <code>"car"</code>: r+1 c&minus;1, a+1 a&minus;1, t+1 r&minus;1 &rarr; r=0, a=0, c=&minus;1, t=+1. Not all zero &rarr; false.</p>
+<h4>Watch out</h4>
+<p>Check the lengths first, or <code>t.charAt(i)</code> can run past the end. For Unicode input (the follow-up) use a <code>HashMap&lt;Character,Integer&gt;</code> instead of <code>int[26]</code>.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/two-sum/">1. Two Sum</a> — exactly the animation above.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the two indexes whose values add up to <code>target</code>. <code>[2,7,11,15]</code>, target 9 &rarr; <code>[0,1]</code>. The insight: when you stand on x, the partner you need is <code>target - x</code>; a <b>hash map</b> from value to index tells you in O(1) if you already passed it. Pattern: <b>hash map lookup of the complement</b>.</p>
+<h4>Brute force first</h4>
+<p>Try every pair <code>i &lt; j</code> and check the sum: O(n&sup2;) time, O(1) space.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make an empty map: value &rarr; index.</li><li>For each index i, compute <code>need = target - nums[i]</code>.</li><li>If <code>need</code> is in the map, return <code>[map.get(need), i]</code>.</li><li>Otherwise put <code>nums[i] &rarr; i</code> into the map and continue.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] twoSum(int[] nums, int target) {
+        Map&lt;Integer, Integer&gt; seen = new HashMap&lt;&gt;();
+        for (int i = 0; i &lt; nums.length; i++) {
+            int need = target - nums[i];
+            if (seen.containsKey(need)) {
+                return new int[]{seen.get(need), i};
+            }
+            seen.put(nums[i], i); // store after checking
+        }
+        return new int[0]; // problem says never happens
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(n) &mdash; one pass, each lookup O(1), the map can hold n values.</p>
+<h4>Dry run</h4>
+<p><code>[3,2,4]</code>, target 6: i=0 need 3, map empty, store 3&rarr;0. i=1 need 4, not there, store 2&rarr;1. i=2 need 2, found at 1 &rarr; return <code>[1,2]</code>.</p>
+<h4>Watch out</h4>
+<p>Check the map <b>before</b> putting the current number in, otherwise <code>[3,2,4]</code>, target 6 would pair index 0 with itself. Duplicates like <code>[3,3]</code> work because the first 3 is stored before the second is checked.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/group-anagrams/">49. Group Anagrams</a> — sorted letters as the key.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Put words that are anagrams of each other into the same group: <code>["eat","tea","tan","ate","nat","bat"]</code> &rarr; <code>[["eat","tea","ate"],["tan","nat"],["bat"]]</code>. The insight: anagrams become the same string when you sort their letters (<code>"eat"</code>, <code>"tea"</code> &rarr; <code>"aet"</code>). Use that sorted string as a <b>hash map key</b>. Pattern: <b>group by a canonical key</b>.</p>
+<h4>Brute force first</h4>
+<p>Compare every word with every other word using an anagram check: O(n&sup2; &middot; k). Too slow for 10<sup>4</sup> words.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make a map: key (sorted letters) &rarr; list of words.</li><li>For each word, turn it into a char array, sort it, and make a string from it: that is the key.</li><li><code>computeIfAbsent(key, ...)</code> gets the list for that key (creating it if new); add the word.</li><li>Return all the lists in the map.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;List&lt;String&gt;&gt; groupAnagrams(String[] strs) {
+        Map&lt;String, List&lt;String&gt;&gt; groups = new HashMap&lt;&gt;();
+        for (String w : strs) {
+            char[] c = w.toCharArray();
+            Arrays.sort(c);
+            String key = new String(c); // "eat" -&gt; "aet"
+            groups.computeIfAbsent(key, k -&gt; new ArrayList&lt;&gt;())
+                  .add(w);
+        }
+        return new ArrayList&lt;&gt;(groups.values());
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n &middot; k log k) &middot; <b>Space</b> O(n &middot; k) &mdash; n words of length up to k, each sorted once; the map stores every word.</p>
+<h4>Dry run</h4>
+<p><code>"eat"</code>&rarr;key <code>aet</code> {aet:[eat]}; <code>"tea"</code>&rarr;<code>aet</code> {aet:[eat,tea]}; <code>"tan"</code>&rarr;<code>ant</code> new group; <code>"ate"</code>&rarr;<code>aet</code>; <code>"nat"</code>&rarr;<code>ant</code>; <code>"bat"</code>&rarr;<code>abt</code> new group.</p>
+<h4>Watch out</h4>
+<p><code>c.toString()</code> on a char array gives a memory address, not the letters; use <code>new String(c)</code>. The empty string is a valid word and forms its own group. A faster key is the 26 letter counts joined with <code>#</code> (O(k) instead of O(k log k)).</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/top-k-frequent-elements/">347. Top K Frequent Elements</a> — count with a map, then bucket by count.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Return the k numbers that appear most often: <code>[1,1,1,2,2,3]</code>, k = 2 &rarr; <code>[1,2]</code>. The insight: count with a hash map, then <b>bucket by count</b>: <code>bucket[c]</code> holds every number that appears exactly c times. A count can never exceed n, so walk the buckets from n down and take k numbers. Pattern: <b>counting + bucket sort</b>, O(n).</p>
+<h4>Brute force first</h4>
+<p>Count, then sort the distinct numbers by count: O(n log n). A min-heap of size k gives O(n log k); both pass, but buckets are O(n).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Count each number in a <code>HashMap</code>.</li><li>Make <code>bucket</code>, an array of n + 1 lists. Put each number into <code>bucket[its count]</code>.</li><li>Walk i from n down to 1; copy numbers from <code>bucket[i]</code> into the answer.</li><li>Stop as soon as you have k numbers.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] topKFrequent(int[] nums, int k) {
+        Map&lt;Integer, Integer&gt; count = new HashMap&lt;&gt;();
+        for (int x : nums) count.merge(x, 1, Integer::sum);
+
+        // bucket[c] = numbers that appear exactly c times
+        List&lt;Integer&gt;[] bucket = new List[nums.length + 1];
+        for (var e : count.entrySet()) {
+            int c = e.getValue();
+            if (bucket[c] == null) bucket[c] = new ArrayList&lt;&gt;();
+            bucket[c].add(e.getKey());
+        }
+
+        int[] ans = new int[k];
+        int idx = 0;
+        for (int c = nums.length; c &gt; 0 &amp;&amp; idx &lt; k; c--) {
+            if (bucket[c] == null) continue;
+            for (int x : bucket[c]) {
+                if (idx == k) break;
+                ans[idx++] = x;
+            }
+        }
+        return ans;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(n) &mdash; one pass to count, one to bucket, one walk over n + 1 buckets.</p>
+<h4>Dry run</h4>
+<p><code>[1,1,1,2,2,3]</code>: counts {1:3, 2:2, 3:1} &rarr; bucket[3]=[1], bucket[2]=[2], bucket[1]=[3]. Walk 6,5,4 empty; 3 &rarr; take 1; 2 &rarr; take 2; have k = 2 &rarr; <code>[1,2]</code>.</p>
+<h4>Watch out</h4>
+<p>The bucket array needs size <code>n + 1</code> because a number can appear n times. Java warns about the generic array <code>new List[...]</code>; that warning is harmless here.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-consecutive-sequence/">128. Longest Consecutive Sequence</a> — only count from run starts.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the length of the longest run of consecutive values, in any order: <code>[100,4,200,1,3,2]</code> &rarr; 4 (1,2,3,4). Must be O(n), so no sorting. The insight: put everything in a <b>hash set</b>, and only start counting from a number x whose <code>x - 1</code> is missing (a <b>run start</b>). Each number is then counted by exactly one run.</p>
+<h4>Brute force first</h4>
+<p>Sort and scan for runs: O(n log n). Or, for every number, count upward with a set without the run-start check: that can be O(n&sup2;).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Put all numbers in a <code>HashSet</code> (this also removes duplicates).</li><li>For each x in the set: if <code>x - 1</code> is in the set, skip it (it is not a start).</li><li>Otherwise count up: x + 1, x + 2, ... while they are in the set.</li><li>Keep the longest length seen.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int longestConsecutive(int[] nums) {
+        Set&lt;Integer&gt; set = new HashSet&lt;&gt;();
+        for (int x : nums) set.add(x);
+        int best = 0;
+        for (int x : set) {
+            if (set.contains(x - 1)) continue; // not a start
+            int len = 1;
+            while (set.contains(x + len)) len++;
+            best = Math.max(best, len);
+        }
+        return best;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(n) &mdash; the inner while only runs from run starts, so each number is visited at most twice in total.</p>
+<h4>Dry run</h4>
+<p>Set {100,4,200,1,3,2}. 100: 99 missing, start; 101 missing &rarr; len 1. 4: 3 present, skip. 200: len 1. 1: 0 missing, start; 2,3,4 present, 5 missing &rarr; len 4. 3, 2: skip. Answer 4.</p>
+<h4>Watch out</h4>
+<p>Loop over the <b>set</b>, not the array: with many duplicates of a run start, looping the array repeats the long count and can become O(n&sup2;). Empty input returns 0.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/valid-sudoku/">36. Valid Sudoku</a> — one set per row, column and box.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Check a partly filled 9&times;9 board: no digit may repeat in any row, column or 3&times;3 box (empty cells are <code>'.'</code>). You do not need to solve it. The insight: keep one <b>set per row, per column and per box</b>; box number is <code>(r / 3) * 3 + c / 3</code>. Pattern: <b>hash sets for "seen before" checks</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make 9 sets for rows, 9 for columns, 9 for boxes.</li><li>Visit every cell; skip <code>'.'</code>.</li><li>Work out the box index <code>b = (r / 3) * 3 + c / 3</code>.</li><li>Try to add the digit to <code>rows[r]</code>, <code>cols[c]</code> and <code>boxes[b]</code>; if any add fails, the digit repeats: return false.</li><li>If all cells pass, return true.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean isValidSudoku(char[][] board) {
+        Set&lt;Character&gt;[] rows = new HashSet[9];
+        Set&lt;Character&gt;[] cols = new HashSet[9];
+        Set&lt;Character&gt;[] boxes = new HashSet[9];
+        for (int i = 0; i &lt; 9; i++) {
+            rows[i] = new HashSet&lt;&gt;();
+            cols[i] = new HashSet&lt;&gt;();
+            boxes[i] = new HashSet&lt;&gt;();
+        }
+        for (int r = 0; r &lt; 9; r++) {
+            for (int c = 0; c &lt; 9; c++) {
+                char d = board[r][c];
+                if (d == '.') continue;
+                int b = (r / 3) * 3 + c / 3; // box 0..8
+                if (!rows[r].add(d) || !cols[c].add(d)
+                        || !boxes[b].add(d)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(81) = O(1) &middot; <b>Space</b> O(81) = O(1) &mdash; the board is always 9&times;9.</p>
+<h4>Dry run</h4>
+<p>Cell (0,0) = 5: rows[0]={5}, cols[0]={5}, boxes[0]={5}. Change (0,0) to 8 and later reach (3,0) = 8: <code>cols[0].add('8')</code> fails &rarr; false.</p>
+<h4>Watch out</h4>
+<p>Box index: <code>(r / 3) * 3 + c / 3</code>, using integer division. Forgetting to skip <code>'.'</code> makes every board look invalid. Only check the filled cells; a valid board need not be solvable.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

@@ -291,13 +291,300 @@ back edge:  low[u] = min(low[u], disc[v]);
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/is-graph-bipartite/">785. Is Graph Bipartite?</a> — animation 1.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/possible-bipartition/">886. Possible Bipartition</a> — build the "dislike" graph, then two colours.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/critical-connections-in-a-network/">1192. Critical Connections in a Network</a> — animation 2.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/reconstruct-itinerary/">332. Reconstruct Itinerary</a> — animation 3.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/valid-arrangement-of-pairs/">2097. Valid Arrangement of Pairs</a> — Euler path; start where out − in = 1.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/cracking-the-safe/">753. Cracking the Safe</a> — Euler circuit on a de Bruijn graph.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-eventual-safe-states/">802. Find Eventual Safe States</a> — nodes not on any cycle (related to SCC thinking).</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/is-graph-bipartite/">785. Is Graph Bipartite?</a> — animation 1.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>A graph is <b>bipartite</b> if you can paint every node one of two colours so that every edge joins different colours. Paint any node colour 1. All its neighbours must be the other colour, their neighbours colour 1 again, and so on (a BFS). If an edge ever joins two nodes of the same colour, it is impossible. The graph may have several pieces, so start a BFS from every unpainted node. Pattern: <b>two-colouring with BFS</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>color[]</code> = 0 (unpainted) for all nodes.</li><li>For each unpainted start node, paint it 1 and push it on the queue.</li><li>Pop u. For each neighbour v: if v is unpainted, paint it <code>-color[u]</code> and push it.</li><li>If v already has the <b>same</b> colour as u, return false.</li><li>If every piece finishes without a clash, return true.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean isBipartite(int[][] graph) {
+        int n = graph.length;
+        int[] color = new int[n]; // 0 = none, 1 / -1 = sides
+        for (int start = 0; start &lt; n; start++) {
+            if (color[start] != 0) continue; // done already
+            color[start] = 1;
+            Deque&lt;Integer&gt; q = new ArrayDeque&lt;&gt;();
+            q.offer(start);
+            while (!q.isEmpty()) {
+                int u = q.poll();
+                for (int v : graph[u]) {
+                    if (color[v] == 0) {
+                        color[v] = -color[u]; // other side
+                        q.offer(v);
+                    } else if (color[v] == color[u]) {
+                        return false; // same side: clash
+                    }
+                }
+            }
+        }
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(V + E) · <b>Space</b> O(V) — each node and edge is looked at once (twice for undirected edges).</p>
+<h4>Dry run</h4>
+<p>[[1,3],[0,2],[1,3],[0,2]], a square 0-1-2-3. 0 = A, so 1 and 3 = B, so 2 = A. Every edge joins A and B, so the answer is true. In example 1, 0, 1 and 2 form a triangle: 0 = A, 1 = B, 2 = B, and the edge 1–2 clashes, so the answer is false.</p>
+<h4>Watch out</h4>
+<p>Do not BFS only from node 0. Unconnected pieces (like node 0 with no edges) would never be checked.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/possible-bipartition/">886. Possible Bipartition</a> — build the "dislike" graph, then two colours.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Split n people into two groups so that no two people who dislike each other end up together. Make each dislike pair an edge. Then the question is "is this graph bipartite?", the same two-colouring as problem 785. Pattern: <b>build the graph + two-colouring</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Build an adjacency list for nodes 1..n, adding each dislike in both directions.</li><li>color[] = 0 for everyone.</li><li>For each uncoloured person, BFS: give each neighbour the opposite colour.</li><li>If a neighbour already has your colour, return false.</li><li>Otherwise return true.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean possibleBipartition(int n, int[][] dislikes) {
+        List&lt;List&lt;Integer&gt;&gt; g = new ArrayList&lt;&gt;();
+        for (int i = 0; i &lt;= n; i++) g.add(new ArrayList&lt;&gt;());
+        for (int[] d : dislikes) { // dislike goes both ways
+            g.get(d[0]).add(d[1]);
+            g.get(d[1]).add(d[0]);
+        }
+        int[] color = new int[n + 1];
+        for (int start = 1; start &lt;= n; start++) {
+            if (color[start] != 0) continue;
+            color[start] = 1;
+            Deque&lt;Integer&gt; q = new ArrayDeque&lt;&gt;();
+            q.offer(start);
+            while (!q.isEmpty()) {
+                int u = q.poll();
+                for (int v : g.get(u)) {
+                    if (color[v] == 0) {
+                        color[v] = -color[u];
+                        q.offer(v);
+                    } else if (color[v] == color[u]) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n + E) · <b>Space</b> O(n + E) — the adjacency list plus one BFS pass.</p>
+<h4>Dry run</h4>
+<p>n = 3, dislikes 1–2, 1–3, 2–3. 1 = A, so 2 = B and 3 = B, but 2 and 3 dislike each other and have the same colour. The answer is false.</p>
+<h4>Watch out</h4>
+<p>People are numbered from 1, so size the arrays n + 1. Dislikes are undirected, so add both directions.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/critical-connections-in-a-network/">1192. Critical Connections in a Network</a> — animation 2.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>A <b>bridge</b> (a critical connection) is an edge whose removal splits the graph. Use Tarjan's DFS. <code>disc[u]</code> is the time a node is first reached, and <code>low[u]</code> is the earliest discovery time that u's subtree can reach using one back edge (an edge to an already-visited node that is not the parent). Edge u–v is a bridge exactly when <code>low[v] &gt; disc[u]</code>: v's side has no way back to u or above. Pattern: <b>Tarjan bridges</b>.</p>
+<h4>Brute force first</h4>
+<p>Remove each edge and test whether the graph is still connected: O(E · (V + E)).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Build the adjacency list. disc = −1 everywhere.</li><li>dfs(u, parent): set <code>disc[u] = low[u] = time++</code>.</li><li>For each neighbour v ≠ parent. If v is unvisited: dfs(v, u), then <code>low[u] = min(low[u], low[v])</code>, and if <code>low[v] &gt; disc[u]</code>, record [u, v].</li><li>If v is already visited (a back edge): <code>low[u] = min(low[u], disc[v])</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private List&lt;List&lt;Integer&gt;&gt; g;
+    private int[] disc, low; // discovery time, lowest reach
+    private int time = 0;
+    private List&lt;List&lt;Integer&gt;&gt; bridges;
+
+    public List&lt;List&lt;Integer&gt;&gt; criticalConnections(
+            int n, List&lt;List&lt;Integer&gt;&gt; connections) {
+        g = new ArrayList&lt;&gt;();
+        for (int i = 0; i &lt; n; i++) g.add(new ArrayList&lt;&gt;());
+        for (List&lt;Integer&gt; c : connections) {
+            g.get(c.get(0)).add(c.get(1));
+            g.get(c.get(1)).add(c.get(0));
+        }
+        disc = new int[n];
+        low = new int[n];
+        Arrays.fill(disc, -1);
+        bridges = new ArrayList&lt;&gt;();
+        for (int i = 0; i &lt; n; i++)
+            if (disc[i] == -1) dfs(i, -1);
+        return bridges;
+    }
+
+    private void dfs(int u, int parent) {
+        disc[u] = low[u] = time++;
+        for (int v : g.get(u)) {
+            if (v == parent) continue; // don't go straight back
+            if (disc[v] == -1) {
+                dfs(v, u);
+                low[u] = Math.min(low[u], low[v]);
+                // v's subtree can't climb above v: bridge
+                if (low[v] &gt; disc[u]) bridges.add(List.of(u, v));
+            } else {
+                low[u] = Math.min(low[u], disc[v]); // back edge
+            }
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(V + E) · <b>Space</b> O(V + E) — one DFS.</p>
+<h4>Dry run</h4>
+<p>Edges 0-1, 1-2, 2-0, 1-3. DFS 0(0) → 1(1) → 2(2). 2 sees 0, so low[2] = 0, and low[1] = 0. Then 3(3) has no way back, so low[3] = 3 &gt; disc[1] = 1, and [1,3] is a bridge.</p>
+<h4>Watch out</h4>
+<p>Skip only the edge straight back to the parent, not every visited node. The recursion can be 10⁵ deep. That passes on LeetCode, but on your own machine you may need a bigger stack or an iterative DFS.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/reconstruct-itinerary/">332. Reconstruct Itinerary</a> — animation 3.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Use every ticket exactly once, starting at JFK, and if several routes work, return the alphabetically smallest. Using every edge once is an <b>Euler path</b>. <b>Hierholzer's algorithm</b>: from an airport, keep flying the smallest unused ticket. When you are stuck (no tickets left from here), put this airport at the <b>front</b> of the answer. A dead end that is reached too early gets placed at the end of the route, which fixes the order automatically.</p>
+<h4>Brute force first</h4>
+<p>Backtracking: try destinations in sorted order and undo when stuck. That works for 300 tickets, but Hierholzer is linear.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Build a map from each airport to a min-heap of destinations.</li><li>visit(a): while a has tickets, poll the smallest destination and visit it.</li><li>After the loop, <code>route.addFirst(a)</code>.</li><li>Call visit("JFK") and return the route.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private final Map&lt;String, PriorityQueue&lt;String&gt;&gt; g =
+        new HashMap&lt;&gt;();
+    private final LinkedList&lt;String&gt; route = new LinkedList&lt;&gt;();
+
+    public List&lt;String&gt; findItinerary(List&lt;List&lt;String&gt;&gt; tickets) {
+        for (List&lt;String&gt; t : tickets) {
+            g.computeIfAbsent(t.get(0), x -&gt; new PriorityQueue&lt;&gt;())
+             .offer(t.get(1)); // min-heap = smallest name first
+        }
+        visit("JFK");
+        return route;
+    }
+
+    // Hierholzer: use up every ticket, add airport at the end
+    private void visit(String airport) {
+        PriorityQueue&lt;String&gt; next = g.get(airport);
+        while (next != null &amp;&amp; !next.isEmpty()) {
+            visit(next.poll()); // each ticket used once
+        }
+        route.addFirst(airport); // stuck here: prepend
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(E log E) · <b>Space</b> O(E) — each ticket is pushed and polled from a heap once.</p>
+<h4>Dry run</h4>
+<p>JFK→KUL, JFK→NRT, NRT→JFK. visit JFK: the smallest is KUL, and KUL is stuck, so the route is [KUL]. Back at JFK the next is NRT, then NRT→JFK, and JFK is now stuck: [JFK, KUL]. Then NRT: [NRT, JFK, KUL]. Then the first JFK: [JFK, NRT, JFK, KUL].</p>
+<h4>Watch out</h4>
+<p>Greedily following the smallest name <b>without</b> the "add at the end" step fails on this example (JFK→KUL is a dead end). Poll the ticket, so that each one is used once.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/valid-arrangement-of-pairs/">2097. Valid Arrangement of Pairs</a> — Euler path; start where out − in = 1.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Order the pairs [a, b] so that each pair's end equals the next pair's start. Each pair is a directed edge a → b, and you need a path that uses every edge once: an <b>Euler path</b>. It must start at the node where out-degree − in-degree = 1. If there is no such node, every node is balanced and any node works. Then run Hierholzer's algorithm. Pattern: <b>Euler path (Hierholzer)</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Build adjacency lists and <code>degree[x] = out − in</code>.</li><li>start = the node with degree 1, or else pairs[0][0].</li><li>Iterative Hierholzer: push start. While the stack is not empty, look at the top u. If u has an unused edge, take it and push its end. Otherwise pop u into the path.</li><li>Reverse the path, so that the nodes are in travel order.</li><li>Turn consecutive nodes into pairs.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[][] validArrangement(int[][] pairs) {
+        Map&lt;Integer, Deque&lt;Integer&gt;&gt; g = new HashMap&lt;&gt;();
+        Map&lt;Integer, Integer&gt; degree = new HashMap&lt;&gt;(); // out - in
+        for (int[] p : pairs) {
+            g.computeIfAbsent(p[0], x -&gt; new ArrayDeque&lt;&gt;())
+             .push(p[1]);
+            degree.merge(p[0], 1, Integer::sum);
+            degree.merge(p[1], -1, Integer::sum);
+        }
+        // start where out - in = 1, else anywhere
+        int start = pairs[0][0];
+        for (var e : degree.entrySet()) {
+            if (e.getValue() == 1) {
+                start = e.getKey();
+                break;
+            }
+        }
+        // iterative Hierholzer (recursion could be too deep)
+        List&lt;Integer&gt; path = new ArrayList&lt;&gt;();
+        Deque&lt;Integer&gt; stack = new ArrayDeque&lt;&gt;();
+        stack.push(start);
+        while (!stack.isEmpty()) {
+            int u = stack.peek();
+            Deque&lt;Integer&gt; out = g.get(u);
+            if (out != null &amp;&amp; !out.isEmpty()) {
+                stack.push(out.pop()); // walk an unused edge
+            } else {
+                path.add(stack.pop()); // dead end: record it
+            }
+        }
+        Collections.reverse(path); // nodes in travel order
+        int[][] res = new int[pairs.length][];
+        for (int i = 0; i + 1 &lt; path.size(); i++) {
+            res[i] = new int[]{path.get(i), path.get(i + 1)};
+        }
+        return res;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(E) · <b>Space</b> O(E) — each edge is pushed and popped once.</p>
+<h4>Dry run</h4>
+<p>[[5,1],[4,5],[11,9],[9,4]]. Degrees: 11 has +1, so start there. Walk 11→9→4→5→1. The answer is [[11,9],[9,4],[4,5],[5,1]].</p>
+<h4>Watch out</h4>
+<p>n is up to 10⁵, so a recursive DFS can overflow the stack. The explicit stack avoids that. Starting at the wrong node strands some edges.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/cracking-the-safe/">753. Cracking the Safe</a> — Euler circuit on a de Bruijn graph.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>The safe checks the last n digits you type. Find the shortest string that contains <b>every</b> n-digit password (digits 0..k−1). Think of each (n−1)-digit string as a node. Typing digit d moves from node "x…" to "…d", and the edge you walk is one password. Covering every password once means using every edge once: an Euler circuit on this <b>de Bruijn graph</b>, giving length kⁿ + n − 1. A simple way to walk it: start with n zeros and always append the <b>largest</b> digit that makes a new password. A known result (the "prefer largest" rule) guarantees that this never gets stuck early. A Hierholzer DFS also works but recurses kⁿ deep.</p>
+<h4>Brute force first</h4>
+<p>Backtracking over all strings of length kⁿ + n − 1 until one covers every password. It works for small inputs but can be exponential.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>total = kⁿ. Start with sb = n zeros and add "00…0" to seen.</li><li>While seen has fewer than total passwords: tail = the last n − 1 digits.</li><li>Try d from k − 1 down to 0. The first <code>tail + d</code> not seen yet is added to seen, and d is appended.</li><li>Return sb.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public String crackSafe(int n, int k) {
+        int total = (int) Math.pow(k, n); // passwords to cover
+        // start with n zeros: the password 00..0
+        StringBuilder sb = new StringBuilder("0".repeat(n));
+        Set&lt;String&gt; seen = new HashSet&lt;&gt;();
+        seen.add(sb.toString());
+        while (seen.size() &lt; total) {
+            // last n-1 digits = the node we stand on
+            String tail = sb.substring(sb.length() - n + 1);
+            // walk the unused edge with the largest digit
+            for (int d = k - 1; d &gt;= 0; d--) {
+                String code = tail + d;
+                if (seen.add(code)) {
+                    sb.append(d);
+                    break;
+                }
+            }
+        }
+        return sb.toString();
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(kⁿ · k · n) · <b>Space</b> O(kⁿ · n) — kⁿ ≤ 4096 passwords, each step tries up to k digits and builds n-length strings.</p>
+<h4>Dry run</h4>
+<p>n = 2, k = 2. Start "00". Tail "0": try 1, "01" is new, so "001". Tail "1": "11" is new, so "0011". Tail "1": "11" is seen, "10" is new, so "00110". All 4 passwords are in, length 5 = 2² + 1.</p>
+<h4>Watch out</h4>
+<p>n = 1 is the edge case: the tail is empty, and the answer is all k digits once (e.g. "0987654321"). The length must be exactly kⁿ + n − 1.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-eventual-safe-states/">802. Find Eventual Safe States</a> — nodes not on any cycle (related to SCC thinking).
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>A node is <b>safe</b> if every path from it ends at a terminal node (a node with no outgoing edges). It is unsafe exactly when some path from it reaches a cycle. Use DFS with three colours: 0 = unvisited, 1 = on the current path (in progress), 2 = known safe. Meeting a 1 again means a cycle. Any node that reaches a cycle stays 1 forever, which marks it unsafe. Pattern: <b>cycle detection with three-colour DFS</b>. (Alternative: reverse the edges and run Kahn's topological sort from the terminal nodes.)</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>state[] = 0 for all nodes.</li><li>isSafe(u): if state[u] is not 0, return state[u] == 2.</li><li>Set state[u] = 1, then check every neighbour. If any is not safe, return false and leave u at 1.</li><li>If all neighbours are safe, set state[u] = 2 and return true.</li><li>Collect, in order, every node i where isSafe(i) is true.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;Integer&gt; eventualSafeNodes(int[][] graph) {
+        int n = graph.length;
+        // 0 = unvisited, 1 = on current path, 2 = safe
+        int[] state = new int[n];
+        List&lt;Integer&gt; res = new ArrayList&lt;&gt;();
+        for (int i = 0; i &lt; n; i++) {
+            if (isSafe(graph, i, state)) res.add(i);
+        }
+        return res;
+    }
+
+    private boolean isSafe(int[][] g, int u, int[] state) {
+        if (state[u] != 0) return state[u] == 2;
+        state[u] = 1; // on the path: seeing it again = cycle
+        for (int v : g[u]) {
+            if (!isSafe(g, v, state)) return false; // stays 1
+        }
+        state[u] = 2;
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(V + E) · <b>Space</b> O(V) — each node's state is settled once.</p>
+<h4>Dry run</h4>
+<p>[[1,2],[2,3],[5],[0],[5],[],[]]. 0→1→3→0 is a cycle, so 0, 1 and 3 stay at 1 (unsafe). 2→5 is terminal, so 2 is safe, and so are 4, 5 and 6. The answer is [2,4,5,6].</p>
+<h4>Watch out</h4>
+<p>Do not reset state to 0 after a node fails. Leaving it at 1 is what remembers "unsafe" and keeps the run linear.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

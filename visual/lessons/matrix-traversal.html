@@ -248,14 +248,299 @@
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/transpose-matrix/">867. Transpose Matrix</a> — warm-up for rotate.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/spiral-matrix/">54. Spiral Matrix</a> — animation 1.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/spiral-matrix-ii/">59. Spiral Matrix II</a> — same walls, write 1..n² instead of reading.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/rotate-image/">48. Rotate Image</a> — animation 2.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/set-matrix-zeroes/">73. Set Matrix Zeroes</a> — then do the O(1)-memory version.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/search-a-2d-matrix-ii/">240. Search a 2D Matrix II</a> — animation 4.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/diagonal-traverse/">498. Diagonal Traverse</a> — cells on one diagonal share r + c.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/game-of-life/">289. Game of Life</a> — in place with two-bit states.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/transpose-matrix/">867. Transpose Matrix</a> — warm-up for rotate.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Transposing flips the grid over its main diagonal: row 0 becomes column 0, row 1 becomes column 1, and so on. A 2 × 3 grid becomes 3 × 2. So make a new grid with the sizes swapped and copy each <code>matrix[r][c]</code> into <code>t[c][r]</code>. Pattern: <b>index mapping</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Read <code>rows</code> and <code>cols</code>.</li><li>Create <code>t = new int[cols][rows]</code>, with the sizes swapped.</li><li>For every cell (r, c), set <code>t[c][r] = matrix[r][c]</code>.</li><li>Return t.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[][] transpose(int[][] matrix) {
+        int rows = matrix.length, cols = matrix[0].length;
+        // the answer has the sizes swapped
+        int[][] t = new int[cols][rows];
+        for (int r = 0; r &lt; rows; r++) {
+            for (int c = 0; c &lt; cols; c++) {
+                t[c][r] = matrix[r][c]; // row becomes column
+            }
+        }
+        return t;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(rows · cols) · <b>Space</b> O(rows · cols) — every cell is copied once into the new grid.</p>
+<h4>Dry run</h4>
+<p>[[1,2,3],[4,5,6]] (2 × 3). Row 0 (1,2,3) becomes column 0, row 1 (4,5,6) becomes column 1. Result [[1,4],[2,5],[3,6]].</p>
+<h4>Watch out</h4>
+<p>You cannot do this in place when the grid is not square, because the shape changes. Swapping in place (as in Rotate Image) only works for n × n.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/spiral-matrix/">54. Spiral Matrix</a> — animation 1.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Read the grid in a spiral: along the top row, down the right column, back along the bottom, up the left, then repeat one ring further in. Keep four walls (<code>top</code>, <code>bottom</code>, <code>left</code>, <code>right</code>). After you walk a side, move that wall one step inwards. Pattern: <b>boundary shrinking</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Set top = 0, bottom = rows−1, left = 0, right = cols−1.</li><li>While top ≤ bottom and left ≤ right: read the top row from left to right, then do <code>top++</code>.</li><li>Read the right column from top to bottom, then do <code>right--</code>.</li><li>If rows remain (<code>top ≤ bottom</code>), read the bottom row from right to left, then <code>bottom--</code>.</li><li>If columns remain (<code>left ≤ right</code>), read the left column from bottom to top, then <code>left++</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;Integer&gt; spiralOrder(int[][] matrix) {
+        List&lt;Integer&gt; res = new ArrayList&lt;&gt;();
+        int top = 0, bottom = matrix.length - 1;
+        int left = 0, right = matrix[0].length - 1;
+        while (top &lt;= bottom &amp;&amp; left &lt;= right) {
+            for (int c = left; c &lt;= right; c++)   // go right
+                res.add(matrix[top][c]);
+            top++;
+            for (int r = top; r &lt;= bottom; r++)   // go down
+                res.add(matrix[r][right]);
+            right--;
+            if (top &lt;= bottom) {                  // go left
+                for (int c = right; c &gt;= left; c--)
+                    res.add(matrix[bottom][c]);
+                bottom--;
+            }
+            if (left &lt;= right) {                  // go up
+                for (int r = bottom; r &gt;= top; r--)
+                    res.add(matrix[r][left]);
+                left++;
+            }
+        }
+        return res;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(rows · cols) · <b>Space</b> O(1) extra — each cell is read once; only the answer list grows.</p>
+<h4>Dry run</h4>
+<p>3 × 4 grid 1..12. Top row 1,2,3,4. Right column 8,12. Bottom row 11,10,9. Left column 5. The walls are now top = 1, bottom = 1, left = 1, right = 2, so the inner row gives 6,7. Result 1,2,3,4,8,12,11,10,9,5,6,7.</p>
+<h4>Watch out</h4>
+<p>The two <code>if</code> checks are the classic bug. Without them, a single remaining row or column is read twice (try [[1],[2],[3]]).</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/spiral-matrix-ii/">59. Spiral Matrix II</a> — same walls, write 1..n² instead of reading.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>The same spiral walk as Spiral Matrix, but instead of reading cells you write the numbers 1, 2, 3, … n² into them. The four walls move in exactly the same way. Pattern: <b>boundary shrinking</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make an n × n grid and set <code>next = 1</code>.</li><li>Set the walls top, bottom, left, right to the edges.</li><li>Fill the top row left to right, then <code>top++</code>. Fill the right column downwards, then <code>right--</code>.</li><li>If top ≤ bottom, fill the bottom row right to left and do <code>bottom--</code>. If left ≤ right, fill the left column upwards and do <code>left++</code>.</li><li>Repeat until the walls cross, then return the grid.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[][] generateMatrix(int n) {
+        int[][] g = new int[n][n];
+        int top = 0, bottom = n - 1, left = 0, right = n - 1;
+        int next = 1;
+        while (top &lt;= bottom &amp;&amp; left &lt;= right) {
+            for (int c = left; c &lt;= right; c++)
+                g[top][c] = next++;
+            top++;
+            for (int r = top; r &lt;= bottom; r++)
+                g[r][right] = next++;
+            right--;
+            if (top &lt;= bottom) {
+                for (int c = right; c &gt;= left; c--)
+                    g[bottom][c] = next++;
+                bottom--;
+            }
+            if (left &lt;= right) {
+                for (int r = bottom; r &gt;= top; r--)
+                    g[r][left] = next++;
+                left++;
+            }
+        }
+        return g;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n²) · <b>Space</b> O(1) extra — each cell is written once.</p>
+<h4>Dry run</h4>
+<p>n = 3. Top 1,2,3. Right 4,5. Bottom 6,7. Left 8. Centre 9. Result [[1,2,3],[8,9,4],[7,6,5]].</p>
+<h4>Watch out</h4>
+<p><code>next++</code> must run once per cell. Writing the same cell twice (a missing wall check) leaves a gap at the end, such as a 0 in the middle.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/rotate-image/">48. Rotate Image</a> — animation 2.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Turn an n × n picture 90° clockwise without a second grid. A clockwise turn is the same as two simple moves: <b>transpose</b> (swap <code>[r][c]</code> with <code>[c][r]</code>), then <b>reverse every row</b>. Both moves are done with swaps in place. Pattern: <b>in-place index tricks</b>.</p>
+<h4>Brute force first</h4>
+<p>Copy into a new grid with <code>res[c][n-1-r] = m[r][c]</code>, which uses O(n²) extra memory. The problem forbids that.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Transpose: for each r, and only for c &gt; r (the upper triangle), swap <code>m[r][c]</code> and <code>m[c][r]</code>.</li><li>Reverse each row with two pointers i and j that meet in the middle.</li><li>Done. No return value, because the grid changes in place.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public void rotate(int[][] matrix) {
+        int n = matrix.length;
+        // 1) transpose: swap across the main diagonal
+        for (int r = 0; r &lt; n; r++) {
+            for (int c = r + 1; c &lt; n; c++) {
+                int tmp = matrix[r][c];
+                matrix[r][c] = matrix[c][r];
+                matrix[c][r] = tmp;
+            }
+        }
+        // 2) reverse every row
+        for (int[] row : matrix) {
+            for (int i = 0, j = n - 1; i &lt; j; i++, j--) {
+                int tmp = row[i];
+                row[i] = row[j];
+                row[j] = tmp;
+            }
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n²) · <b>Space</b> O(1) — each cell is swapped a constant number of times.</p>
+<h4>Dry run</h4>
+<p>[[1,2,3],[4,5,6],[7,8,9]]. After the transpose: [[1,4,7],[2,5,8],[3,6,9]]. After reversing the rows: [[7,4,1],[8,5,2],[9,6,3]].</p>
+<h4>Watch out</h4>
+<p>Start the inner loop at <code>c = r + 1</code>. If it starts at 0, every pair is swapped twice and the grid ends up unchanged. For counter-clockwise, reverse the rows first and transpose second (or reverse columns).</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/set-matrix-zeroes/">73. Set Matrix Zeroes</a> — then do the O(1)-memory version.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>If a cell is 0, its whole row and column must become 0. You cannot clear as you scan, because the new zeros would spread wrongly. First record which rows and columns to clear, then clear them. For O(1) memory, store those marks in row 0 and column 0 themselves, and keep two flags for whether row 0 and column 0 had a zero to begin with. Pattern: <b>first row/column as markers</b>.</p>
+<h4>Brute force first</h4>
+<p>Keep a <code>boolean[] rowZero</code> and a <code>boolean[] colZero</code>: O(rows + cols) extra space, simple and fine as a first version.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Set two flags: does row 0 contain a 0? Does column 0 contain a 0?</li><li>For every inner cell (r ≥ 1, c ≥ 1) that is 0, mark <code>m[r][0] = 0</code> and <code>m[0][c] = 0</code>.</li><li>For every inner cell, if its row mark or its column mark is 0, set it to 0.</li><li>Finally clear row 0 if its flag is set, and column 0 if its flag is set.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public void setZeroes(int[][] m) {
+        int rows = m.length, cols = m[0].length;
+        boolean firstRowZero = false, firstColZero = false;
+        for (int c = 0; c &lt; cols; c++)
+            if (m[0][c] == 0) firstRowZero = true;
+        for (int r = 0; r &lt; rows; r++)
+            if (m[r][0] == 0) firstColZero = true;
+        // use row 0 and column 0 as the marks
+        for (int r = 1; r &lt; rows; r++) {
+            for (int c = 1; c &lt; cols; c++) {
+                if (m[r][c] == 0) {
+                    m[r][0] = 0; // mark this row
+                    m[0][c] = 0; // mark this column
+                }
+            }
+        }
+        // clear the inner cells from the marks
+        for (int r = 1; r &lt; rows; r++) {
+            for (int c = 1; c &lt; cols; c++) {
+                if (m[r][0] == 0 || m[0][c] == 0) m[r][c] = 0;
+            }
+        }
+        // the mark row and column go last
+        if (firstRowZero)
+            for (int c = 0; c &lt; cols; c++) m[0][c] = 0;
+        if (firstColZero)
+            for (int r = 0; r &lt; rows; r++) m[r][0] = 0;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(rows · cols) · <b>Space</b> O(1) — the marks live inside the grid.</p>
+<h4>Dry run</h4>
+<p>[[0,1,2,0],[3,4,5,2],[1,3,1,5]]. Row 0 has zeros, so firstRowZero is true. Column 0 has a 0 at the top, so firstColZero is true. There are no inner zeros, so there are no new marks. Inner clear: m[0][3] is 0, so column 3's inner cells become 0. Then row 0 and column 0 are cleared. Result [[0,0,0,0],[0,4,5,0],[0,3,1,0]].</p>
+<h4>Watch out</h4>
+<p>Clear row 0 and column 0 <b>last</b>. Clearing them first wipes out the marks and zeros the whole grid.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/search-a-2d-matrix-ii/">240. Search a 2D Matrix II</a> — animation 4.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Each row is sorted left to right and each column top to bottom. Stand at the <b>top-right corner</b>. Everything to your left is smaller and everything below is bigger. If the value is too big, the whole column below is too big, so step left. If it is too small, the whole row to the left is too small, so step down. Each step rules out a row or a column. Pattern: <b>staircase search</b>.</p>
+<h4>Brute force first</h4>
+<p>Scan every cell (O(m · n)), or binary search every row (O(m log n)).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Start at r = 0, c = cols−1.</li><li>If <code>matrix[r][c] == target</code>, return true.</li><li>If it is bigger than the target, do <code>c--</code>. If it is smaller, do <code>r++</code>.</li><li>When you walk off the grid, return false.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean searchMatrix(int[][] matrix, int target) {
+        // start at the top-right corner
+        int r = 0, c = matrix[0].length - 1;
+        while (r &lt; matrix.length &amp;&amp; c &gt;= 0) {
+            int v = matrix[r][c];
+            if (v == target) return true;
+            if (v &gt; target) c--; // whole column below is bigger
+            else r++;            // whole row to the left is smaller
+        }
+        return false;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m + n) · <b>Space</b> O(1) — each step removes a row or a column, so there are at most m + n steps.</p>
+<h4>Dry run</h4>
+<p>target 5. Start at 15: too big, go left. 11 is too big, go left. 7 is too big, go left. 4 is too small, go down. 5 is found.</p>
+<h4>Watch out</h4>
+<p>Starting at the top-left does not work: both right and down are bigger, so you cannot tell which way to go. The bottom-left corner also works, with the moves mirrored.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/diagonal-traverse/">498. Diagonal Traverse</a> — cells on one diagonal share r + c.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>All cells on one diagonal share the same <code>r + c</code>. Diagonal d = 0 is [0][0], d = 1 is [0][1] and [1][0], and so on, up to d = rows + cols − 2. Walk the diagonals in order. Even ones go up-right (r falls, c rises) and odd ones go down-left. The only hard part is the start cell. Pattern: <b>diagonal index r + c</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Loop d from 0 to rows + cols − 2.</li><li>Even d: start at <code>r = min(d, rows−1)</code>, <code>c = d − r</code>, and step <code>r--, c++</code> while inside the grid.</li><li>Odd d: start at <code>c = min(d, cols−1)</code>, <code>r = d − c</code>, and step <code>r++, c--</code> while inside.</li><li>Write each value into the answer array in order.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] findDiagonalOrder(int[][] mat) {
+        int rows = mat.length, cols = mat[0].length;
+        int[] res = new int[rows * cols];
+        int i = 0;
+        // diagonal d holds the cells with r + c == d
+        for (int d = 0; d &lt; rows + cols - 1; d++) {
+            if (d % 2 == 0) {
+                // even: go up-right, start as low as we can
+                int r = Math.min(d, rows - 1);
+                int c = d - r;
+                while (r &gt;= 0 &amp;&amp; c &lt; cols) res[i++] = mat[r--][c++];
+            } else {
+                // odd: go down-left, start as far right
+                int c = Math.min(d, cols - 1);
+                int r = d - c;
+                while (c &gt;= 0 &amp;&amp; r &lt; rows) res[i++] = mat[r++][c--];
+            }
+        }
+        return res;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(rows · cols) · <b>Space</b> O(1) extra — each cell is visited exactly once.</p>
+<h4>Dry run</h4>
+<p>3 × 3 grid 1..9. d=0: 1. d=1 (down-left): 2,4. d=2 (up-right from [2][0]): 7,5,3. d=3: 6,8. d=4: 9. Result 1,2,4,7,5,3,6,8,9.</p>
+<h4>Watch out</h4>
+<p>Using <code>min</code> to clamp the start is the key. Without it, wide or tall grids start outside the grid. Test with a single row such as [[1,2,3]].</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/game-of-life/">289. Game of Life</a> — in place with two-bit states.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Every cell's next state depends on the <b>old</b> states of its 8 neighbours, so you cannot overwrite cells as you go. Trick: store two bits per cell. Bit 0 is the state now and bit 1 is the state next. Count live neighbours using <code>&amp; 1</code> (now only), set bit 1 by the rules, then shift every cell right by one. Pattern: <b>in-place state encoding</b>.</p>
+<h4>Brute force first</h4>
+<p>Copy the board first and read neighbours from the copy: simple, but O(m · n) extra space.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>For each cell, count the neighbours with <code>board[nr][nc] &amp; 1</code> equal to 1, skipping the cell itself and cells outside the grid.</li><li>A live cell with 2 or 3 live neighbours stays alive: set bit 1 (<code>|= 2</code>).</li><li>A dead cell with exactly 3 live neighbours is born: set bit 1.</li><li>Every other cell keeps bit 1 = 0, so it dies or stays dead.</li><li>Second pass: <code>board[r][c] &gt;&gt;= 1</code> moves "next" into "now".</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public void gameOfLife(int[][] board) {
+        int rows = board.length, cols = board[0].length;
+        // bit 0 = state now, bit 1 = state next
+        for (int r = 0; r &lt; rows; r++) {
+            for (int c = 0; c &lt; cols; c++) {
+                int live = 0;
+                for (int dr = -1; dr &lt;= 1; dr++) {
+                    for (int dc = -1; dc &lt;= 1; dc++) {
+                        if (dr == 0 &amp;&amp; dc == 0) continue;
+                        int nr = r + dr, nc = c + dc;
+                        if (nr &gt;= 0 &amp;&amp; nr &lt; rows &amp;&amp; nc &gt;= 0
+                                &amp;&amp; nc &lt; cols) {
+                            live += board[nr][nc] &amp; 1; // now
+                        }
+                    }
+                }
+                boolean alive = (board[r][c] &amp; 1) == 1;
+                if (alive &amp;&amp; (live == 2 || live == 3))
+                    board[r][c] |= 2; // stays alive
+                if (!alive &amp;&amp; live == 3)
+                    board[r][c] |= 2; // is born
+            }
+        }
+        // shift the next state into place
+        for (int r = 0; r &lt; rows; r++)
+            for (int c = 0; c &lt; cols; c++)
+                board[r][c] &gt;&gt;= 1;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m · n) · <b>Space</b> O(1) — 8 neighbour checks per cell and no copy.</p>
+<h4>Dry run</h4>
+<p>[[1,1],[1,0]]. The dead cell [1][1] has 3 live neighbours, so it becomes 0b10. The three live cells each have 2 live neighbours, so they become 0b11. After the shift the board is all 1s: [[1,1],[1,1]].</p>
+<h4>Watch out</h4>
+<p>Count with <code>&amp; 1</code>, not the raw value. A cell already marked 2 or 3 would otherwise count wrongly.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

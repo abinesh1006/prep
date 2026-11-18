@@ -188,12 +188,282 @@
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/course-schedule/">207. Course Schedule</a> — exactly the animations: compare taken with n.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/course-schedule-ii/">210. Course Schedule II</a> — return the order itself.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-eventual-safe-states/">802. Find Eventual Safe States</a> — Kahn on the reversed graph.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-all-possible-recipes-from-given-supplies/">2115. Find All Possible Recipes</a> — ingredients are prerequisites; supplies start in the queue.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/parallel-courses-iii/">2050. Parallel Courses III</a> — Kahn plus "finish time = max of prerequisites + own time".</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/alien-dictionary/">269. Alien Dictionary</a> — compare neighbouring words to get letter edges, then topo sort.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/course-schedule/">207. Course Schedule</a> — exactly the animations: compare taken with n.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<code>[a, b]</code> means "take b before a". Can you finish all courses? Only if the prerequisites have no cycle (a cycle like A needs B, B needs A can never start). Key insight, <b>Kahn's algorithm</b> (topological sort with a queue): keep taking courses that have no unmet prerequisites. Each one you take unlocks others. If you manage to take all n, there is no cycle.
+<h4>Step by step</h4>
+<ol class="steps"><li>Build edges <code>b → a</code> and count <code>indeg[a]</code> = number of unmet prerequisites of a.</li><li>Queue every course with indegree 0 (nothing to wait for).</li><li>Pop a course and add 1 to <code>taken</code>.</li><li>For each course after it, lower its indegree; when it hits 0, queue it.</li><li>Return <code>taken == numCourses</code>. Courses on a cycle never reach 0, so they are never taken.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean canFinish(int numCourses,
+                             int[][] prerequisites) {
+        List&lt;List&lt;Integer&gt;&gt; next = new ArrayList&lt;&gt;();
+        for (int i = 0; i &lt; numCourses; i++) {
+            next.add(new ArrayList&lt;&gt;());
+        }
+        int[] indeg = new int[numCourses]; // unmet prereqs
+        for (int[] p : prerequisites) {
+            next.get(p[1]).add(p[0]);   // p[1] comes before p[0]
+            indeg[p[0]]++;
+        }
+        Deque&lt;Integer&gt; queue = new ArrayDeque&lt;&gt;();
+        for (int i = 0; i &lt; numCourses; i++) {
+            if (indeg[i] == 0) queue.add(i); // free to take
+        }
+        int taken = 0;
+        while (!queue.isEmpty()) {
+            int course = queue.poll();
+            taken++;
+            for (int after : next.get(course)) {
+                if (--indeg[after] == 0) queue.add(after);
+            }
+        }
+        return taken == numCourses;     // fewer = a cycle
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(V + E) · <b>Space</b> O(V + E) — each course and prerequisite is handled once.</p>
+<h4>Dry run</h4>
+<p>n = 2, [[1,0],[0,1]]. indeg = [1, 1]. No course has indegree 0, queue is empty, taken = 0 ≠ 2 → false. With only [[1,0]]: take 0, then 1 drops to 0, take 1 → 2 == 2 → true.</p>
+<h4>Watch out</h4>
+<p>The edge direction: <code>[a, b]</code> means b → a, not a → b. Getting it backwards still detects cycles here, but in 210 it gives the order reversed. DFS with three colours (unvisited / in progress / done) is the other common way to find a cycle.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/course-schedule-ii/">210. Course Schedule II</a> — return the order itself.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Same as 207, but return one valid order to take all courses, or an empty array if impossible. Key insight: the order in which <b>Kahn's algorithm</b> pops courses is already a valid order, because a course is only popped after every prerequisite was popped. Just write them down.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Build <code>b → a</code> edges and indegrees exactly as in 207.</li><li>Queue all courses with indegree 0.</li><li>Pop a course and write it at <code>order[taken++]</code>.</li><li>Lower the indegree of each course after it; queue it at 0.</li><li>If <code>taken == numCourses</code> return <code>order</code>, otherwise return an empty array (cycle).</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] findOrder(int numCourses,
+                           int[][] prerequisites) {
+        List&lt;List&lt;Integer&gt;&gt; next = new ArrayList&lt;&gt;();
+        for (int i = 0; i &lt; numCourses; i++) {
+            next.add(new ArrayList&lt;&gt;());
+        }
+        int[] indeg = new int[numCourses];
+        for (int[] p : prerequisites) {
+            next.get(p[1]).add(p[0]);
+            indeg[p[0]]++;
+        }
+        Deque&lt;Integer&gt; queue = new ArrayDeque&lt;&gt;();
+        for (int i = 0; i &lt; numCourses; i++) {
+            if (indeg[i] == 0) queue.add(i);
+        }
+        int[] order = new int[numCourses];
+        int taken = 0;
+        while (!queue.isEmpty()) {
+            int course = queue.poll();
+            order[taken++] = course;    // write it down
+            for (int after : next.get(course)) {
+                if (--indeg[after] == 0) queue.add(after);
+            }
+        }
+        // a cycle left some courses out
+        return taken == numCourses ? order : new int[0];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(V + E) · <b>Space</b> O(V + E) — same work as 207 plus the output array.</p>
+<h4>Dry run</h4>
+<p>n = 4, [[1,0],[2,0],[3,1],[3,2]]. indeg = [0,1,1,2]. Pop 0 → 1 and 2 drop to 0. Pop 1 → 3 drops to 1. Pop 2 → 3 drops to 0. Pop 3. Order [0,1,2,3].</p>
+<h4>Watch out</h4>
+<p>On a cycle you must return <code>new int[0]</code>, not a half-filled array. Many orders can be valid; any of them is accepted.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-eventual-safe-states/">802. Find Eventual Safe States</a> — Kahn on the reversed graph.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>A node is <b>safe</b> if every path from it ends at a terminal node (a node with no outgoing edges), so it can never get stuck in a cycle. Return all safe nodes in increasing order. Key insight: terminal nodes are safe; a node becomes safe once <b>all</b> its outgoing edges lead to safe nodes. That is Kahn's algorithm on the <b>reversed</b> graph, where "out-degree" plays the role of indegree.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Reverse every edge: for <code>u → v</code>, store u in <code>before[v]</code>. Set <code>out[u]</code> = number of u's edges.</li><li>Queue every node with <code>out == 0</code> (terminal).</li><li>Pop v and mark it safe. For each u in <code>before[v]</code>, lower <code>out[u]</code>; at 0, all of u's exits are safe, so queue u.</li><li>Loop 0..n−1 and collect the safe nodes, which keeps them sorted.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;Integer&gt; eventualSafeNodes(int[][] graph) {
+        int n = graph.length;
+        // reversed edges: before.get(v) = nodes that point to v
+        List&lt;List&lt;Integer&gt;&gt; before = new ArrayList&lt;&gt;();
+        for (int i = 0; i &lt; n; i++) before.add(new ArrayList&lt;&gt;());
+        int[] out = new int[n];         // edges still unsafe
+        for (int u = 0; u &lt; n; u++) {
+            out[u] = graph[u].length;
+            for (int v : graph[u]) before.get(v).add(u);
+        }
+        Deque&lt;Integer&gt; queue = new ArrayDeque&lt;&gt;();
+        for (int u = 0; u &lt; n; u++) {
+            if (out[u] == 0) queue.add(u); // terminal = safe
+        }
+        boolean[] safe = new boolean[n];
+        while (!queue.isEmpty()) {
+            int v = queue.poll();
+            safe[v] = true;
+            for (int u : before.get(v)) {
+                // one more of u's exits is known to be safe
+                if (--out[u] == 0) queue.add(u);
+            }
+        }
+        List&lt;Integer&gt; result = new ArrayList&lt;&gt;();
+        for (int u = 0; u &lt; n; u++) {
+            if (safe[u]) result.add(u);  // ascending order
+        }
+        return result;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(V + E) · <b>Space</b> O(V + E) — the reversed graph stores each edge once.</p>
+<h4>Dry run</h4>
+<p>graph = [[1,2],[2,3],[5],[0],[5],[],[]]. Terminals 5, 6. Pop 5: out[2] → 0 and out[4] → 0, queue both. Pop 6. Pop 2: out[0] → 1, out[1] → 1. Pop 4. Nodes 0, 1, 3 are in the cycle 0→1→3→0 and never reach 0. Safe: [2,4,5,6].</p>
+<h4>Watch out</h4>
+<p>Do not run Kahn on the original graph: it removes nodes with no <b>incoming</b> edges, which says nothing about safety. A DFS with colours (cycle = unsafe) also works.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-all-possible-recipes-from-given-supplies/">2115. Find All Possible Recipes</a> — ingredients are prerequisites; supplies start in the queue.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>You have some supplies. A recipe can be made once all its ingredients are available, and a recipe you made can be an ingredient of another. Return every recipe you can make. Key insight: ingredients are <b>prerequisites</b>. Draw an edge ingredient → recipe and count missing ingredients per recipe (its indegree). Supplies are ready from the start, so they begin in the queue. Pattern: <b>Kahn's algorithm on strings</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>For each recipe, store <code>missing = number of ingredients</code> and add it to <code>usedBy[ingredient]</code> for each ingredient.</li><li>Queue all supplies.</li><li>Pop an item. For each recipe that uses it, lower its missing count.</li><li>When a recipe reaches 0, add it to the answer and queue it, since it can now feed other recipes.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;String&gt; findAllRecipes(String[] recipes,
+            List&lt;List&lt;String&gt;&gt; ingredients, String[] supplies) {
+        // ingredient -&gt; recipes that need it
+        Map&lt;String, List&lt;String&gt;&gt; usedBy = new HashMap&lt;&gt;();
+        // recipe -&gt; how many ingredients still missing
+        Map&lt;String, Integer&gt; missing = new HashMap&lt;&gt;();
+        for (int i = 0; i &lt; recipes.length; i++) {
+            missing.put(recipes[i], ingredients.get(i).size());
+            for (String ing : ingredients.get(i)) {
+                usedBy.computeIfAbsent(ing,
+                        k -&gt; new ArrayList&lt;&gt;()).add(recipes[i]);
+            }
+        }
+        Deque&lt;String&gt; queue =
+                new ArrayDeque&lt;&gt;(Arrays.asList(supplies));
+        List&lt;String&gt; made = new ArrayList&lt;&gt;();
+        while (!queue.isEmpty()) {
+            String item = queue.poll();
+            for (String r : usedBy.getOrDefault(item,
+                                                List.of())) {
+                if (missing.merge(r, -1, Integer::sum) == 0) {
+                    made.add(r);        // all ingredients ready
+                    queue.add(r);       // it can feed others
+                }
+            }
+        }
+        return made;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(R + I + S) · <b>Space</b> O(R + I) — R recipes, I total ingredient entries, S supplies; each entry is handled once.</p>
+<h4>Dry run</h4>
+<p>recipes bread [yeast, flour], sandwich [bread, meat]; supplies yeast, flour, meat. missing: bread 2, sandwich 2. Pop yeast → bread 1. Pop flour → bread 0, made, queued. Pop meat → sandwich 1. Pop bread → sandwich 0, made. Answer [bread, sandwich].</p>
+<h4>Watch out</h4>
+<p>An ingredient that is neither a supply nor a recipe simply never shows up in the queue, so its recipes stay above 0, which is correct. Recipes that need each other in a cycle also never reach 0.</p>
+</div></details>
+</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/parallel-courses-iii/">2050. Parallel Courses III</a> — Kahn plus "finish time = max of prerequisites + own time".
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Courses 1..n take <code>time[i−1]</code> months; any number can run in parallel, but a course starts only after all its prerequisites finish. Find the minimum total months. Key insight: a course's earliest finish = its own time + the <b>latest</b> finish among its prerequisites. Process courses in topological order (Kahn), so all prerequisites are known before the course. The answer is the largest finish time. Pattern: <b>topological sort + DP</b> (longest path in a DAG).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Build edges and indegrees from <code>relations</code>.</li><li><code>start[c]</code> = earliest start of c, all 0 at first. Queue courses with indegree 0.</li><li>Pop c: <code>finish = start[c] + time[c−1]</code>; update the answer with it.</li><li>For each next course d: <code>start[d] = max(start[d], finish)</code>; lower its indegree and queue it at 0.</li><li>Return the largest finish seen.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int minimumTime(int n, int[][] relations,
+                           int[] time) {
+        List&lt;List&lt;Integer&gt;&gt; next = new ArrayList&lt;&gt;();
+        for (int i = 0; i &lt;= n; i++) next.add(new ArrayList&lt;&gt;());
+        int[] indeg = new int[n + 1];   // courses are 1..n
+        for (int[] r : relations) {
+            next.get(r[0]).add(r[1]);
+            indeg[r[1]]++;
+        }
+        int[] start = new int[n + 1];   // earliest start time
+        Deque&lt;Integer&gt; queue = new ArrayDeque&lt;&gt;();
+        for (int i = 1; i &lt;= n; i++) {
+            if (indeg[i] == 0) queue.add(i);
+        }
+        int answer = 0;
+        while (!queue.isEmpty()) {
+            int c = queue.poll();
+            int finish = start[c] + time[c - 1];
+            answer = Math.max(answer, finish);
+            for (int d : next.get(c)) {
+                // d must wait for its slowest prerequisite
+                start[d] = Math.max(start[d], finish);
+                if (--indeg[d] == 0) queue.add(d);
+            }
+        }
+        return answer;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n + E) · <b>Space</b> O(n + E) — one Kahn pass with constant work per edge.</p>
+<h4>Dry run</h4>
+<p>n = 3, relations [[1,3],[2,3]], time [3,2,5]. Pop 1: finish 3, start[3] = 3. Pop 2: finish 2, start[3] stays 3, indegree 0 → queue. Pop 3: finish 3 + 5 = 8. Answer 8.</p>
+<h4>Watch out</h4>
+<p>Take the <b>max</b> over prerequisites, not the sum: parallel courses overlap. Courses are 1-indexed while <code>time</code> is 0-indexed, so use <code>time[c − 1]</code>. The answer is the max over all courses, not the finish of the last one popped.</p>
+</div></details>
+</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/alien-dictionary/">269. Alien Dictionary</a> — compare neighbouring words to get letter edges, then topo sort.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Words are sorted in an unknown alphabet; find any valid letter order, or "" if impossible. Key insight: only <b>neighbouring words</b> give information, and only at their <b>first different letter</b>: in "wrt" before "wrf", t comes before f. Each such pair is an edge, every letter seen is a node, and a topological sort of the letters is the alphabet. A cycle means "".</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Add every letter of every word as a node with indegree 0.</li><li>For each pair of neighbouring words: if the first is longer and the second is its prefix ("abc" before "ab"), return "".</li><li>Otherwise find the first position where they differ, add edge x → y (only once), raise y's indegree, and stop comparing that pair.</li><li>Run Kahn: queue letters with indegree 0, pop, append to the answer, lower neighbours.</li><li>If the answer has every letter, return it; otherwise there was a cycle, return "".</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public String alienOrder(String[] words) {
+        Map&lt;Character, Set&lt;Character&gt;&gt; next = new HashMap&lt;&gt;();
+        Map&lt;Character, Integer&gt; indeg = new HashMap&lt;&gt;();
+        for (String w : words) {        // every letter is a node
+            for (char ch : w.toCharArray()) {
+                next.putIfAbsent(ch, new HashSet&lt;&gt;());
+                indeg.putIfAbsent(ch, 0);
+            }
+        }
+        for (int i = 0; i + 1 &lt; words.length; i++) {
+            String a = words[i], b = words[i + 1];
+            // "abc" listed before "ab" is impossible
+            if (a.length() &gt; b.length() &amp;&amp; a.startsWith(b)) {
+                return "";
+            }
+            int len = Math.min(a.length(), b.length());
+            for (int j = 0; j &lt; len; j++) {
+                char x = a.charAt(j), y = b.charAt(j);
+                if (x != y) {           // first difference: x &lt; y
+                    if (next.get(x).add(y)) { // new edge only
+                        indeg.merge(y, 1, Integer::sum);
+                    }
+                    break;              // later letters tell nothing
+                }
+            }
+        }
+        Deque&lt;Character&gt; queue = new ArrayDeque&lt;&gt;();
+        for (char ch : indeg.keySet()) {
+            if (indeg.get(ch) == 0) queue.add(ch);
+        }
+        StringBuilder order = new StringBuilder();
+        while (!queue.isEmpty()) {
+            char ch = queue.poll();
+            order.append(ch);
+            for (char nx : next.get(ch)) {
+                if (indeg.merge(nx, -1, Integer::sum) == 0) {
+                    queue.add(nx);
+                }
+            }
+        }
+        // letters left out = a cycle
+        return order.length() == indeg.size()
+                ? order.toString() : "";
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(C) · <b>Space</b> O(1) — C = total characters in all words; there are at most 26 letters and 26² edges.</p>
+<h4>Dry run</h4>
+<p>["wrt","wrf","er","ett","rftt"] gives t→f, w→e, r→t, e→r. Indegree 0: w. Pop w → e free. Pop e → r. Pop r → t. Pop t → f. Answer "wertf".</p>
+<h4>Watch out</h4>
+<p>Two classic bugs: comparing letters after the first difference (they tell nothing), and missing the prefix case, which must return "". Also add an edge only once (a Set), or the indegree is counted twice and the letter never becomes free.</p>
+</div></details>
+</li>
 </ul>
 
 <h2>Test yourself</h2>

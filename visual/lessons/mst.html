@@ -185,11 +185,261 @@ pq.add({<span class="n">0</span>, start});
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/min-cost-to-connect-all-points/">1584. Min Cost to Connect All Points</a> — exactly animation 2.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/connecting-cities-with-minimum-cost/">1135. Connecting Cities With Minimum Cost</a> — plain Kruskal; −1 if not connected.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/number-of-operations-to-make-network-connected/">1319. Number of Operations to Make Network Connected</a> — Union-Find: count spare edges vs components.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/optimize-water-distribution-in-a-village/">1168. Optimize Water Distribution in a Village</a> — add a virtual node 0 for wells, then Kruskal.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/find-critical-and-pseudo-critical-edges-in-minimum-spanning-tree/">1489. Critical and Pseudo-Critical Edges in MST</a> — rerun Kruskal without / forcing each edge.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/min-cost-to-connect-all-points/">1584. Min Cost to Connect All Points</a> — exactly animation 2.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Connect all points with the least total wire, where joining two points costs their Manhattan distance <code>|x1 − x2| + |y1 − y2|</code>. That is a <b>minimum spanning tree</b> (MST: the cheapest set of edges that connects every node with no loops). Every pair of points can be joined, so the graph is complete (about n² edges). Key insight: for such a dense graph, <b>array Prim</b> is the cleanest: grow one tree, and keep <code>best[i]</code> = cheapest link from the tree to point i.</p>
+<h4>Brute force first</h4>
+<p>Kruskal: build all n²/2 edges, sort them, and union. Correct, but O(n² log n) time and O(n²) memory.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>best</code> = ∞ for all points, <code>best[0] = 0</code> (start the tree at point 0).</li><li>Repeat n times: pick the point u outside the tree with the smallest <code>best</code>.</li><li>Add u to the tree and add <code>best[u]</code> to the total.</li><li>For every point v still outside, set <code>best[v] = min(best[v], dist(u, v))</code>.</li><li>Return the total.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int minCostConnectPoints(int[][] points) {
+        int n = points.length;
+        // best[i] = cheapest known link from the tree to i
+        int[] best = new int[n];
+        Arrays.fill(best, Integer.MAX_VALUE);
+        boolean[] inTree = new boolean[n];
+        best[0] = 0;                   // start the tree at 0
+        int total = 0;
+        for (int added = 0; added &lt; n; added++) {
+            // 1. cheapest point still outside the tree
+            int u = -1;
+            for (int i = 0; i &lt; n; i++) {
+                if (!inTree[i] &amp;&amp; (u == -1 || best[i] &lt; best[u])) {
+                    u = i;
+                }
+            }
+            inTree[u] = true;          // 2. build that link
+            total += best[u];
+            // 3. u may offer cheaper links to the others
+            for (int v = 0; v &lt; n; v++) {
+                if (inTree[v]) continue;
+                int d = Math.abs(points[u][0] - points[v][0])
+                      + Math.abs(points[u][1] - points[v][1]);
+                best[v] = Math.min(best[v], d);
+            }
+        }
+        return total;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n²) · <b>Space</b> O(n) — n rounds, each scanning all points twice; no edge list is stored.</p>
+<h4>Dry run</h4>
+<p>Points [0,0] [2,2] [3,10] [5,2] [7,0]. Take [0,0]. Cheapest next: [2,2] (4). Then [5,2] (3 from [2,2]). Then [7,0] (4 from [5,2]). Then [3,10] (9 from [2,2]). Total 4 + 3 + 4 + 9 = 20.</p>
+<h4>Watch out</h4>
+<p>Skip points already in the tree when picking the next one and when updating <code>best</code>. One point alone costs 0. With the heap version of Prim, ignore popped points that are already in the tree.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/connecting-cities-with-minimum-cost/">1135. Connecting Cities With Minimum Cost</a> — plain Kruskal; −1 if not connected.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Cities 1..n and possible roads <code>[a, b, cost]</code>. Connect all cities with minimum total cost, or −1 if impossible. Key insight: this is a plain MST, and <b>Kruskal</b> is the natural fit for an edge list. Sort roads by cost and take each one that joins two not-yet-connected groups; Union-Find answers "already connected?". If fewer than n − 1 roads get built, the cities cannot all be connected.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Sort the connections by cost.</li><li>Make a Union-Find for cities 1..n.</li><li>For each road, if <code>union(a, b)</code> succeeds, add its cost and count it.</li><li>Once n − 1 roads are built, return the total.</li><li>If the loop ends first, return −1 (unless n is 1).</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private int[] parent;
+
+    public int minimumCost(int n, int[][] connections) {
+        parent = new int[n + 1];       // cities are 1..n
+        for (int i = 0; i &lt;= n; i++) parent[i] = i;
+        // cheapest roads first
+        Arrays.sort(connections,
+                Comparator.comparingInt(c -&gt; c[2]));
+        int total = 0, built = 0;
+        for (int[] c : connections) {
+            if (union(c[0], c[1])) {   // joins two groups
+                total += c[2];
+                if (++built == n - 1) return total; // done
+            }
+        }
+        return n == 1 ? 0 : -1;        // not all connected
+    }
+
+    private int find(int x) {
+        if (parent[x] != x) parent[x] = find(parent[x]);
+        return parent[x];
+    }
+
+    private boolean union(int a, int b) {
+        int ra = find(a), rb = find(b);
+        if (ra == rb) return false;    // would close a loop
+        parent[ra] = rb;
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(E log E) · <b>Space</b> O(n) — sorting the roads dominates; the unions are nearly O(1).</p>
+<h4>Dry run</h4>
+<p>n = 3, roads [1,2,5], [1,3,6], [2,3,1]. Sorted: (2,3,1), (1,2,5), (1,3,6). Take 2–3 (1). Take 1–2 (5), 2 built = n − 1 → return 6.</p>
+<h4>Watch out</h4>
+<p>A tree on n nodes has exactly n − 1 edges; counting built edges is how you detect a disconnected graph. Cities are 1-indexed, so the parent array needs n + 1 slots.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/number-of-operations-to-make-network-connected/">1319. Number of Operations to Make Network Connected</a> — Union-Find: count spare edges vs components.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>n computers, some cables. You may unplug any cable and plug it between two other computers. Find the fewest moves to connect everything, or −1. Key insight: first, n computers need at least n − 1 cables, otherwise −1. If there are enough, cables that sit inside a group are spare, and each move joins two groups. So the answer is <b>number of components − 1</b>, counted with Union-Find.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If <code>connections.length &lt; n − 1</code>, return −1.</li><li>Start with <code>components = n</code>.</li><li>For each cable, if <code>union</code> merges two groups, subtract 1.</li><li>Return <code>components − 1</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private int[] parent;
+
+    public int makeConnected(int n, int[][] connections) {
+        // n computers need at least n - 1 cables
+        if (connections.length &lt; n - 1) return -1;
+        parent = new int[n];
+        for (int i = 0; i &lt; n; i++) parent[i] = i;
+        int components = n;
+        for (int[] c : connections) {
+            if (union(c[0], c[1])) components--;
+        }
+        // one moved cable joins two components
+        return components - 1;
+    }
+
+    private int find(int x) {
+        if (parent[x] != x) parent[x] = find(parent[x]);
+        return parent[x];
+    }
+
+    private boolean union(int a, int b) {
+        int ra = find(a), rb = find(b);
+        if (ra == rb) return false;
+        parent[ra] = rb;
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n + E·α(n)) · <b>Space</b> O(n) — one union per cable.</p>
+<h4>Dry run</h4>
+<p>n = 6, cables 0–1, 0–2, 0–3, 1–2, 1–3 (5 cables ≥ 5, enough). Groups after unions: {0,1,2,3}, {4}, {5} → 3 components. Answer 2. Two cables (1–2, 1–3) were spare.</p>
+<h4>Watch out</h4>
+<p>Do the "enough cables" check first; with enough cables, the spare ones are guaranteed to be at least components − 1, so you never need to count them.</p>
+</div></details>
+</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/optimize-water-distribution-in-a-village/">1168. Optimize Water Distribution in a Village</a> — add a virtual node 0 for wells, then Kruskal.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Each house can either build its own well (cost <code>wells[i−1]</code>) or get water through pipes from another house. Find the minimum total cost so every house has water. Key insight: add a <b>virtual node 0</b>, "the water source". Building a well at house i is just an edge 0 – i with cost <code>wells[i−1]</code>. Now every house must be connected to node 0, which is an ordinary MST over n + 1 nodes. Solve it with <b>Kruskal</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make edges (0, i, wells[i−1]) for every house, and add all pipes.</li><li>Sort all edges by cost.</li><li>Union-Find over nodes 0..n. Take each edge that joins two groups and add its cost.</li><li>Stop after n edges (n + 1 nodes need n edges).</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private int[] parent;
+
+    public int minCostToSupplyWater(int n, int[] wells,
+                                    int[][] pipes) {
+        // node 0 = "the water source"; a well at house i
+        // is just a pipe 0 -&gt; i that costs wells[i - 1]
+        List&lt;int[]&gt; edges = new ArrayList&lt;&gt;();
+        for (int i = 1; i &lt;= n; i++) {
+            edges.add(new int[]{0, i, wells[i - 1]});
+        }
+        edges.addAll(Arrays.asList(pipes));
+        edges.sort(Comparator.comparingInt(e -&gt; e[2]));
+        parent = new int[n + 1];
+        for (int i = 0; i &lt;= n; i++) parent[i] = i;
+        int total = 0, built = 0;
+        for (int[] e : edges) {
+            if (union(e[0], e[1])) {
+                total += e[2];
+                if (++built == n) break; // n + 1 nodes joined
+            }
+        }
+        return total;
+    }
+
+    private int find(int x) {
+        if (parent[x] != x) parent[x] = find(parent[x]);
+        return parent[x];
+    }
+
+    private boolean union(int a, int b) {
+        int ra = find(a), rb = find(b);
+        if (ra == rb) return false;
+        parent[ra] = rb;
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O((n + P) log(n + P)) · <b>Space</b> O(n + P) — P pipes; sorting the combined edge list dominates.</p>
+<h4>Dry run</h4>
+<p>n = 3, wells [1,2,2], pipes 1–2 (1), 2–3 (1). Edges sorted: 0–1 (1), 1–2 (1), 2–3 (1), 0–2 (2), 0–3 (2). Take the first three: total 3 (one well at house 1, pipes to 2 and 3).</p>
+<h4>Watch out</h4>
+<p>Without the virtual node, you would have to decide separately which houses get wells, which is much harder. Pipes may repeat between the same two houses with different costs; Kruskal just skips the dearer one.</p>
+</div></details>
+</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/find-critical-and-pseudo-critical-edges-in-minimum-spanning-tree/">1489. Critical and Pseudo-Critical Edges in MST</a> — rerun Kruskal without / forcing each edge.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>An edge is <b>critical</b> if removing it makes every MST more expensive (or impossible), and <b>pseudo-critical</b> if it is in some MST but not all. Return both lists of original edge indices. Key insight: n ≤ 100 and E ≤ 200, so it is fine to <b>rerun Kruskal</b> for each edge. Without edge i, a higher MST cost means it is critical. Otherwise, forcing edge i into the tree first and still getting the best cost means it is pseudo-critical.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Copy the edges with their original index, then sort by weight.</li><li>Compute <code>best</code> = normal Kruskal MST cost.</li><li>For each edge i: run Kruskal skipping i. If the cost is greater than <code>best</code> (or the graph is disconnected), i is critical.</li><li>Else run Kruskal with i built first. If the cost equals <code>best</code>, i is pseudo-critical.</li><li>Return [critical, pseudo].</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;List&lt;Integer&gt;&gt; findCriticalAndPseudoCriticalEdges(
+            int n, int[][] edges) {
+        int m = edges.length;
+        // copy as {u, v, weight, original index}
+        int[][] es = new int[m][];
+        for (int i = 0; i &lt; m; i++) {
+            es[i] = new int[]{edges[i][0], edges[i][1],
+                              edges[i][2], i};
+        }
+        Arrays.sort(es, Comparator.comparingInt(e -&gt; e[2]));
+        int best = mst(n, es, -1, -1);
+        List&lt;Integer&gt; critical = new ArrayList&lt;&gt;();
+        List&lt;Integer&gt; pseudo = new ArrayList&lt;&gt;();
+        for (int i = 0; i &lt; m; i++) {
+            if (mst(n, es, i, -1) &gt; best) {
+                critical.add(es[i][3]);  // worse without it
+            } else if (mst(n, es, -1, i) == best) {
+                pseudo.add(es[i][3]);    // some MST can use it
+            }
+        }
+        return List.of(critical, pseudo);
+    }
+
+    // Kruskal that skips edge `skip` and builds edge `force`
+    // first (-1 = none). MAX_VALUE if it cannot connect all.
+    private int mst(int n, int[][] es, int skip, int force) {
+        int[] parent = new int[n];
+        for (int i = 0; i &lt; n; i++) parent[i] = i;
+        int total = 0, built = 0;
+        if (force != -1) {
+            union(parent, es[force][0], es[force][1]);
+            total += es[force][2];
+            built++;
+        }
+        for (int i = 0; i &lt; es.length; i++) {
+            if (i == skip) continue;
+            if (union(parent, es[i][0], es[i][1])) {
+                total += es[i][2];
+                built++;
+            }
+        }
+        return built == n - 1 ? total : Integer.MAX_VALUE;
+    }
+
+    private int find(int[] parent, int x) {
+        if (parent[x] != x) parent[x] = find(parent, parent[x]);
+        return parent[x];
+    }
+
+    private boolean union(int[] parent, int a, int b) {
+        int ra = find(parent, a), rb = find(parent, b);
+        if (ra == rb) return false;
+        parent[ra] = rb;
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(E² · α(n)) · <b>Space</b> O(n + E) — up to 2 Kruskal runs per edge on the already sorted list (plus one sort, O(E log E)).</p>
+<h4>Dry run</h4>
+<p>4 nodes, a square with all weights 1. best = 3. Skipping any edge still gives 3, so none is critical. Forcing any edge still gives 3, so all four are pseudo-critical: [[], [0,1,2,3]].</p>
+<h4>Watch out</h4>
+<p>Sorting loses the original order, so store the index in the copy. Disconnected must count as "worse" (here <code>MAX_VALUE</code>). Check critical <b>first</b>: a critical edge would also pass the forcing test, but must not be listed as pseudo-critical.</p>
+</div></details>
+</li>
 </ul>
 
 <h2>Test yourself</h2>

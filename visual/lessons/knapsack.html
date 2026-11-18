@@ -188,11 +188,172 @@ return dp[C];` });
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/partition-equal-subset-sum/">416. Partition Equal Subset Sum</a> — the third animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/target-sum/">494. Target Sum</a> — count subsets with a given sum.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/last-stone-weight-ii/">1049. Last Stone Weight II</a> — closest subset sum to half.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/ones-and-zeroes/">474. Ones and Zeroes</a> — two capacities, both loops backwards.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/profitable-schemes/">879. Profitable Schemes</a> — knapsack with a count and a cap on profit.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/partition-equal-subset-sum/">416. Partition Equal Subset Sum</a> — the third animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Can the array be split into two groups with equal sums? Both groups must sum to total / 2, so the question is: is there a subset that sums to half? <code>[1,5,11,5]</code> &rarr; total 22, half 11 = 11 or 1+5+5 &rarr; true. Pattern: <b>0/1 knapsack, subset sum</b> with a 1-D boolean table.</p>
+<h4>Brute force first</h4>
+<p>Try all 2<sup>n</sup> subsets: impossible for n = 200.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Sum everything; an odd total means false.</li><li><code>can[0] = true</code>, half = total / 2.</li><li>For each number x, for s from half <b>down</b> to x: if <code>can[s-x]</code>, set <code>can[s]</code>.</li><li>Return <code>can[half]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean canPartition(int[] nums) {
+        int sum = 0;
+        for (int x : nums) sum += x;
+        if (sum % 2 == 1) return false; // odd: can't halve
+        int half = sum / 2;
+        // can[s] = some subset of the items so far sums to s
+        boolean[] can = new boolean[half + 1];
+        can[0] = true; // the empty subset
+        for (int x : nums) {
+            // backwards so each item is used at most once
+            for (int s = half; s &gt;= x; s--) {
+                if (can[s - x]) can[s] = true;
+            }
+        }
+        return can[half];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n &middot; half) &middot; <b>Space</b> O(half) &mdash; each number sweeps the sums once.</p>
+<h4>Dry run</h4>
+<p>[1,5,11,5], half 11. After 1: {0,1}. After 5: {0,1,5,6}. After 11: adds 11 &rarr; true already. (After the last 5 also 10, 11.)</p>
+<h4>Watch out</h4>
+<p>The inner loop must go <b>backwards</b>. Going up lets the same x be used twice in one pass (1 &rarr; 2 &rarr; 3&hellip;), which turns it into unbounded knapsack.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/target-sum/">494. Target Sum</a> — count subsets with a given sum.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Put + or &minus; in front of each number so the total equals target; count the ways. Call P the numbers with + and N the ones with &minus;. Then P &minus; N = target and P + N = sum, so P = (sum + target) / 2. The question becomes: how many subsets sum to that P? <code>[1,1,1,1,1], target 3</code> &rarr; P = 4 &rarr; choose which 4 ones &rarr; 5. Pattern: <b>0/1 knapsack, count subsets</b>.</p>
+<h4>Brute force first</h4>
+<p>Try + and &minus; for every number: O(2<sup>n</sup>), fine for n = 20 but the DP is the expected answer.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>t = sum + target. If t &lt; 0 or t is odd, return 0.</li><li>P = t / 2. <code>ways[0] = 1</code>.</li><li>For each x, for s from P down to x: <code>ways[s] += ways[s-x]</code>.</li><li>Return <code>ways[P]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findTargetSumWays(int[] nums, int target) {
+        int sum = 0;
+        for (int x : nums) sum += x;
+        // P = numbers with +, N = with -.
+        // P - N = target and P + N = sum
+        // so P = (sum + target) / 2
+        int t = sum + target;
+        if (t &lt; 0 || t % 2 == 1) return 0;
+        int p = t / 2;
+        // ways[s] = number of subsets that sum to s
+        int[] ways = new int[p + 1];
+        ways[0] = 1;
+        for (int x : nums) {
+            for (int s = p; s &gt;= x; s--) { // 0/1: backwards
+                ways[s] += ways[s - x];
+            }
+        }
+        return ways[p];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n &middot; P) &middot; <b>Space</b> O(P) &mdash; a 1-D table of sums.</p>
+<h4>Dry run</h4>
+<p>[1,2], target &minus;1: sum 3, t = 2, P = 1. ways after 1: [1,1]; after 2: unchanged. Answer 1: the subset {1} gets +, so +1 &minus; 2 = &minus;1.</p>
+<h4>Watch out</h4>
+<p>Check <code>t &lt; 0</code> (target can be very negative) and odd t before dividing. Zeros double the count (+0 and &minus;0); the loop <code>s &gt;= x</code> with x = 0 handles that by itself.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/last-stone-weight-ii/">1049. Last Stone Weight II</a> — closest subset sum to half.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Smashing stones x and y leaves |x &minus; y|. Whatever order you smash in, the result is the same as splitting the stones into two piles and subtracting one pile's sum from the other's. To make that difference small, make one pile as close to sum / 2 as possible. Pattern: <b>0/1 knapsack, closest subset sum</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>sum = total weight, half = sum / 2.</li><li>Subset-sum table <code>can[]</code> up to half (backwards loop).</li><li>Find the largest s &le; half with <code>can[s]</code>.</li><li>Return sum &minus; 2s.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int lastStoneWeightII(int[] stones) {
+        int sum = 0;
+        for (int x : stones) sum += x;
+        int half = sum / 2;
+        // smashing = splitting stones into two piles A, B;
+        // what is left is |A - B|. Make A close to sum / 2.
+        boolean[] can = new boolean[half + 1];
+        can[0] = true;
+        for (int x : stones) {
+            for (int s = half; s &gt;= x; s--) {
+                if (can[s - x]) can[s] = true;
+            }
+        }
+        for (int s = half; s &gt;= 0; s--) {
+            if (can[s]) return sum - 2 * s;  // B - A
+        }
+        return sum;  // not reached: can[0] is true
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n &middot; sum) &middot; <b>Space</b> O(sum) &mdash; sum &le; 30 &times; 100 = 3000.</p>
+<h4>Dry run</h4>
+<p>[2,7,4,1,8,1]: sum 23, half 11. Reachable 11 (2+8+1)? yes &rarr; 23 &minus; 22 = 1.</p>
+<h4>Watch out</h4>
+<p>Simulating with a heap (smash the two biggest) is Last Stone Weight I and gives the wrong answer here.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/ones-and-zeroes/">474. Ones and Zeroes</a> — two capacities, both loops backwards.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Choose as many binary strings as possible using at most m zeros and n ones in total. Each string is an item with two "weights" (its zeros and ones) and value 1. <code>dp[z][o]</code> = most strings that fit in z zeros and o ones. Pattern: <b>0/1 knapsack with two capacities</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>dp</code> is (m+1)&times;(n+1), all 0.</li><li>For each string, count its zeros and ones.</li><li>For z from m down to zeros, for o from n down to ones: <code>dp[z][o] = max(dp[z][o], dp[z-zeros][o-ones] + 1)</code>.</li><li>Return <code>dp[m][n]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findMaxForm(String[] strs, int m, int n) {
+        // dp[z][o] = most strings fitting in z zeros, o ones
+        int[][] dp = new int[m + 1][n + 1];
+        for (String s : strs) {
+            int zeros = 0, ones = 0;
+            for (char c : s.toCharArray()) {
+                if (c == '0') zeros++; else ones++;
+            }
+            // both capacities backwards: use s at most once
+            for (int z = m; z &gt;= zeros; z--) {
+                for (int o = n; o &gt;= ones; o--) {
+                    dp[z][o] = Math.max(dp[z][o],
+                            dp[z - zeros][o - ones] + 1);
+                }
+            }
+        }
+        return dp[m][n];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(L &middot; m &middot; n + total length) &middot; <b>Space</b> O(m &middot; n) &mdash; L strings, each sweeps the 2-D table once.</p>
+<h4>Dry run</h4>
+<p>["10","0","1"], m = 1, n = 1: "10" &rarr; dp[1][1] = 1. "0" &rarr; dp[1][0] = 1, dp[1][1] stays 1. "1" &rarr; dp[1][1] = dp[1][0] + 1 = 2.</p>
+<h4>Watch out</h4>
+<p>Both loops go backwards so each string is used at most once. Forgetting one of them lets a string count twice.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/profitable-schemes/">879. Profitable Schemes</a> — knapsack with a count and a cap on profit.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Crimes need <code>group[k]</code> members and earn <code>profit[k]</code>; count crime sets that use at most n members and earn at least minProfit. <code>dp[m][p]</code> = sets using at most m members with profit p, where every profit &ge; minProfit is stored in the single cell p = minProfit (the "cap"). Pattern: <b>0/1 knapsack counting with a capped dimension</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>dp[m][0] = 1</code> for all m (choose nothing).</li><li>For each crime (g, pr), for m from n down to g, for p from minProfit down to 0:</li><li><code>dp[m][p] += dp[m-g][max(0, p-pr)]</code> (mod 10<sup>9</sup>+7).</li><li>Return <code>dp[n][minProfit]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int profitableSchemes(int n, int minProfit,
+                                 int[] group, int[] profit) {
+        final int MOD = 1_000_000_007;
+        // dp[m][p] = schemes using at most m members with
+        // profit p, where p is capped at minProfit
+        // ("minProfit or more" all share one cell)
+        int[][] dp = new int[n + 1][minProfit + 1];
+        // empty scheme: profit 0, fits any member count
+        for (int m = 0; m &lt;= n; m++) dp[m][0] = 1;
+        for (int k = 0; k &lt; group.length; k++) {
+            int g = group[k], pr = profit[k];
+            for (int m = n; m &gt;= g; m--) {         // 0/1
+                for (int p = minProfit; p &gt;= 0; p--) {
+                    int from = Math.max(0, p - pr);
+                    dp[m][p] = (dp[m][p]
+                            + dp[m - g][from]) % MOD;
+                }
+            }
+        }
+        return dp[n][minProfit];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(C &middot; n &middot; minProfit) &middot; <b>Space</b> O(n &middot; minProfit) &mdash; C crimes, each sweeps the table once.</p>
+<h4>Dry run</h4>
+<p>n 5, minProfit 3, crimes (2,2), (2,3). Sets: {crime 1} profit 3, {both} profit 5 uses 4 members. {crime 0} alone has 2 &lt; 3. Answer 2.</p>
+<h4>Watch out</h4>
+<p><code>max(0, p - pr)</code> is the cap: a crime that alone exceeds what is still needed comes from the profit-0 row. Take the modulo after every addition.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

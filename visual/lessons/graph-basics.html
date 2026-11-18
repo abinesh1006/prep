@@ -248,11 +248,194 @@ q.add(start); seen[start] = <span class="k">true</span>;
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/find-if-path-exists-in-graph/">1971. Find if Path Exists in Graph</a> — build the list, BFS from source, check destination.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/keys-and-rooms/">841. Keys and Rooms</a> — the input is already an adjacency list; DFS from room 0.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/number-of-provinces/">547. Number of Provinces</a> — count how many walks you have to start.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/all-paths-from-source-to-target/">797. All Paths From Source to Target</a> — DFS that records the path (no visited needed: it is a DAG).</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/clone-graph/">133. Clone Graph</a> — BFS with a map old node → copy, which doubles as visited.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/find-if-path-exists-in-graph/">1971. Find if Path Exists in Graph</a> — build the list, BFS from source, check destination.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>We get n nodes and a list of two-way edges, and must say whether you can walk from <code>source</code> to <code>destination</code>. Example: edges 0–1, 1–2, so 0 can reach 2. The key insight: "can I reach it?" is just a walk that marks every node it touches. This is the basic <b>BFS reachability</b> pattern (BFS = breadth-first search: visit nodes ring by ring using a queue).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Build an adjacency list: for each node, the list of its neighbours. Add every edge both ways, because roads are two-way.</li><li>Put <code>source</code> in a queue and mark it seen.</li><li>Take a node out. If it is <code>destination</code>, return true.</li><li>Otherwise queue every neighbour not seen yet, marking it seen as you queue it.</li><li>If the queue runs dry, destination was never reached: return false.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean validPath(int n, int[][] edges,
+                             int source, int destination) {
+        // graph.get(u) = list of u's neighbours
+        List&lt;List&lt;Integer&gt;&gt; graph = new ArrayList&lt;&gt;();
+        for (int i = 0; i &lt; n; i++) {
+            graph.add(new ArrayList&lt;&gt;());
+        }
+        for (int[] e : edges) {
+            graph.get(e[0]).add(e[1]);
+            graph.get(e[1]).add(e[0]); // undirected: both ways
+        }
+        boolean[] seen = new boolean[n];
+        Deque&lt;Integer&gt; queue = new ArrayDeque&lt;&gt;();
+        queue.add(source);
+        seen[source] = true;
+        while (!queue.isEmpty()) {
+            int u = queue.poll();
+            if (u == destination) return true;
+            for (int v : graph.get(u)) {
+                if (!seen[v]) {
+                    seen[v] = true;    // mark when queued
+                    queue.add(v);
+                }
+            }
+        }
+        return false;                  // never reached it
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n + E) · <b>Space</b> O(n + E) — every node and edge is handled once, and the list stores every edge twice.</p>
+<h4>Dry run</h4>
+<p>n = 6, edges 0–1, 0–2, 3–5, 5–4, 4–3, source 0, destination 5. Queue [0] → pop 0, add 1, 2 → pop 1 (nothing new) → pop 2 (nothing new) → queue empty. 5 is in the other group, so false.</p>
+<h4>Watch out</h4>
+<p>Mark a node as seen when you <b>add</b> it to the queue, not when you take it out, or the same node is queued many times. Also remember both directions of each edge; adding only <code>e[0] → e[1]</code> gives wrong answers. Union-Find solves this too.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/keys-and-rooms/">841. Keys and Rooms</a> — the input is already an adjacency list; DFS from room 0.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Room <code>i</code> holds a list of keys, and key k opens room k. You start in room 0. Can you open every room? The input <b>is</b> already an adjacency list: room → rooms it unlocks. So it is plain reachability from node 0: walk, count the rooms you open, and compare with the total.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Mark room 0 seen, push it on a stack, set <code>opened = 1</code>.</li><li>Pop a room and look at each key in it.</li><li>For a key to a room not seen yet: mark it, add 1 to <code>opened</code>, push it.</li><li>When the stack is empty, return <code>opened == rooms.size()</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean canVisitAllRooms(List&lt;List&lt;Integer&gt;&gt; rooms) {
+        boolean[] seen = new boolean[rooms.size()];
+        Deque&lt;Integer&gt; stack = new ArrayDeque&lt;&gt;();
+        stack.push(0);
+        seen[0] = true;
+        int opened = 1;                // room 0 is open
+        while (!stack.isEmpty()) {
+            int room = stack.pop();
+            for (int key : rooms.get(room)) {
+                if (!seen[key]) {      // a new room to open
+                    seen[key] = true;
+                    opened++;
+                    stack.push(key);
+                }
+            }
+        }
+        return opened == rooms.size();
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(rooms + keys) · <b>Space</b> O(rooms) — each room is opened once and each key read once.</p>
+<h4>Dry run</h4>
+<p>rooms = [[1],[2],[3],[]]. Stack [0] → pop 0, key 1 new, opened 2 → pop 1, key 2, opened 3 → pop 2, key 3, opened 4 → pop 3, no keys. 4 == 4, true.</p>
+<h4>Watch out</h4>
+<p>Keys can point back to rooms you already opened (even to the room itself). Without the <code>seen</code> check you loop forever. DFS with a stack or BFS with a queue both work: order does not matter, only reach.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/number-of-provinces/">547. Number of Provinces</a> — count how many walks you have to start.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<code>isConnected[i][j] == 1</code> means cities i and j are directly linked. A province is a group of cities linked directly or through others. Count the groups. Key insight: every time you find a city nobody has visited, it starts a new group; a walk from it marks the whole group. So the answer is <b>how many walks you had to start</b> (counting connected components).
+<h4>Step by step</h4>
+<ol class="steps"><li>Keep a <code>seen</code> array, all false.</li><li>Loop over cities 0..n−1. If city i is not seen, add 1 to the count and run DFS from i.</li><li>The DFS marks i, then for every j with <code>isConnected[i][j] == 1</code> and not seen, recurses into j.</li><li>After the loop, the count is the number of provinces.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findCircleNum(int[][] isConnected) {
+        int n = isConnected.length;
+        boolean[] seen = new boolean[n];
+        int provinces = 0;
+        for (int i = 0; i &lt; n; i++) {
+            if (!seen[i]) {            // untouched city
+                provinces++;           // = a new province
+                dfs(isConnected, seen, i);
+            }
+        }
+        return provinces;
+    }
+
+    // visit every city reachable from u
+    private void dfs(int[][] g, boolean[] seen, int u) {
+        seen[u] = true;
+        for (int v = 0; v &lt; g.length; v++) {
+            if (g[u][v] == 1 &amp;&amp; !seen[v]) {
+                dfs(g, seen, v);
+            }
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n²) · <b>Space</b> O(n) — the DFS reads a full matrix row for each city; the recursion stack holds at most n cities.</p>
+<h4>Dry run</h4>
+<p>[[1,1,0],[1,1,0],[0,0,1]]. i = 0 not seen → count 1, DFS marks 0 and 1. i = 1 seen, skip. i = 2 not seen → count 2, DFS marks 2. Answer 2.</p>
+<h4>Watch out</h4>
+<p>The input is a matrix, not an edge list: loop over all j for a row instead of building a list. The diagonal is always 1 (city to itself); the <code>seen</code> check makes that harmless. Union-Find also works (see that lesson).</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/all-paths-from-source-to-target/">797. All Paths From Source to Target</a> — DFS that records the path (no visited needed: it is a DAG).
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>The graph is a DAG (directed, no cycles) given as <code>graph[u]</code> = nodes u points to. List every path from node 0 to node n−1. Key insight: because there are no cycles you can never walk in a circle, so you need no visited array; you just explore every branch. This is <b>DFS with a path</b>: add a node, go deeper, remove it on the way back (backtracking).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Start the path as [0] and call DFS on 0.</li><li>If the current node is n−1, save a <b>copy</b> of the path and return.</li><li>Otherwise, for each next node v: add v to the path, recurse on v, then remove v.</li><li>When DFS finishes, the result holds every path.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;List&lt;Integer&gt;&gt; allPathsSourceTarget(
+            int[][] graph) {
+        List&lt;List&lt;Integer&gt;&gt; result = new ArrayList&lt;&gt;();
+        List&lt;Integer&gt; path = new ArrayList&lt;&gt;();
+        path.add(0);
+        dfs(graph, 0, path, result);
+        return result;
+    }
+
+    private void dfs(int[][] graph, int u, List&lt;Integer&gt; path,
+                     List&lt;List&lt;Integer&gt;&gt; result) {
+        if (u == graph.length - 1) {   // reached the target
+            result.add(new ArrayList&lt;&gt;(path)); // save a copy
+            return;
+        }
+        for (int v : graph[u]) {
+            path.add(v);                   // step forward
+            dfs(graph, v, path, result);
+            path.remove(path.size() - 1);  // step back
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(2ⁿ · n) · <b>Space</b> O(n) besides the output — a DAG can have up to 2ⁿ⁻² paths, each copied in O(n); the path and recursion are at most n deep.</p>
+<h4>Dry run</h4>
+<p>graph = [[1,2],[3],[3],[]]. Path [0] → add 1 → [0,1] → add 3 → [0,1,3] saved, back to [0,1] → back to [0] → add 2 → [0,2] → add 3 → [0,2,3] saved. Result [[0,1,3],[0,2,3]].</p>
+<h4>Watch out</h4>
+<p>Saving <code>path</code> itself instead of <code>new ArrayList&lt;&gt;(path)</code>: every saved entry is the same list, and after backtracking they all end up as [0]. And do not forget to remove the last node after the recursive call.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/clone-graph/">133. Clone Graph</a> — BFS with a map old node → copy, which doubles as visited.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Make a deep copy of a connected graph: new nodes with the same values and the same links, sharing nothing with the original. Key insight: keep a map <b>original → copy</b>. It tells you whether a node has been copied (so it is your visited set) and it gives you the copy to link to. Pattern: <b>BFS with a hash map</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If the input is null, return null.</li><li>Copy the start node, store it in the map, and put the original in a queue.</li><li>Pop a node <code>cur</code>. For each neighbour <code>nb</code>: if <code>nb</code> has no copy yet, make one, store it, and queue <code>nb</code>.</li><li>Always add <code>copy(nb)</code> to <code>copy(cur).neighbors</code>.</li><li>Return the copy of the start node.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public Node cloneGraph(Node node) {
+        if (node == null) return null;
+        // original node -&gt; its copy (also our visited set)
+        Map&lt;Node, Node&gt; copies = new HashMap&lt;&gt;();
+        copies.put(node, new Node(node.val));
+        Deque&lt;Node&gt; queue = new ArrayDeque&lt;&gt;();
+        queue.add(node);
+        while (!queue.isEmpty()) {
+            Node cur = queue.poll();
+            for (Node nb : cur.neighbors) {
+                if (!copies.containsKey(nb)) { // first time
+                    copies.put(nb, new Node(nb.val));
+                    queue.add(nb);
+                }
+                // copy of cur points to copy of nb
+                copies.get(cur).neighbors.add(copies.get(nb));
+            }
+        }
+        return copies.get(node);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(V + E) · <b>Space</b> O(V) — each node is copied once and each edge linked once; the map and queue hold up to V nodes.</p>
+<h4>Dry run</h4>
+<p>1–2, 2–3, 3–4, 4–1. Copy 1′. Pop 1: neighbours 2 and 4 are new → copies 2′, 4′, link 1′→2′, 1′→4′. Pop 2: 1 already copied, link 2′→1′; 3 new → 3′, link 2′→3′. Pop 4: link 4′→1′, 4′→3′. Pop 3: link 3′→2′, 3′→4′. Done.</p>
+<h4>Watch out</h4>
+<p>Link the neighbour even when it is already in the map; skipping the link for visited nodes loses edges. Make the copy as you put a node in the queue, not when you take it out, or a node can be copied twice and the graph splits.</p>
+</div></details>
+</li>
 </ul>
 
 <h2>Test yourself</h2>

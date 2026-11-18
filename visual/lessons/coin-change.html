@@ -175,12 +175,181 @@ int countOrders(int amount, int[] coins) {
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/coin-change/">322. Coin Change</a> — the first animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/coin-change-ii/">518. Coin Change II</a> — the second animation, coins outside.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/combination-sum-iv/">377. Combination Sum IV</a> — the third animation is correct here: orders count.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/perfect-squares/">279. Perfect Squares</a> — coins are 1, 4, 9, 16…</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/word-break/">139. Word Break</a> — "coins" are dictionary words that end at position i.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/minimum-cost-for-tickets/">983. Minimum Cost For Tickets</a> — last ticket was 1, 7 or 30 days.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/coin-change/">322. Coin Change</a> — the first animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Fewest coins (unlimited of each kind) that add up to <code>amount</code>, or &minus;1. <code>coins = [1,2,5], amount = 11</code> &rarr; 5+5+1 = 3 coins. Whatever the best answer for a is, its last coin c leaves a &minus; c, which must itself be made the best way: <code>dp[a] = min over c of dp[a-c] + 1</code>. Pattern: <b>unbounded knapsack / 1-D DP over amounts</b>.</p>
+<h4>Brute force first</h4>
+<p>Greedy "biggest coin first" fails (coins [1,3,4], amount 6: greedy 4+1+1 = 3, best 3+3 = 2). Plain recursion over every coin choice is exponential.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>dp[0] = 0</code>; every other entry starts at <code>amount + 1</code>, meaning "impossible".</li><li>For a = 1..amount, for each coin c &le; a: <code>dp[a] = min(dp[a], dp[a-c] + 1)</code>.</li><li>If <code>dp[amount]</code> is still amount + 1, return &minus;1, else return it.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int coinChange(int[] coins, int amount) {
+        // dp[a] = fewest coins that make amount a
+        int INF = amount + 1; // "impossible" marker
+        int[] dp = new int[amount + 1];
+        Arrays.fill(dp, INF);
+        dp[0] = 0;                     // 0 coins make 0
+        for (int a = 1; a &lt;= amount; a++) {
+            for (int c : coins) {
+                if (c &lt;= a) {          // c is the last coin
+                    dp[a] = Math.min(dp[a], dp[a - c] + 1);
+                }
+            }
+        }
+        return dp[amount] == INF ? -1 : dp[amount];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(amount &middot; coins) &middot; <b>Space</b> O(amount) &mdash; every amount tries every coin once.</p>
+<h4>Dry run</h4>
+<p>coins [1,2,5]: dp0=0, dp1=1, dp2=1, dp3=2, dp4=2, dp5=1, dp6=2, dp7=2, dp8=3, dp9=3, dp10=2, dp11=min(dp10, dp9, dp6)+1 = 3.</p>
+<h4>Watch out</h4>
+<p>Use <code>amount + 1</code> as "infinity", not <code>Integer.MAX_VALUE</code>: MAX_VALUE + 1 overflows to a negative number and wins every min. amount = 0 needs 0 coins.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/coin-change-ii/">518. Coin Change II</a> — the second animation, coins outside.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Count the coin <b>sets</b> that make <code>amount</code> (1+2 and 2+1 are the same set). <code>amount 5, coins [1,2,5]</code> &rarr; 4. Put the coin loop <b>outside</b>: first count everything using only coin 1, then allow coin 2, and so on. Each set is then built in one fixed coin order, so it is counted once. Pattern: <b>unbounded knapsack, counting combinations</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>dp[0] = 1</code> (one way to make 0: no coins).</li><li>For each coin c (outer loop):</li><li>for a = c..amount (inner loop, going up so c can be reused): <code>dp[a] += dp[a-c]</code>.</li><li>Return <code>dp[amount]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int change(int amount, int[] coins) {
+        // dp[a] = number of coin SETS that make a
+        int[] dp = new int[amount + 1];
+        dp[0] = 1;                     // one way: no coins
+        for (int c : coins) {          // coins OUTSIDE
+            for (int a = c; a &lt;= amount; a++) {
+                dp[a] += dp[a - c];    // add one more c
+            }
+        }
+        return dp[amount];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(amount &middot; coins) &middot; <b>Space</b> O(amount) &mdash; one pass over the amounts per coin.</p>
+<h4>Dry run</h4>
+<p>After coin 1: dp = [1,1,1,1,1,1]. After coin 2: [1,1,2,2,3,3]. After coin 5: dp5 = 3 + dp0 = 4. Answer 4.</p>
+<h4>Watch out</h4>
+<p>Swapping the loops (amount outside) counts orderings instead, which is problem 377. Going upward in <code>a</code> is what allows a coin many times.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/combination-sum-iv/">377. Combination Sum IV</a> — the third animation is correct here: orders count.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Count <b>ordered</b> sequences of numbers (repeats allowed) that sum to target; (1,2) and (2,1) both count. <code>[1,2,3], target 4</code> &rarr; 7. The last number of a sequence can be any x, leaving t &minus; x: <code>dp[t] = sum of dp[t-x]</code>. Put the amount loop <b>outside</b> so every order is counted. Pattern: <b>1-D DP counting permutations</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>dp[0] = 1</code> (the empty sequence).</li><li>For t = 1..target (outer loop):</li><li>for each x in nums (inner loop) with x &le; t: <code>dp[t] += dp[t-x]</code>.</li><li>Return <code>dp[target]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int combinationSum4(int[] nums, int target) {
+        // dp[t] = number of ORDERED sequences summing to t
+        int[] dp = new int[target + 1];
+        dp[0] = 1;                     // the empty sequence
+        for (int t = 1; t &lt;= target; t++) { // amount OUTSIDE
+            for (int x : nums) {             // last number
+                if (x &lt;= t) dp[t] += dp[t - x];
+            }
+        }
+        return dp[target];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(target &middot; n) &middot; <b>Space</b> O(target) &mdash; each amount sums over every number.</p>
+<h4>Dry run</h4>
+<p>nums [1,2,3]: dp0=1, dp1=1, dp2=dp1+dp0=2, dp3=dp2+dp1+dp0=4, dp4=dp3+dp2+dp1=7.</p>
+<h4>Watch out</h4>
+<p>Some unreachable middle values can exceed int during the sums; Java wraps silently and the final answer (guaranteed to fit) still comes out right because only additions are used.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/perfect-squares/">279. Perfect Squares</a> — coins are 1, 4, 9, 16…<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Fewest perfect squares that sum to n. <code>12 = 4+4+4</code> &rarr; 3. It is Coin Change where the coins are 1, 4, 9, 16&hellip; up to n: <code>dp[a] = min over j of dp[a - j&sup2;] + 1</code>. Pattern: <b>unbounded knapsack / min coins</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>dp[0] = 0</code>.</li><li>For a = 1..n start with <code>dp[a] = a</code> (all ones).</li><li>For every j with j&sup2; &le; a: <code>dp[a] = min(dp[a], dp[a - j*j] + 1)</code>.</li><li>Return <code>dp[n]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int numSquares(int n) {
+        // dp[a] = fewest perfect squares summing to a
+        int[] dp = new int[n + 1];
+        for (int a = 1; a &lt;= n; a++) {
+            dp[a] = a; // worst case: 1+1+...+1
+            for (int j = 1; j * j &lt;= a; j++) {
+                // last "coin" is j*j
+                dp[a] = Math.min(dp[a], dp[a - j * j] + 1);
+            }
+        }
+        return dp[n];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n &radic;n) &middot; <b>Space</b> O(n) &mdash; each amount tries about &radic;a squares.</p>
+<h4>Dry run</h4>
+<p>n = 13: dp4 = 1, dp9 = 1, dp13 = min(dp12+1, dp9+1, dp4+1) = min(4, 2, 2) = 2 (9 + 4).</p>
+<h4>Watch out</h4>
+<p>Greedy "largest square first" fails: 12 &rarr; 9+1+1+1 = 4 squares, but 4+4+4 = 3. (A maths shortcut, Lagrange's four-square theorem, says the answer is always &le; 4.)</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/word-break/">139. Word Break</a> — "coins" are dictionary words that end at position i.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Can the string be cut into dictionary words? <code>"leetcode"</code> with ["leet","code"] &rarr; yes. <code>ok[i]</code> = the first i letters can be cut. The last word ends at i and starts at some j, so <code>ok[i]</code> is true if <code>ok[j]</code> is true and <code>s[j..i)</code> is a word. The words act like "coins" that end at i. Pattern: <b>1-D DP over prefixes</b>.</p>
+<h4>Brute force first</h4>
+<p>Recursively try every first word and recurse on the rest: exponential on inputs like "aaaa&hellip;ab".</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Put the words in a <code>HashSet</code>.</li><li><code>ok[0] = true</code> (empty prefix).</li><li>For each end i, try each start j &lt; i: if <code>ok[j]</code> and the slice is a word, set <code>ok[i] = true</code> and stop.</li><li>Return <code>ok[n]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean wordBreak(String s,
+                             List&lt;String&gt; wordDict) {
+        Set&lt;String&gt; dict = new HashSet&lt;&gt;(wordDict);
+        int n = s.length();
+        // ok[i] = the first i letters split into words
+        boolean[] ok = new boolean[n + 1];
+        ok[0] = true;                  // empty prefix
+        for (int i = 1; i &lt;= n; i++) {
+            for (int j = 0; j &lt; i; j++) {
+                // s[j..i) is the last word, s[0..j) splits
+                String last = s.substring(j, i);
+                if (ok[j] &amp;&amp; dict.contains(last)) {
+                    ok[i] = true;
+                    break;
+                }
+            }
+        }
+        return ok[n];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n<sup>3</sup>) &middot; <b>Space</b> O(n) &mdash; n<sup>2</sup> (i, j) pairs, each substring costs up to O(n) (n &le; 300).</p>
+<h4>Dry run</h4>
+<p>"leetcode": ok0 = T; ok4 = T ("leet"); ok8: j = 4, ok4 is T and "code" is a word &rarr; T.</p>
+<h4>Watch out</h4>
+<p><code>"catsandog"</code>: cats+and leaves "og", cat+sand leaves "og": false. Only try j where ok[j] is true; that is the whole speed-up.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/minimum-cost-for-tickets/">983. Minimum Cost For Tickets</a> — last ticket was 1, 7 or 30 days.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Buy 1-day, 7-day or 30-day passes to cover all travel days as cheaply as possible. <code>dp[d]</code> = cheapest cover for every trip up to day d. On a non-travel day nothing new is needed: <code>dp[d] = dp[d-1]</code>. On a travel day, the last pass bought covers d and was 1, 7 or 30 days long. Pattern: <b>1-D DP over days, "what was the last choice"</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Mark travel days in a boolean array up to the last travel day.</li><li><code>dp[0] = 0</code>.</li><li>For each day d: if not travelling, copy dp[d&minus;1].</li><li>Else <code>dp[d] = min(dp[d-1] + c1, dp[max(0,d-7)] + c7, dp[max(0,d-30)] + c30)</code>.</li><li>Return <code>dp[lastDay]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int mincostTickets(int[] days, int[] costs) {
+        int last = days[days.length - 1];
+        boolean[] travel = new boolean[last + 1];
+        for (int d : days) travel[d] = true;
+        // dp[d] = cheapest cover for all trips on days 1..d
+        int[] dp = new int[last + 1];
+        for (int d = 1; d &lt;= last; d++) {
+            if (!travel[d]) { // no trip: costs nothing
+                dp[d] = dp[d - 1];
+                continue;
+            }
+            // the last ticket bought covers day d
+            int one = dp[d - 1] + costs[0];
+            int week = dp[Math.max(0, d - 7)] + costs[1];
+            int month = dp[Math.max(0, d - 30)] + costs[2];
+            dp[d] = Math.min(one, Math.min(week, month));
+        }
+        return dp[last];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(D) &middot; <b>Space</b> O(D) &mdash; D is the last travel day (&le; 365).</p>
+<h4>Dry run</h4>
+<p>days [1,4,6,7,8,20], costs [2,7,15]: dp1=2, dp4=4, dp6=6, dp7=min(8, dp0+7)=7, dp8=min(9, dp1+7=9, 15)=9, dp20=min(11, dp13+7=16, 15)=11.</p>
+<h4>Watch out</h4>
+<p>Clamp with <code>max(0, d-7)</code>: early in the year a 7-day pass reaches back before day 1. A week pass can be cheaper than one day pass, so always compare all three.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

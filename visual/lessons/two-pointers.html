@@ -135,11 +135,171 @@
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/valid-palindrome/">125. Valid Palindrome</a> — pointers from both ends, skip non-letters.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/">167. Two Sum II</a> — exactly the animation above.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/3sum/">15. 3Sum</a> — fix one number, two pointers on the rest.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/container-with-most-water/">11. Container With Most Water</a> — move the shorter wall.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/trapping-rain-water/">42. Trapping Rain Water</a> — move the side with the smaller max.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/valid-palindrome/">125. Valid Palindrome</a> — pointers from both ends, skip non-letters.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Ignore everything that is not a letter or digit, ignore upper/lower case, then ask: does it read the same both ways? <code>"A man, a plan, a canal: Panama"</code> &rarr; true. The insight: put one pointer at each end and walk them inward, skipping junk characters, comparing as you go. Pattern: <b>two pointers from both ends</b>.</p>
+<h4>Brute force first</h4>
+<p>Build a cleaned lowercase string, reverse it, compare: O(n) time but O(n) extra space. Two pointers need O(1) space.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>l = 0</code>, <code>r = n - 1</code>.</li><li>Move <code>l</code> right while it points at a non letter/digit; move <code>r</code> left the same way.</li><li>Compare the two characters in lowercase; if different, return false.</li><li>Step both inward (<code>l++</code>, <code>r--</code>) and repeat while <code>l &lt; r</code>.</li><li>If they meet, it is a palindrome.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean isPalindrome(String s) {
+        int l = 0, r = s.length() - 1;
+        while (l &lt; r) {
+            char a = s.charAt(l), b = s.charAt(r);
+            if (!Character.isLetterOrDigit(a)) { l++; continue; }
+            if (!Character.isLetterOrDigit(b)) { r--; continue; }
+            if (Character.toLowerCase(a)
+                    != Character.toLowerCase(b)) return false;
+            l++;
+            r--;
+        }
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; each pointer moves across the string at most once.</p>
+<h4>Dry run</h4>
+<p><code>"race a car"</code> (indexes 0..9): r/r, a/a, c/c match. Then l=3 is <code>e</code>; r=6 is a space, skip to r=5 <code>a</code>. <code>e</code> &ne; <code>a</code> &rarr; false.</p>
+<h4>Watch out</h4>
+<p>Digits count too: <code>"0P"</code> is false. A string with no letters at all (<code>" "</code>) is a palindrome. Use <code>Character.isLetterOrDigit</code>, not only <code>isLetter</code>.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/">167. Two Sum II</a> — exactly the animation above.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>The array is sorted; find two numbers that add to <code>target</code> and return their positions <b>1-based</b>. <code>[2,7,11,15]</code>, 9 &rarr; <code>[1,2]</code>. The insight: start with the smallest and largest. If the sum is too big, the only way to shrink it is to move the right pointer left; too small, move the left pointer right. Pattern: <b>two pointers on a sorted array</b>, O(1) space.</p>
+<h4>Brute force first</h4>
+<p>Every pair: O(n&sup2;). Or a hash map like Two Sum: O(n) time but O(n) space; the problem asks for constant extra space.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>l = 0</code>, <code>r = n - 1</code>.</li><li>Compute <code>sum = numbers[l] + numbers[r]</code>.</li><li>Equal to target: return <code>[l + 1, r + 1]</code>.</li><li>Too small: <code>l++</code> (need a bigger number). Too big: <code>r--</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] twoSum(int[] numbers, int target) {
+        int l = 0, r = numbers.length - 1;
+        while (l &lt; r) {
+            int sum = numbers[l] + numbers[r];
+            if (sum == target) return new int[]{l + 1, r + 1};
+            if (sum &lt; target) l++; // need bigger
+            else r--;              // need smaller
+        }
+        return new int[0]; // problem says never happens
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; each step moves one pointer, so at most n steps.</p>
+<h4>Dry run</h4>
+<p><code>[2,3,4]</code>, 6: 2+4=6 &rarr; return <code>[1,3]</code>. <code>[2,7,11,15]</code>, 9: 2+15=17 big r--; 2+11=13 r--; 2+7=9 &rarr; <code>[1,2]</code>.</p>
+<h4>Watch out</h4>
+<p>Answer is 1-based: return <code>l + 1</code>, <code>r + 1</code>. Use <code>l &lt; r</code> so you never use the same element twice.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/3sum/">15. 3Sum</a> — fix one number, two pointers on the rest.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find every unique triple that sums to 0: <code>[-1,0,1,2,-1,-4]</code> &rarr; <code>[[-1,-1,2],[-1,0,1]]</code>. The insight: <b>sort</b>, then fix the first number <code>nums[i]</code> and solve Two Sum II on the rest with two pointers, looking for <code>-nums[i]</code>. Skip equal neighbours so no triple is reported twice.</p>
+<h4>Brute force first</h4>
+<p>Three nested loops plus a set to remove duplicate triples: O(n&sup3;). Too slow for n = 3000.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Sort the array.</li><li>For each i: if <code>nums[i]</code> equals <code>nums[i - 1]</code>, skip it (same first number again). If <code>nums[i] &gt; 0</code>, stop: nothing after can sum to 0.</li><li>Set <code>l = i + 1</code>, <code>r = n - 1</code>; compute <code>sum = nums[i] + nums[l] + nums[r]</code>.</li><li>Sum &lt; 0: <code>l++</code>. Sum &gt; 0: <code>r--</code>. Sum = 0: record the triple, move both, and skip duplicates of <code>nums[l]</code>.</li><li>Return all recorded triples.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;List&lt;Integer&gt;&gt; threeSum(int[] nums) {
+        Arrays.sort(nums);
+        List&lt;List&lt;Integer&gt;&gt; res = new ArrayList&lt;&gt;();
+        int n = nums.length;
+        for (int i = 0; i &lt; n - 2; i++) {
+            if (nums[i] &gt; 0) break;
+            if (i &gt; 0 &amp;&amp; nums[i] == nums[i - 1]) continue;
+            int l = i + 1, r = n - 1;
+            while (l &lt; r) {
+                int sum = nums[i] + nums[l] + nums[r];
+                if (sum &lt; 0) l++;
+                else if (sum &gt; 0) r--;
+                else {
+                    res.add(List.of(nums[i], nums[l], nums[r]));
+                    l++;
+                    r--;
+                    // skip repeats of the middle number
+                    while (l &lt; r &amp;&amp; nums[l] == nums[l - 1]) l++;
+                }
+            }
+        }
+        return res;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n&sup2;) &middot; <b>Space</b> O(1) extra (besides the output and the sort) &mdash; n choices of i, each a linear two-pointer scan.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>sorted: [-4,-1,-1,0,1,2]
+i=0 (-4): l,r sums all &lt; 0, no triple
+i=1 (-1): -1+-1+2=0 add [-1,-1,2]; l=3 r=4: -1+0+1=0 add [-1,0,1]
+i=2 (-1): same as nums[1], skip
+i=3 (0):  0+1+2 &gt; 0, r-- ... none</code></pre>
+<h4>Watch out</h4>
+<p>Duplicates are the classic bug: skip equal <code>nums[i]</code> values, and after a hit skip equal <code>nums[l]</code> values. <code>[0,0,0,0]</code> must give one triple, not several.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/container-with-most-water/">11. Container With Most Water</a> — move the shorter wall.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Pick two lines; the water they hold is <code>min(height) &times; distance</code>. Find the largest. <code>[1,8,6,2,5,4,8,3,7]</code> &rarr; 49. The insight: start with the widest pair. The shorter wall limits the water, so moving the taller wall inward can never help; <b>always move the shorter wall</b>. Pattern: <b>two pointers, greedy shrink</b>.</p>
+<h4>Brute force first</h4>
+<p>Try every pair: O(n&sup2;). With n up to 10<sup>5</sup> that is too slow.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>l = 0</code>, <code>r = n - 1</code>, <code>best = 0</code>.</li><li>Area = <code>min(h[l], h[r]) * (r - l)</code>; keep the max.</li><li>If <code>h[l] &lt; h[r]</code>, move <code>l++</code>; otherwise <code>r--</code>.</li><li>Repeat until the pointers meet.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maxArea(int[] height) {
+        int l = 0, r = height.length - 1, best = 0;
+        while (l &lt; r) {
+            int h = Math.min(height[l], height[r]);
+            best = Math.max(best, h * (r - l));
+            // the shorter wall can't do better; drop it
+            if (height[l] &lt; height[r]) l++;
+            else r--;
+        }
+        return best;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one pointer moves each step.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>h=[1,8,6,2,5,4,8,3,7]
+l=0 r=8: min(1,7)*8 = 8   1&lt;7 -&gt; l=1
+l=1 r=8: min(8,7)*7 = 49  8&gt;7 -&gt; r=7
+l=1 r=7: min(8,3)*6 = 18  r=6 ... best stays 49</code></pre>
+<h4>Watch out</h4>
+<p>When the walls are equal, moving either one is fine. Do not confuse this with Trapping Rain Water: here only the two chosen walls matter, not the bars between them.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/trapping-rain-water/">42. Trapping Rain Water</a> — move the side with the smaller max.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Bars of height <code>h[i]</code>; how much rain stays on top? <code>[0,1,0,2,1,0,1,3,2,1,2,1]</code> &rarr; 6. Water above bar i is <code>min(tallest on left, tallest on right) - h[i]</code>. The insight: with pointers at both ends, the side with the <b>smaller max</b> is the limiting side, so its water is already known. Settle that side and move it. Pattern: <b>two pointers with running maxima</b>.</p>
+<h4>Brute force first</h4>
+<p>For each bar, scan left and right for the tallest bars: O(n&sup2;). Precomputing <code>leftMax[]</code> and <code>rightMax[]</code> arrays gives O(n) time but O(n) space.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>l = 0</code>, <code>r = n - 1</code>, <code>leftMax = rightMax = 0</code>.</li><li>Update <code>leftMax = max(leftMax, h[l])</code> and <code>rightMax = max(rightMax, h[r])</code>.</li><li>If <code>leftMax &lt; rightMax</code>: the left side is limiting; add <code>leftMax - h[l]</code> and <code>l++</code>.</li><li>Otherwise add <code>rightMax - h[r]</code> and <code>r--</code>.</li><li>Stop when the pointers meet.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int trap(int[] h) {
+        int l = 0, r = h.length - 1;
+        int leftMax = 0, rightMax = 0, water = 0;
+        while (l &lt; r) {
+            leftMax = Math.max(leftMax, h[l]);
+            rightMax = Math.max(rightMax, h[r]);
+            if (leftMax &lt; rightMax) {
+                water += leftMax - h[l]; // left limits
+                l++;
+            } else {
+                water += rightMax - h[r]; // right limits
+                r--;
+            }
+        }
+        return water;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one pass, four variables.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>h=[4,2,0,3,2,5]
+l=0 r=5: lM=4 rM=5, 4&lt;5 add 0, l=1
+l=1:     lM=4 add 4-2=2, l=2
+l=2:     add 4-0=4, l=3
+l=3:     add 4-3=1, l=4
+l=4:     add 4-2=2, l=5 stop -&gt; 9</code></pre>
+<h4>Watch out</h4>
+<p>Update the max <b>before</b> adding water, so <code>max - h</code> is never negative. Arrays shorter than 3 hold no water.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

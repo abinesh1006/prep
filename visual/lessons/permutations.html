@@ -174,12 +174,227 @@ void backtrack(int[] nums, boolean[] used, List<Integer> path) {
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/permutations/">46. Permutations</a> — the first animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/permutations-ii/">47. Permutations II</a> — the second animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/letter-case-permutation/">784. Letter Case Permutation</a> — two choices per letter.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/letter-combinations-of-a-phone-number/">17. Letter Combinations of a Phone Number</a> — one slot per digit.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/next-permutation/">31. Next Permutation</a> — not backtracking: find the dip from the right, swap, reverse.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/permutation-sequence/">60. Permutation Sequence</a> — count blocks of (n−1)! instead of generating.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/permutations/">46. Permutations</a> — the first animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Given distinct numbers, list every ordering. <code>[1,2,3]</code> &rarr; 6 orderings (3! = 3&times;2&times;1). Think of n empty slots: fill slot 1 with any unused number, slot 2 with any number still unused, and so on. A <code>used[]</code> array remembers which numbers are already in the current ordering. Pattern: <b>backtracking</b> (choose, explore, un-choose).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Keep a <code>path</code> (the ordering being built) and <code>used[i]</code> flags.</li><li>If <code>path</code> has n numbers, save a <b>copy</b> of it.</li><li>Otherwise try every index <code>i</code> that is not used: mark it, add <code>nums[i]</code>, recurse.</li><li>After the recursive call returns, remove the number and clear the flag so the next choice starts clean.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;List&lt;Integer&gt;&gt; permute(int[] nums) {
+        List&lt;List&lt;Integer&gt;&gt; res = new ArrayList&lt;&gt;();
+        boolean[] used = new boolean[nums.length];
+        build(nums, used, new ArrayList&lt;&gt;(), res);
+        return res;
+    }
+
+    void build(int[] nums, boolean[] used,
+               List&lt;Integer&gt; path, List&lt;List&lt;Integer&gt;&gt; res) {
+        if (path.size() == nums.length) { // every slot filled
+            res.add(new ArrayList&lt;&gt;(path)); // save a copy
+            return;
+        }
+        for (int i = 0; i &lt; nums.length; i++) {
+            if (used[i]) continue; // already placed
+            used[i] = true;
+            path.add(nums[i]);              // choose
+            build(nums, used, path, res);   // explore
+            path.remove(path.size() - 1);   // un-choose
+            used[i] = false;
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n &middot; n!) &middot; <b>Space</b> O(n) &mdash; n! orderings, each copied in O(n); the recursion and path are n deep (output not counted).</p>
+<h4>Dry run</h4>
+<p><code>[1,2,3]</code>: pick 1 &rarr; pick 2 &rarr; pick 3 &rarr; save [1,2,3]; undo 3, undo 2, pick 3 &rarr; pick 2 &rarr; save [1,3,2]; undo back to the empty path, pick 2 first &hellip; six saves in total.</p>
+<h4>Watch out</h4>
+<p>Save <code>new ArrayList&lt;&gt;(path)</code>, not <code>path</code> itself: the same list object keeps changing, and you would end up with n! references to one empty list.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/permutations-ii/">47. Permutations II</a> — the second animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Same as Permutations, but the input may have repeats, and <code>[1,1,2]</code> must give only 3 orderings, not 6. Sort so equal values sit together. Then, for one slot, only the <b>first</b> unused copy of a value may be tried; a later twin would build exactly the same orderings again. Pattern: <b>backtracking with duplicate skipping</b>.</p>
+<h4>Brute force first</h4>
+<p>Generate all n! orderings and drop repeats with a <code>Set</code>: correct but wastes time on duplicates and memory on the set.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Sort <code>nums</code>.</li><li>Build orderings exactly as in problem 46 with <code>used[]</code>.</li><li>Skip index <code>i</code> when <code>nums[i] == nums[i-1]</code> and <code>used[i-1]</code> is false: the twin on the left was already tried in this slot and then released.</li><li>Save a copy when the path is full.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;List&lt;Integer&gt;&gt; permuteUnique(int[] nums) {
+        Arrays.sort(nums); // equal values side by side
+        List&lt;List&lt;Integer&gt;&gt; res = new ArrayList&lt;&gt;();
+        build(nums, new boolean[nums.length],
+              new ArrayList&lt;&gt;(), res);
+        return res;
+    }
+
+    void build(int[] nums, boolean[] used,
+               List&lt;Integer&gt; path, List&lt;List&lt;Integer&gt;&gt; res) {
+        if (path.size() == nums.length) {
+            res.add(new ArrayList&lt;&gt;(path));
+            return;
+        }
+        for (int i = 0; i &lt; nums.length; i++) {
+            if (used[i]) continue;
+            // same value as the left twin, and the twin is
+            // not in the path: this slot already tried it
+            if (i &gt; 0 &amp;&amp; nums[i] == nums[i - 1]
+                    &amp;&amp; !used[i - 1]) continue;
+            used[i] = true;
+            path.add(nums[i]);
+            build(nums, used, path, res);
+            path.remove(path.size() - 1);
+            used[i] = false;
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n &middot; n!) worst case &middot; <b>Space</b> O(n) &mdash; at most n! orderings (fewer with repeats); recursion depth n.</p>
+<h4>Dry run</h4>
+<p><code>[1,1,2]</code> (indexes a, b, c). Slot 1: try 1a &rarr; builds [1,1,2] and [1,2,1]. Back in slot 1, 1b is skipped (1a is not used, same value). Try 2 &rarr; [2,1,1] (inside, 1b is skipped again after 1a is released). 3 orderings.</p>
+<h4>Watch out</h4>
+<p>The condition is <code>!used[i-1]</code>. Using <code>used[i-1]</code> also gives correct answers but explores far more dead branches. Forgetting to sort breaks the skip entirely.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/letter-case-permutation/">784. Letter Case Permutation</a> — two choices per letter.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>For each letter you may write it lower or upper case; digits stay as they are. <code>"a1b2"</code> &rarr; 2 letters &rarr; 2&times;2 = 4 strings. Walk the string left to right and branch only on letters. Pattern: <b>backtracking with two choices per position</b> (a binary decision tree).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Turn the string into a <code>char[]</code> you can change in place.</li><li>At index i: if it is the end, save the string.</li><li>If <code>c[i]</code> is a digit, just move to <code>i + 1</code>.</li><li>If it is a letter, set it lower and recurse, then set it upper and recurse.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;String&gt; letterCasePermutation(String s) {
+        List&lt;String&gt; res = new ArrayList&lt;&gt;();
+        build(s.toCharArray(), 0, res);
+        return res;
+    }
+
+    void build(char[] c, int i, List&lt;String&gt; res) {
+        if (i == c.length) { // decided every char
+            res.add(new String(c));
+            return;
+        }
+        if (Character.isDigit(c[i])) {  // digit: one choice
+            build(c, i + 1, res);
+            return;
+        }
+        c[i] = Character.toLowerCase(c[i]);
+        build(c, i + 1, res);           // choice 1: lower
+        c[i] = Character.toUpperCase(c[i]);
+        build(c, i + 1, res);           // choice 2: upper
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(2<sup>L</sup> &middot; n) &middot; <b>Space</b> O(n) &mdash; L letters give 2<sup>L</sup> strings of length n; recursion depth n.</p>
+<h4>Dry run</h4>
+<p><code>"3z4"</code>: '3' digit &rarr; 'z' lower &rarr; '4' digit &rarr; save "3z4"; back, 'Z' upper &rarr; save "3Z4". Result ["3z4","3Z4"].</p>
+<h4>Watch out</h4>
+<p>No explicit undo is needed because each branch overwrites <code>c[i]</code> before recursing. Do not branch on digits, or you will save each string twice.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/letter-combinations-of-a-phone-number/">17. Letter Combinations of a Phone Number</a> — one slot per digit.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Each digit 2&ndash;9 maps to letters on an old phone keypad. <code>"23"</code> &rarr; pick one of "abc", then one of "def" &rarr; 9 strings. One slot per digit, try every letter in that slot. Pattern: <b>backtracking over a fixed number of slots</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Store the keypad as an array <code>KEYS[digit]</code>.</li><li>If the input is empty, return an empty list.</li><li>At position i, loop over the letters of <code>digits[i]</code>: append one, recurse to i + 1, delete it.</li><li>When i reaches the end, save the built string.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    static final String[] KEYS = {"", "", "abc", "def",
+        "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"};
+
+    public List&lt;String&gt; letterCombinations(String digits) {
+        List&lt;String&gt; res = new ArrayList&lt;&gt;();
+        if (digits.isEmpty()) return res;  // "" gives []
+        build(digits, 0, new StringBuilder(), res);
+        return res;
+    }
+
+    void build(String d, int i, StringBuilder sb,
+               List&lt;String&gt; res) {
+        if (i == d.length()) { // one letter per digit
+            res.add(sb.toString());
+            return;
+        }
+        String keys = KEYS[d.charAt(i) - '0'];
+        for (char ch : keys.toCharArray()) {
+            sb.append(ch);                  // choose
+            build(d, i + 1, sb, res);       // next digit
+            sb.deleteCharAt(sb.length() - 1); // undo
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(4<sup>n</sup> &middot; n) &middot; <b>Space</b> O(n) &mdash; at most 4 letters per digit (7 and 9), each result has length n.</p>
+<h4>Dry run</h4>
+<p><code>"23"</code>: 'a' then 'd','e','f' &rarr; ad, ae, af; 'b' &rarr; bd, be, bf; 'c' &rarr; cd, ce, cf.</p>
+<h4>Watch out</h4>
+<p><code>""</code> must return <code>[]</code>, not <code>[""]</code>; without the early return the recursion saves one empty string.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/next-permutation/">31. Next Permutation</a> — not backtracking: find the dip from the right, swap, reverse.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Rearrange the array into the next bigger ordering in dictionary order (wrap to the smallest if it is already the biggest). <code>[1,2,3]</code> &rarr; <code>[1,3,2]</code>. From the right, the longest descending tail cannot grow any bigger, so change the number just before it (the "dip"): swap it with the smallest bigger number in the tail, then make the tail as small as possible by reversing it. Pattern: <b>scan from the right + swap + reverse</b>.</p>
+<h4>Brute force first</h4>
+<p>List all permutations in sorted order and find the one after the current: O(n &middot; n!), hopeless past n = 10.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Walk i from <code>n-2</code> down while <code>nums[i] &gt;= nums[i+1]</code>; stop at the first dip.</li><li>If a dip exists, walk j from the end down to the first <code>nums[j] &gt; nums[i]</code> and swap them.</li><li>Reverse <code>nums[i+1..end]</code> (it is descending, reversing makes it ascending).</li><li>If there was no dip (i = -1), the reverse alone turns the biggest ordering into the smallest.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public void nextPermutation(int[] nums) {
+        int i = nums.length - 2;
+        // 1. from the right, find the first "dip"
+        while (i &gt;= 0 &amp;&amp; nums[i] &gt;= nums[i + 1]) i--;
+        if (i &gt;= 0) {
+            // 2. rightmost number bigger than nums[i]
+            int j = nums.length - 1;
+            while (nums[j] &lt;= nums[i]) j--;
+            swap(nums, i, j);
+        }
+        // 3. the tail is descending: reverse to ascending
+        reverse(nums, i + 1, nums.length - 1);
+    }
+
+    void swap(int[] a, int i, int j) {
+        int t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+
+    void reverse(int[] a, int l, int r) {
+        while (l &lt; r) swap(a, l++, r--);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; at most three linear passes, all in place.</p>
+<h4>Dry run</h4>
+<p><code>[1,3,2]</code>: from the right 3 &gt; 2, then 1 &lt; 3 &rarr; dip at i = 0 (value 1). Rightmost bigger than 1 is 2 (j = 2); swap &rarr; [2,3,1]. Reverse tail [3,1] &rarr; [2,1,3].</p>
+<h4>Watch out</h4>
+<p>Use <code>&gt;=</code> and <code>&lt;=</code> in the two scans so duplicates work (<code>[1,5,1]</code> &rarr; <code>[5,1,1]</code>). Swap with the <b>rightmost</b> bigger value, not the first one you meet from the left.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/permutation-sequence/">60. Permutation Sequence</a> — count blocks of (n−1)! instead of generating.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Return the k-th ordering of 1..n in sorted order without listing them. For n = 4, the orderings starting with 1 are the first 3! = 6, those starting with 2 are the next 6, and so on. So <code>(k-1) / 3!</code> tells you the first digit; repeat with the remainder for the next slot. Pattern: <b>counting blocks with factorials</b> (factorial number system).</p>
+<h4>Brute force first</h4>
+<p>Generate orderings in order (or call Next Permutation k-1 times): O(k &middot; n), up to 9! &times; 9 steps.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Precompute factorials and a list of unused digits 1..n.</li><li>Make k 0-based: <code>k--</code>.</li><li>For each slot, block size = (digits left &minus; 1)!. Index = <code>k / block</code>.</li><li>Take and remove that digit from the list, set <code>k %= block</code>, continue.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public String getPermutation(int n, int k) {
+        List&lt;Integer&gt; left = new ArrayList&lt;&gt;();
+        int[] fact = new int[n + 1];
+        fact[0] = 1;
+        for (int i = 1; i &lt;= n; i++) {
+            fact[i] = fact[i - 1] * i;
+            left.add(i); // digits 1..n unused
+        }
+        k--;                             // make k 0-based
+        StringBuilder sb = new StringBuilder();
+        for (int slot = n; slot &gt;= 1; slot--) {
+            int block = fact[slot - 1]; // perms per digit
+            int idx = k / block; // which block k is in
+            sb.append(left.remove(idx));
+            k %= block; // position in the block
+        }
+        return sb.toString();
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n<sup>2</sup>) &middot; <b>Space</b> O(n) &mdash; n slots, each <code>remove</code> from the list costs O(n); n &le; 9 so it is tiny.</p>
+<h4>Dry run</h4>
+<p>n = 4, k = 9 &rarr; k = 8. Block 6: 8/6 = 1 &rarr; digit 2, k = 2, left [1,3,4]. Block 2: 2/2 = 1 &rarr; 3, k = 0, left [1,4]. Block 1: 0 &rarr; 1, then 4. Answer "2314".</p>
+<h4>Watch out</h4>
+<p>Forgetting <code>k--</code> is the classic off-by-one: with 1-based k the last ordering of each block lands in the next block.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

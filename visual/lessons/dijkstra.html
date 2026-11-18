@@ -199,11 +199,237 @@ pq.add(<span class="k">new int</span>[]{<span class="n">0</span>, src});
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/network-delay-time/">743. Network Delay Time</a> — exactly animation 1.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/path-with-maximum-probability/">1514. Path with Maximum Probability</a> — max-heap, multiply instead of add.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/path-with-minimum-effort/">1631. Path With Minimum Effort</a> — grid Dijkstra, path cost = max step instead of sum.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/cheapest-flights-within-k-stops/">787. Cheapest Flights Within K Stops</a> — the stop limit changes the state; Bellman-Ford with k + 1 rounds.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/swim-in-rising-water/">778. Swim in Rising Water</a> — Dijkstra where the cost of a path is its highest cell.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/network-delay-time/">743. Network Delay Time</a> — exactly animation 1.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>A signal leaves node k and travels along directed, weighted edges <code>[u, v, time]</code>. How long until every node has received it, or −1 if some never does? Key insight: each node hears the signal at its <b>shortest-path distance</b> from k, so the answer is the largest of those distances. Weights are non-negative, so use <b>Dijkstra</b>: always settle the closest unsettled node next, using a min-heap (a priority queue that hands back the smallest item first).</p>
+<h4>Brute force first</h4>
+<p>Bellman-Ford (relax every edge n − 1 times) also works: O(n·E).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Build the adjacency list. <code>dist</code> = ∞ everywhere except <code>dist[k] = 0</code>.</li><li>Push {k, 0} into the min-heap.</li><li>Pop the smallest {u, d}. If <code>d &gt; dist[u]</code> it is an outdated entry: skip it.</li><li>For each edge u → v: if <code>d + w &lt; dist[v]</code>, update <code>dist[v]</code> and push {v, new distance}.</li><li>At the end, if any distance is still ∞ return −1, else return the maximum.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int networkDelayTime(int[][] times, int n, int k) {
+        List&lt;List&lt;int[]&gt;&gt; graph = new ArrayList&lt;&gt;();
+        for (int i = 0; i &lt;= n; i++) graph.add(new ArrayList&lt;&gt;());
+        for (int[] t : times) {        // t = {from, to, time}
+            graph.get(t[0]).add(new int[]{t[1], t[2]});
+        }
+        int[] dist = new int[n + 1];   // nodes are 1..n
+        Arrays.fill(dist, Integer.MAX_VALUE);
+        dist[k] = 0;
+        // heap of {node, distance}: smallest distance first
+        PriorityQueue&lt;int[]&gt; heap = new PriorityQueue&lt;&gt;(
+                Comparator.comparingInt(x -&gt; x[1]));
+        heap.add(new int[]{k, 0});
+        while (!heap.isEmpty()) {
+            int[] top = heap.poll();
+            int u = top[0], d = top[1];
+            if (d &gt; dist[u]) continue; // old, outdated entry
+            for (int[] e : graph.get(u)) {
+                int v = e[0], nd = d + e[1];
+                if (nd &lt; dist[v]) {    // found a faster way
+                    dist[v] = nd;
+                    heap.add(new int[]{v, nd});
+                }
+            }
+        }
+        int worst = 0;                 // last node to hear it
+        for (int i = 1; i &lt;= n; i++) {
+            if (dist[i] == Integer.MAX_VALUE) return -1;
+            worst = Math.max(worst, dist[i]);
+        }
+        return worst;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(E log E) · <b>Space</b> O(n + E) — each edge can push one heap entry, and each push or pop costs log of the heap size.</p>
+<h4>Dry run</h4>
+<p>times [[2,1,1],[2,3,1],[3,4,1]], k = 2. Pop {2,0}: dist[1] = 1, dist[3] = 1. Pop {1,1}: no edges. Pop {3,1}: dist[4] = 2. Pop {4,2}. Max of 1, 0, 1, 2 = 2.</p>
+<h4>Watch out</h4>
+<p>Skip stale heap entries (<code>d &gt; dist[u]</code>), or the same node is expanded many times. Nodes are 1..n, so loop from 1, not 0. Dijkstra fails with negative weights.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/path-with-maximum-probability/">1514. Path with Maximum Probability</a> — max-heap, multiply instead of add.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Each undirected edge has a success probability; find the most likely path from start to end (the probability of a path is the <b>product</b> of its edges). Key insight: probabilities are ≤ 1, so multiplying can only make a path less likely, just as adding a non-negative weight only makes a path longer. That makes Dijkstra valid with two changes: a <b>max-heap</b> and <b>multiply instead of add</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Build the adjacency list with each edge both ways. <code>best[start] = 1</code>, everything else 0.</li><li>Push {start, 1.0} into a max-heap (largest probability first).</li><li>Pop {u, p}. If u is the end, return p: nothing popped later can be larger.</li><li>If <code>p &lt; best[u]</code>, skip (outdated). Otherwise for each edge, <code>np = p · prob</code>; if it beats <code>best[v]</code>, update and push.</li><li>If the heap empties, return 0.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public double maxProbability(int n, int[][] edges,
+            double[] succProb, int start_node, int end_node) {
+        List&lt;List&lt;double[]&gt;&gt; graph = new ArrayList&lt;&gt;();
+        for (int i = 0; i &lt; n; i++) graph.add(new ArrayList&lt;&gt;());
+        for (int i = 0; i &lt; edges.length; i++) {
+            int a = edges[i][0], b = edges[i][1];
+            graph.get(a).add(new double[]{b, succProb[i]});
+            graph.get(b).add(new double[]{a, succProb[i]});
+        }
+        double[] best = new double[n]; // 0.0 = not reached
+        best[start_node] = 1.0;
+        // max-heap of {node, probability}: biggest first
+        PriorityQueue&lt;double[]&gt; heap = new PriorityQueue&lt;&gt;(
+                (x, y) -&gt; Double.compare(y[1], x[1]));
+        heap.add(new double[]{start_node, 1.0});
+        while (!heap.isEmpty()) {
+            double[] top = heap.poll();
+            int u = (int) top[0];
+            double p = top[1];
+            if (u == end_node) return p; // can only get worse
+            if (p &lt; best[u]) continue;   // outdated entry
+            for (double[] e : graph.get(u)) {
+                int v = (int) e[0];
+                double np = p * e[1];    // multiply, not add
+                if (np &gt; best[v]) {
+                    best[v] = np;
+                    heap.add(new double[]{v, np});
+                }
+            }
+        }
+        return 0.0;                      // end not reachable
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(E log E) · <b>Space</b> O(n + E) — the same as standard Dijkstra.</p>
+<h4>Dry run</h4>
+<p>Edges 0–1 (0.5), 1–2 (0.5), 0–2 (0.2), start 0, end 2. Pop {0,1}: best[1] = 0.5, best[2] = 0.2. Pop {1,0.5}: 0.5 · 0.5 = 0.25 &gt; 0.2, so best[2] = 0.25. Pop {2,0.25} → return 0.25.</p>
+<h4>Watch out</h4>
+<p>The comparator must sort <b>descending</b> (<code>Double.compare(y[1], x[1])</code>). Return 0 (not −1) when the end is unreachable. Store the node id in a double array, so cast it back with <code>(int)</code>.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/path-with-minimum-effort/">1631. Path With Minimum Effort</a> — grid Dijkstra, path cost = max step instead of sum.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Walk from the top-left to the bottom-right of a height grid. A path's effort is its <b>biggest single step</b> (the largest height difference between two neighbouring cells on it). Find the smallest possible effort. Key insight: Dijkstra still works when the path cost is <code>max(cost so far, step)</code> instead of a sum, because extending a path never makes its cost smaller. Pattern: <b>grid Dijkstra with a max-cost path</b>.</p>
+<h4>Brute force first</h4>
+<p>Binary search on the effort and check with BFS whether the end is reachable using only steps ≤ that effort: O(m·n·log H), also accepted.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>effort</code> grid = ∞, except 0 at the start. Push {0, 0, 0} into a min-heap.</li><li>Pop the smallest {e, r, c}. If it is the bottom-right cell, return e.</li><li>Skip it if <code>e &gt; effort[r][c]</code>.</li><li>For each in-grid neighbour, <code>ne = max(e, |height difference|)</code>; if smaller than its effort, update and push.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int minimumEffortPath(int[][] heights) {
+        int m = heights.length, n = heights[0].length;
+        int[][] effort = new int[m][n];
+        for (int[] row : effort) {
+            Arrays.fill(row, Integer.MAX_VALUE);
+        }
+        effort[0][0] = 0;
+        // heap of {effort, row, col}: smallest effort first
+        PriorityQueue&lt;int[]&gt; heap = new PriorityQueue&lt;&gt;(
+                Comparator.comparingInt(x -&gt; x[0]));
+        heap.add(new int[]{0, 0, 0});
+        int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        while (!heap.isEmpty()) {
+            int[] top = heap.poll();
+            int e = top[0], r = top[1], c = top[2];
+            if (r == m - 1 &amp;&amp; c == n - 1) return e;
+            if (e &gt; effort[r][c]) continue; // outdated
+            for (int[] d : dirs) {
+                int nr = r + d[0], nc = c + d[1];
+                if (nr &lt; 0 || nc &lt; 0 || nr &gt;= m || nc &gt;= n) {
+                    continue;
+                }
+                int step = Math.abs(heights[nr][nc]
+                                    - heights[r][c]);
+                int ne = Math.max(e, step); // worst step so far
+                if (ne &lt; effort[nr][nc]) {
+                    effort[nr][nc] = ne;
+                    heap.add(new int[]{ne, nr, nc});
+                }
+            }
+        }
+        return 0;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m·n·log(m·n)) · <b>Space</b> O(m·n) — every cell has 4 edges, each pushing at most one heap entry.</p>
+<h4>Dry run</h4>
+<p>[[1,2,2],[3,8,2],[5,3,5]]. The route 1 → 3 → 5 → 3 → 5 (down the left, then along the bottom) has steps 2, 2, 2, 2, so its effort is 2. Any route through 8 has a step of at least 5. Dijkstra settles the cells reachable with effort ≤ 2 first and pops the corner at 2.</p>
+<h4>Watch out</h4>
+<p>Use <code>max</code>, not <code>+</code>, when extending a path. A 1×1 grid answers 0 (the start is the end). Return when the target is <b>popped</b>, not when it is first pushed.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/cheapest-flights-within-k-stops/">787. Cheapest Flights Within K Stops</a> — the stop limit changes the state; Bellman-Ford with k + 1 rounds.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the cheapest flight route from src to dst using <b>at most k stops</b> (so at most k + 1 flights), or −1. Key insight: the stop limit means the cheapest route overall may be too long, so plain Dijkstra on price alone is wrong. <b>Bellman-Ford</b> fits perfectly: after round i, <code>cost</code> holds the cheapest price using at most i flights. Run exactly k + 1 rounds.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>cost</code> = ∞ except <code>cost[src] = 0</code>.</li><li>Repeat k + 1 times:</li><li>Copy <code>cost</code> into <code>next</code>. For every flight from → to: if <code>cost[from]</code> is known and <code>cost[from] + price &lt; next[to]</code>, update <code>next[to]</code>.</li><li>Set <code>cost = next</code>.</li><li>Return <code>cost[dst]</code>, or −1 if it is still ∞.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findCheapestPrice(int n, int[][] flights,
+                                 int src, int dst, int k) {
+        final int INF = Integer.MAX_VALUE;
+        int[] cost = new int[n];       // cheapest so far
+        Arrays.fill(cost, INF);
+        cost[src] = 0;
+        // k stops = at most k + 1 flights = k + 1 rounds
+        for (int round = 0; round &lt;= k; round++) {
+            int[] next = cost.clone(); // read old, write new
+            for (int[] f : flights) {
+                int from = f[0], to = f[1], price = f[2];
+                if (cost[from] != INF
+                        &amp;&amp; cost[from] + price &lt; next[to]) {
+                    next[to] = cost[from] + price;
+                }
+            }
+            cost = next;
+        }
+        return cost[dst] == INF ? -1 : cost[dst];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(k·E) · <b>Space</b> O(n) — k + 1 passes over all flights, two arrays of size n.</p>
+<h4>Dry run</h4>
+<p>Flights 0→1 (100), 1→2 (100), 0→2 (500), k = 1. Round 1: cost[1] = 100, cost[2] = 500. Round 2: via 1, 100 + 100 = 200 &lt; 500, cost[2] = 200. Answer 200. With k = 0, only round 1 runs → 500.</p>
+<h4>Watch out</h4>
+<p>Read from the <b>old</b> array and write into the copy. Updating in place lets one round chain several flights and break the stop limit (0→1→2 with k = 0 would wrongly be allowed). Dijkstra with state (node, stops used) also works.</p>
+</div></details>
+</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/swim-in-rising-water/">778. Swim in Rising Water</a> — Dijkstra where the cost of a path is its highest cell.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>At time t, water depth is t everywhere, and you can swim into a cell only if its height ≤ t. Find the earliest time to go from top-left to bottom-right. Key insight: a path is usable once the water covers its <b>highest cell</b>, so the cost of a path is its maximum height. Find the path with the smallest maximum: <b>Dijkstra where cost = max</b>, just like Minimum Effort.</p>
+<h4>Brute force first</h4>
+<p>Binary search on t and BFS through cells with height ≤ t: O(n² log n²). Union-Find adding cells in height order also works.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Push {grid[0][0], 0, 0} into a min-heap and mark (0,0) seen.</li><li>Pop the smallest {t, r, c}. If it is the bottom-right cell, return t.</li><li>For each unseen in-grid neighbour, mark it seen and push {max(t, its height), nr, nc}.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int swimInWater(int[][] grid) {
+        int n = grid.length;
+        boolean[][] seen = new boolean[n][n];
+        // heap of {time, row, col}: lowest time first
+        PriorityQueue&lt;int[]&gt; heap = new PriorityQueue&lt;&gt;(
+                Comparator.comparingInt(x -&gt; x[0]));
+        heap.add(new int[]{grid[0][0], 0, 0});
+        seen[0][0] = true;
+        int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        while (!heap.isEmpty()) {
+            int[] top = heap.poll();
+            int t = top[0], r = top[1], c = top[2];
+            if (r == n - 1 &amp;&amp; c == n - 1) return t;
+            for (int[] d : dirs) {
+                int nr = r + d[0], nc = c + d[1];
+                if (nr &lt; 0 || nc &lt; 0 || nr &gt;= n || nc &gt;= n
+                        || seen[nr][nc]) {
+                    continue;
+                }
+                seen[nr][nc] = true;
+                // must wait until the water covers the
+                // highest cell on the path
+                int nt = Math.max(t, grid[nr][nc]);
+                heap.add(new int[]{nt, nr, nc});
+            }
+        }
+        return -1;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n² log n) · <b>Space</b> O(n²) — each cell is pushed once; log n² = 2 log n.</p>
+<h4>Dry run</h4>
+<p>[[0,2],[1,3]]. Push {0,(0,0)}. Pop it: push {2,(0,1)} and {1,(1,0)}. Pop {1,(1,0)}: push {max(1,3)=3,(1,1)}. Pop {2,(0,1)}: (1,1) already seen. Pop {3,(1,1)} → return 3.</p>
+<h4>Watch out</h4>
+<p>The start cell's own height counts: begin with <code>grid[0][0]</code>, not 0. Marking a cell seen when pushed is safe here because the heap always pops the lowest time first, so the first push into a cell is never beaten.</p>
+</div></details>
+</li>
 </ul>
 
 <h2>Test yourself</h2>

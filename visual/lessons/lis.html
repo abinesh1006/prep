@@ -153,11 +153,187 @@
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-increasing-subsequence/">300. Longest Increasing Subsequence</a> — both animations.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/number-of-longest-increasing-subsequence/">673. Number of LIS</a> — keep a count next to each dp.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/largest-divisible-subset/">368. Largest Divisible Subset</a> — sort, "divides" instead of "smaller", keep parents.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-length-of-pair-chain/">646. Maximum Length of Pair Chain</a> — LIS on pairs (or greedy).</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/russian-doll-envelopes/">354. Russian Doll Envelopes</a> — sort trick + tails version.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-increasing-subsequence/">300. Longest Increasing Subsequence</a> — both animations.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Length of the longest strictly increasing subsequence (not necessarily contiguous). <code>[10,9,2,5,3,7,101,18]</code> &rarr; 2,3,7,18 &rarr; 4. Keep <code>tails[k]</code> = the smallest possible last value of an increasing run of length k+1. For each x, binary-search the first tail &ge; x and replace it (or append if x beats every tail). The list length is the answer. Pattern: <b>patience sorting / LIS with binary search</b>.</p>
+<h4>Brute force first</h4>
+<p><code>dp[i]</code> = longest run ending at i = 1 + max dp[j] over j &lt; i with nums[j] &lt; nums[i]: O(n<sup>2</sup>), fine for n = 2500 and worth saying first in an interview.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Start with an empty <code>tails</code> (size 0).</li><li>For each x, find the first index with <code>tails[idx] &gt;= x</code> by binary search.</li><li>Set <code>tails[idx] = x</code>; if idx == size, the size grows by one.</li><li>Return size.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int lengthOfLIS(int[] nums) {
+        // tails[k] = smallest possible last value of an
+        // increasing run of length k+1 seen so far
+        int[] tails = new int[nums.length];
+        int size = 0;
+        for (int x : nums) {
+            // binary search: first tail &gt;= x
+            int lo = 0, hi = size;
+            while (lo &lt; hi) {
+                int mid = (lo + hi) / 2;
+                if (tails[mid] &lt; x) lo = mid + 1;
+                else hi = mid;
+            }
+            tails[lo] = x;             // replace or extend
+            if (lo == size) size++; // x extended the longest
+        }
+        return size;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log n) &middot; <b>Space</b> O(n) &mdash; one binary search per number.</p>
+<h4>Dry run</h4>
+<p>10 &rarr; [10]; 9 &rarr; [9]; 2 &rarr; [2]; 5 &rarr; [2,5]; 3 &rarr; [2,3]; 7 &rarr; [2,3,7]; 101 &rarr; [2,3,7,101]; 18 &rarr; [2,3,7,18]. Size 4.</p>
+<h4>Watch out</h4>
+<p><code>tails</code> is not an actual subsequence, only its length is right. Search for <code>&gt;= x</code> (strictly increasing); <code>&gt; x</code> would allow equal values ([7,7,7] must give 1).</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/number-of-longest-increasing-subsequence/">673. Number of LIS</a> — keep a count next to each dp.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Count how many increasing subsequences have the longest length. <code>[1,3,5,4,7]</code> &rarr; 1,3,5,7 and 1,3,4,7 &rarr; 2. Run the O(n<sup>2</sup>) LIS, and next to <code>len[i]</code> keep <code>cnt[i]</code> = how many runs of that length end at i. Pattern: <b>LIS DP with counts</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Every i starts with len 1, cnt 1.</li><li>For each j &lt; i with nums[j] &lt; nums[i]: if len[j]+1 &gt; len[i], take len[j]+1 and copy cnt[j]; if equal, add cnt[j].</li><li>Track the best length and sum the counts of every i that reaches it.</li><li>Return that sum.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findNumberOfLIS(int[] nums) {
+        int n = nums.length;
+        int[] len = new int[n];  // longest run ending at i
+        int[] cnt = new int[n]; // how many runs have that len
+        int best = 0, total = 0;
+        for (int i = 0; i &lt; n; i++) {
+            len[i] = 1;
+            cnt[i] = 1; // just nums[i] alone
+            for (int j = 0; j &lt; i; j++) {
+                if (nums[j] &gt;= nums[i]) continue;
+                if (len[j] + 1 &gt; len[i]) {      // longer
+                    len[i] = len[j] + 1;
+                    cnt[i] = cnt[j];
+                } else if (len[j] + 1 == len[i]) { // tie
+                    cnt[i] += cnt[j];
+                }
+            }
+            if (len[i] &gt; best) {
+                best = len[i];
+                total = cnt[i];
+            } else if (len[i] == best) {
+                total += cnt[i];
+            }
+        }
+        return total;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n<sup>2</sup>) &middot; <b>Space</b> O(n) &mdash; every pair (j, i) is looked at once.</p>
+<h4>Dry run</h4>
+<p>[1,3,5,4,7]: len [1,2,3,3,4], cnt [1,1,1,1,?]. At 7: from 5 (len 3, cnt 1) &rarr; len 4 cnt 1; from 4 (len 3, cnt 1) tie &rarr; cnt 2. Answer 2.</p>
+<h4>Watch out</h4>
+<p>When a longer run is found, <b>replace</b> the count, do not add to it. All-equal input <code>[2,2,2,2,2]</code> gives 5 runs of length 1.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/largest-divisible-subset/">368. Largest Divisible Subset</a> — sort, "divides" instead of "smaller", keep parents.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the biggest subset where every pair divides one way or the other. After sorting, if a divides b and b divides c then a divides c, so it is enough that each number divides the next one: a chain, exactly like LIS with "divides" instead of "smaller". Keep a <code>parent</code> index to rebuild the chain. Pattern: <b>LIS DP with reconstruction</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Sort ascending.</li><li>For each i: len[i] = 1, parent[i] = &minus;1; for j &lt; i where nums[i] % nums[j] == 0 and len[j]+1 &gt; len[i], update len and parent.</li><li>Remember the index with the biggest len.</li><li>Walk parents back from it, collecting numbers, then reverse.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;Integer&gt; largestDivisibleSubset(int[] nums) {
+        Arrays.sort(nums);       // now only check j &lt; i
+        int n = nums.length;
+        int[] len = new int[n]; // biggest chain ending at i
+        int[] parent = new int[n]; // previous index in chain
+        int bestEnd = 0;
+        for (int i = 0; i &lt; n; i++) {
+            len[i] = 1;
+            parent[i] = -1;
+            for (int j = 0; j &lt; i; j++) {
+                // "divides" plays the role of "smaller"
+                if (nums[i] % nums[j] == 0
+                        &amp;&amp; len[j] + 1 &gt; len[i]) {
+                    len[i] = len[j] + 1;
+                    parent[i] = j;
+                }
+            }
+            if (len[i] &gt; len[bestEnd]) bestEnd = i;
+        }
+        List&lt;Integer&gt; res = new ArrayList&lt;&gt;();
+        for (int i = bestEnd; i != -1; i = parent[i])
+            res.add(nums[i]);    // walk the chain back
+        Collections.reverse(res);
+        return res;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n<sup>2</sup>) &middot; <b>Space</b> O(n) &mdash; pairs of indexes after an O(n log n) sort.</p>
+<h4>Dry run</h4>
+<p>[4,8,10,240]: len [1,2,1,3] (240 % 8 = 0 via 8 &rarr; 4). Best end 240 &rarr; parent 8 &rarr; parent 4 &rarr; [4,8,240].</p>
+<h4>Watch out</h4>
+<p>Without sorting, "j &lt; i" no longer means "smaller", and the chain idea breaks. Any one valid largest subset is accepted.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-length-of-pair-chain/">646. Maximum Length of Pair Chain</a> — LIS on pairs (or greedy).<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Pairs [a,b] can chain when the next pair's a is greater than the previous b. Find the longest chain. <code>[[1,2],[2,3],[3,4]]</code> &rarr; [1,2],[3,4] &rarr; 2. Greedy: always take the pair that <b>ends</b> earliest, because it leaves the most room for the rest (same as activity selection). Pattern: <b>interval greedy</b>; the LIS-style O(n<sup>2</sup>) DP also works.</p>
+<h4>Brute force first</h4>
+<p>Sort by start and run LIS: dp[i] = 1 + max dp[j] with pairs[j][1] &lt; pairs[i][0]: O(n<sup>2</sup>).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Sort pairs by their end value.</li><li>Keep <code>end</code> = end of the chain so far (start very small).</li><li>For each pair, if its start &gt; end, take it: count++, end = its end.</li><li>Return count.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findLongestChain(int[][] pairs) {
+        // greedy: always take the pair that ENDS first
+        Arrays.sort(pairs,
+                (x, y) -&gt; Integer.compare(x[1], y[1]));
+        int count = 0;
+        long end = Long.MIN_VALUE; // end of the chain so far
+        for (int[] p : pairs) {
+            if (p[0] &gt; end) { // p can follow the chain
+                count++;
+                end = p[1];
+            }
+        }
+        return count;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log n) &middot; <b>Space</b> O(1) extra &mdash; the sort dominates; then one pass.</p>
+<h4>Dry run</h4>
+<p>[[1,2],[7,8],[4,5]] sorted by end: [1,2],[4,5],[7,8]. Take [1,2] (end 2), 4 &gt; 2 take (end 5), 7 &gt; 5 take. 3.</p>
+<h4>Watch out</h4>
+<p>The rule is strictly greater (<code>c &gt; b</code>): [1,2] and [2,3] do not chain. Starting <code>end</code> at 0 breaks with negative values; use a very small number.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/russian-doll-envelopes/">354. Russian Doll Envelopes</a> — sort trick + tails version.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>An envelope fits in another when both width and height are strictly bigger. Find the longest nesting. Sort by width ascending, and for equal widths by height <b>descending</b>; then the answer is LIS on the heights. The descending tie-break stops two envelopes of the same width from both being picked. Pattern: <b>sort trick + LIS with binary search</b>.</p>
+<h4>Brute force first</h4>
+<p>Sort and run the O(n<sup>2</sup>) LIS checking both sides: too slow for n = 10<sup>5</sup>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Sort: width up; if widths tie, height down.</li><li>Run the tails-and-binary-search LIS on the heights only.</li><li>For each h: first tail &ge; h, replace or append.</li><li>Return the tails size.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maxEnvelopes(int[][] envelopes) {
+        // width up; for equal widths, height DOWN so two
+        // envelopes of the same width never chain
+        Arrays.sort(envelopes, (x, y) -&gt; x[0] != y[0]
+                ? Integer.compare(x[0], y[0])
+                : Integer.compare(y[1], x[1]));
+        // now it is plain LIS on the heights (tails version)
+        int[] tails = new int[envelopes.length];
+        int size = 0;
+        for (int[] e : envelopes) {
+            int h = e[1];
+            int lo = 0, hi = size;
+            while (lo &lt; hi) {          // first tail &gt;= h
+                int mid = (lo + hi) / 2;
+                if (tails[mid] &lt; h) lo = mid + 1;
+                else hi = mid;
+            }
+            tails[lo] = h;
+            if (lo == size) size++;
+        }
+        return size;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log n) &middot; <b>Space</b> O(n) &mdash; sort plus one binary search per envelope.</p>
+<h4>Dry run</h4>
+<p>[[5,4],[6,4],[6,7],[2,3]] &rarr; sorted [2,3],[5,4],[6,7],[6,4]. Heights 3,4,7,4: tails [3] &rarr; [3,4] &rarr; [3,4,7] &rarr; 4 replaces 4 &rarr; size 3.</p>
+<h4>Watch out</h4>
+<p>With height ascending on ties, [6,4] then [6,7] would look like a valid chain of two, which is wrong. Compare with <code>Integer.compare</code>, not subtraction.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

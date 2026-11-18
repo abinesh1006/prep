@@ -238,12 +238,256 @@ d[i][j] = min(d[i][j], d[i][k] + d[k][j]);</code></pre>
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/network-delay-time/">743. Network Delay Time</a> — solve it with both Dijkstra and Bellman-Ford.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/cheapest-flights-within-k-stops/">787. Cheapest Flights Within K Stops</a> — animation 1.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance/">1334. City With the Smallest Number of Neighbors</a> — Floyd–Warshall.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/minimum-obstacle-removal-to-reach-corner/">2290. Minimum Obstacle Removal to Reach Corner</a> — 0-1 BFS on a grid.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/minimum-cost-to-make-at-least-one-valid-path-in-a-grid/">1368. Minimum Cost to Make a Valid Path in a Grid</a> — follow the arrow = 0, change it = 1.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/course-schedule-iv/">1462. Course Schedule IV</a> — Floyd–Warshall on true/false reachability.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/network-delay-time/">743. Network Delay Time</a> — solve it with both Dijkstra and Bellman-Ford.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>A signal starts at node k and travels along weighted, one-way edges. How long until every node has it? That is the <b>largest</b> shortest distance from k. All weights are positive, so use <b>Dijkstra</b>: always settle the closest unsettled node next, using a min-heap (a priority queue that hands out the smallest item first). Bellman-Ford also works: relax all edges n − 1 times, O(n · E).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Build an adjacency list: for each u, the list of (v, w).</li><li>Set <code>dist[]</code> = infinity everywhere and dist[k] = 0. Push (k, 0) on the heap.</li><li>Pop the smallest (u, d). If d &gt; dist[u], it is an old entry, so skip it.</li><li>For each edge u→v with weight w: if <code>d + w &lt; dist[v]</code>, update dist[v] and push (v, dist[v]).</li><li>Finally, if any node is still at infinity, return −1. Otherwise return the max of dist.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int networkDelayTime(int[][] times, int n, int k) {
+        // adjacency list: graph.get(u) = list of {v, w}
+        List&lt;List&lt;int[]&gt;&gt; graph = new ArrayList&lt;&gt;();
+        for (int i = 0; i &lt;= n; i++) graph.add(new ArrayList&lt;&gt;());
+        for (int[] t : times) graph.get(t[0]).add(new int[]{t[1], t[2]});
+        int[] dist = new int[n + 1];
+        Arrays.fill(dist, Integer.MAX_VALUE);
+        dist[k] = 0;
+        // min-heap of {node, distance}
+        PriorityQueue&lt;int[]&gt; pq =
+            new PriorityQueue&lt;&gt;((x, y) -&gt; x[1] - y[1]);
+        pq.offer(new int[]{k, 0});
+        while (!pq.isEmpty()) {
+            int[] cur = pq.poll();
+            int u = cur[0], d = cur[1];
+            if (d &gt; dist[u]) continue; // stale entry
+            for (int[] e : graph.get(u)) {
+                int v = e[0], nd = d + e[1];
+                if (nd &lt; dist[v]) {
+                    dist[v] = nd;
+                    pq.offer(new int[]{v, nd});
+                }
+            }
+        }
+        int ans = 0;
+        for (int i = 1; i &lt;= n; i++) {
+            if (dist[i] == Integer.MAX_VALUE) return -1;
+            ans = Math.max(ans, dist[i]); // last one to hear
+        }
+        return ans;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(E log E) · <b>Space</b> O(n + E) — each edge can push one heap entry.</p>
+<h4>Dry run</h4>
+<p>times [[2,1,1],[2,3,1],[3,4,1]], k = 2. Pop 2 (0): dist1 = 1, dist3 = 1. Pop 1 (1), then pop 3 (1): dist4 = 2. Pop 4 (2). The max distance is 2.</p>
+<h4>Watch out</h4>
+<p>Nodes are numbered 1..n, so size the arrays n + 1 and skip index 0 when taking the max. Skipping old heap entries keeps it fast.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/cheapest-flights-within-k-stops/">787. Cheapest Flights Within K Stops</a> — animation 1.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the cheapest price from src to dst using at most k stops, which is at most k + 1 flights. Bellman-Ford with a twist: run exactly k + 1 rounds, and in each round extend paths by <b>one</b> flight only, reading prices from a copy of the last round. After round r, <code>cost[v]</code> is the cheapest price using at most r flights. Pattern: <b>Bellman-Ford with limited rounds</b>.</p>
+<h4>Brute force first</h4>
+<p>DFS over every path with up to k + 1 flights: exponential.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>cost[]</code> = infinity everywhere and cost[src] = 0.</li><li>Repeat k + 1 times: <code>next = cost.clone()</code>.</li><li>For each flight u→v with price p: if cost[u] is known and <code>cost[u] + p &lt; next[v]</code>, set next[v].</li><li><code>cost = next</code>.</li><li>Return cost[dst], or −1 if it is still infinity.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findCheapestPrice(int n, int[][] flights,
+                                 int src, int dst, int k) {
+        final int INF = Integer.MAX_VALUE;
+        int[] cost = new int[n];
+        Arrays.fill(cost, INF);
+        cost[src] = 0;
+        // k stops = at most k + 1 flights = k + 1 rounds
+        for (int round = 0; round &lt;= k; round++) {
+            // read only last round's prices
+            int[] next = cost.clone();
+            for (int[] f : flights) {
+                int u = f[0], v = f[1], price = f[2];
+                if (cost[u] == INF) continue;
+                if (cost[u] + price &lt; next[v]) {
+                    next[v] = cost[u] + price;
+                }
+            }
+            cost = next;
+        }
+        return cost[dst] == INF ? -1 : cost[dst];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(k · E) · <b>Space</b> O(n) — k + 1 passes over all flights, with two arrays.</p>
+<h4>Dry run</h4>
+<p>0→1 100, 1→2 100, 0→2 500, k = 1. Round 1: cost1 = 100, cost2 = 500. Round 2: 2 via 1 = 200 &lt; 500, so cost2 = 200. The answer is 200. With k = 0 only round 1 runs, and the answer is 500.</p>
+<h4>Watch out</h4>
+<p>Reading from <code>cost</code> while writing into the same array lets one round chain several flights, which breaks the stop limit. Always read the old copy.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance/">1334. City With the Smallest Number of Neighbors</a> — Floyd–Warshall.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>For each city, count how many other cities are within the distance threshold. Return the city with the fewest, and on a tie the larger index. That needs shortest distances between <b>all pairs</b>. n ≤ 100, so <b>Floyd–Warshall</b> fits: for each city m, check whether going i → m → j is shorter than the best i → j so far.</p>
+<h4>Brute force first</h4>
+<p>Run Dijkstra from every city: O(n · E log E). That also works, but Floyd is shorter to write.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make an n × n table: 0 on the diagonal, the road length for each road (both ways), and a big number elsewhere.</li><li>Triple loop with m on the outside: <code>d[i][j] = min(d[i][j], d[i][m] + d[m][j])</code>.</li><li>For each city i, count the j ≠ i with <code>d[i][j] ≤ threshold</code>.</li><li>Keep the city with the smallest count, using ≤ so that later (larger) cities win ties.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findTheCity(int n, int[][] edges,
+                           int distanceThreshold) {
+        final int INF = 1_000_000_000;
+        int[][] d = new int[n][n];
+        for (int i = 0; i &lt; n; i++) {
+            Arrays.fill(d[i], INF);
+            d[i][i] = 0;
+        }
+        for (int[] e : edges) { // roads go both ways
+            d[e[0]][e[1]] = e[2];
+            d[e[1]][e[0]] = e[2];
+        }
+        // allow city m as a middle stop, one m at a time
+        for (int m = 0; m &lt; n; m++)
+            for (int i = 0; i &lt; n; i++)
+                for (int j = 0; j &lt; n; j++)
+                    if (d[i][m] + d[m][j] &lt; d[i][j])
+                        d[i][j] = d[i][m] + d[m][j];
+        int bestCity = -1, bestCount = Integer.MAX_VALUE;
+        for (int i = 0; i &lt; n; i++) {
+            int count = 0;
+            for (int j = 0; j &lt; n; j++)
+                if (i != j &amp;&amp; d[i][j] &lt;= distanceThreshold) count++;
+            // &lt;= so that the larger index wins ties
+            if (count &lt;= bestCount) {
+                bestCount = count;
+                bestCity = i;
+            }
+        }
+        return bestCity;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n³) · <b>Space</b> O(n²) — three nested loops over the cities.</p>
+<h4>Dry run</h4>
+<p>Example 1, threshold 4: city 0 reaches {1, 2}, city 1 reaches {0, 2, 3}, city 2 reaches {0, 1, 3}, city 3 reaches {1, 2}. Cities 0 and 3 both have 2, and the larger index wins, so the answer is 3.</p>
+<h4>Watch out</h4>
+<p>The middle city m must be the <b>outer</b> loop. Use a "big" value like 10⁹ instead of <code>Integer.MAX_VALUE</code>, because adding two MAX_VALUEs overflows to a negative number.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/minimum-obstacle-removal-to-reach-corner/">2290. Minimum Obstacle Removal to Reach Corner</a> — 0-1 BFS on a grid.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Move from the top-left to the bottom-right of the grid. Stepping onto an empty cell costs 0 and stepping onto an obstacle costs 1 (you remove it). Minimise the total cost. With only 0 and 1 costs, use <b>0-1 BFS</b>: a deque where cost-0 moves go to the <b>front</b> and cost-1 moves go to the <b>back</b>. The deque then stays sorted by distance, like Dijkstra without a heap.</p>
+<h4>Brute force first</h4>
+<p>Dijkstra with a heap: O(mn log mn). That is correct but slower.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>dist</code> = infinity everywhere, dist[0][0] = 0, and push (0,0).</li><li>Pop from the front. For each of the 4 neighbours, w = grid value (0 or 1).</li><li>If <code>dist[cur] + w &lt; dist[next]</code>, update it. Push to the front if w = 0, to the back if w = 1.</li><li>When the deque is empty, return the bottom-right distance.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int minimumObstacles(int[][] grid) {
+        int m = grid.length, n = grid[0].length;
+        int[][] dist = new int[m][n];
+        for (int[] row : dist) Arrays.fill(row, Integer.MAX_VALUE);
+        int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        Deque&lt;int[]&gt; dq = new ArrayDeque&lt;&gt;();
+        dist[0][0] = 0;
+        dq.offerFirst(new int[]{0, 0});
+        while (!dq.isEmpty()) {
+            int[] cur = dq.pollFirst();
+            int r = cur[0], c = cur[1];
+            for (int[] d : dirs) {
+                int nr = r + d[0], nc = c + d[1];
+                if (nr &lt; 0 || nr &gt;= m || nc &lt; 0 || nc &gt;= n) continue;
+                int w = grid[nr][nc]; // 1 = must remove
+                if (dist[r][c] + w &lt; dist[nr][nc]) {
+                    dist[nr][nc] = dist[r][c] + w;
+                    // cost 0 to the front, cost 1 to the back
+                    if (w == 0) dq.offerFirst(new int[]{nr, nc});
+                    else dq.offerLast(new int[]{nr, nc});
+                }
+            }
+        }
+        return dist[m - 1][n - 1];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m · n) · <b>Space</b> O(m · n) — each cell is improved only a few times, and deque operations are O(1).</p>
+<h4>Dry run</h4>
+<p>[[0,1,1],[1,1,0],[1,1,0]]. Every way out of the top-left meets at least two 1s, for example right(1), right(1), down(0), down(0). The answer is 2.</p>
+<h4>Watch out</h4>
+<p>The weight is the value of the cell you <b>enter</b>, not the one you leave. The start cell is always 0.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/minimum-cost-to-make-at-least-one-valid-path-in-a-grid/">1368. Minimum Cost to Make a Valid Path in a Grid</a> — follow the arrow = 0, change it = 1.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Each cell has an arrow (1 right, 2 left, 3 down, 4 up). Following the arrow is free; going any other way means changing that arrow, which costs 1. Find the cheapest way to reach the bottom-right. That is a graph with 0 and 1 edge weights, so use <b>0-1 BFS</b>.</p>
+<h4>Brute force first</h4>
+<p>Dijkstra with a heap works in O(mn log mn).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Keep the direction list in the same order as the signs: right, left, down, up.</li><li>Start with dist[0][0] = 0 in the deque.</li><li>Pop the front cell. For each direction i, the cost is 0 if <code>grid[r][c] == i + 1</code>, otherwise 1.</li><li>Relax the neighbour. Push it to the front for cost 0, to the back for cost 1.</li><li>Return <code>dist[m−1][n−1]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int minCost(int[][] grid) {
+        int m = grid.length, n = grid[0].length;
+        // sign 1 right, 2 left, 3 down, 4 up
+        int[][] dirs = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
+        int[][] dist = new int[m][n];
+        for (int[] row : dist) Arrays.fill(row, Integer.MAX_VALUE);
+        Deque&lt;int[]&gt; dq = new ArrayDeque&lt;&gt;();
+        dist[0][0] = 0;
+        dq.offerFirst(new int[]{0, 0});
+        while (!dq.isEmpty()) {
+            int[] cur = dq.pollFirst();
+            int r = cur[0], c = cur[1];
+            for (int i = 0; i &lt; 4; i++) {
+                int nr = r + dirs[i][0], nc = c + dirs[i][1];
+                if (nr &lt; 0 || nr &gt;= m || nc &lt; 0 || nc &gt;= n) continue;
+                // follow the arrow = free, change it = 1
+                int w = (grid[r][c] == i + 1) ? 0 : 1;
+                if (dist[r][c] + w &lt; dist[nr][nc]) {
+                    dist[nr][nc] = dist[r][c] + w;
+                    if (w == 0) dq.offerFirst(new int[]{nr, nc});
+                    else dq.offerLast(new int[]{nr, nc});
+                }
+            }
+        }
+        return dist[m - 1][n - 1];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m · n) · <b>Space</b> O(m · n) — 4 edges per cell, each deque step O(1).</p>
+<h4>Dry run</h4>
+<p>[[1,2],[4,3]]. The arrow at (0,0) points right, so (0,1) costs 0. The arrow at (0,1) points left, so going down costs 1. The arrow at (1,1) does not matter. The answer is 1.</p>
+<h4>Watch out</h4>
+<p>The cost depends on the arrow of the cell you are <b>leaving</b> (the reverse of 2290). Mixing up the order of the direction list is the usual bug.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/course-schedule-iv/">1462. Course Schedule IV</a> — Floyd–Warshall on true/false reachability.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Course a is a prerequisite of b if there is a chain a → … → b. You get many questions "is u before v?", so work out all of reachability once. Floyd–Warshall with true/false: if i reaches m and m reaches j, then i reaches j. n ≤ 100, so n³ is fine. Pattern: <b>transitive closure</b>.</p>
+<h4>Brute force first</h4>
+<p>Run a BFS for each query: O(q · (n + E)). That is fine too, but the table answers each query in O(1).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make a boolean table <code>reach[n][n]</code> and set reach[a][b] = true for each prerequisite pair.</li><li>For m (outer), i, j: if reach[i][m] and reach[m][j], set reach[i][j] = true.</li><li>Answer each query with <code>reach[u][v]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;Boolean&gt; checkIfPrerequisite(int numCourses,
+            int[][] prerequisites, int[][] queries) {
+        int n = numCourses;
+        // reach[i][j] = true if i must come before j
+        boolean[][] reach = new boolean[n][n];
+        for (int[] p : prerequisites) reach[p[0]][p[1]] = true;
+        // i before m and m before j  =&gt;  i before j
+        for (int m = 0; m &lt; n; m++)
+            for (int i = 0; i &lt; n; i++)
+                if (reach[i][m])
+                    for (int j = 0; j &lt; n; j++)
+                        if (reach[m][j]) reach[i][j] = true;
+        List&lt;Boolean&gt; res = new ArrayList&lt;&gt;();
+        for (int[] q : queries) res.add(reach[q[0]][q[1]]);
+        return res;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n³ + q) · <b>Space</b> O(n²) — one closure, then O(1) per query.</p>
+<h4>Dry run</h4>
+<p>n = 3, pairs 1→2, 1→0, 2→0. Through m = 2: 1 reaches 2 and 2 reaches 0, so 1 reaches 0 (already true). The queries (1,0) and (1,2) are both true.</p>
+<h4>Watch out</h4>
+<p>Keep m as the outer loop. Skipping the inner j-loop when <code>reach[i][m]</code> is false is a cheap speed-up.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

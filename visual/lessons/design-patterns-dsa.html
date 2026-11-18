@@ -268,14 +268,420 @@ list.set(i, last); pos.put(last, i); list.remove(list.size() - <span class="n">1
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/min-stack/">155. Min Stack</a> — animation 1.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/insert-delete-getrandom-o1/">380. Insert Delete GetRandom O(1)</a> — animation 2.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/time-based-key-value-store/">981. Time Based Key-Value Store</a> — animation 3.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/design-hit-counter/">362. Design Hit Counter</a> — animation 4 (premium).</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/lru-cache/">146. LRU Cache</a> — map + doubly linked list.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/design-twitter/">355. Design Twitter</a> — map of lists + a heap to merge feeds.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/insert-delete-getrandom-o1-duplicates-allowed/">381. GetRandom O(1) — Duplicates Allowed</a> — value → set of indices.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/lfu-cache/">460. LFU Cache</a> — buckets of LRU lists + minFreq.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/min-stack/">155. Min Stack</a> — animation 1.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>A stack that also answers "what is the smallest value inside?" in O(1). Trick: with every value you push, store the minimum <b>at that moment</b> (the smaller of the new value and the min below it). Popping removes both, so the min underneath is still correct. Pattern: <b>augment each entry with a running summary</b>.</p>
+<h4>Brute force first</h4>
+<p>Scan the whole stack in getMin: O(n) per call.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Each stack entry is the pair {value, minSoFar}.</li><li>push(v): minSoFar = v if the stack is empty, otherwise <code>min(v, top.minSoFar)</code>.</li><li>pop(): remove the top pair.</li><li>top() returns top.value, and getMin() returns top.minSoFar.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class MinStack {
+    // each entry: {value, smallest value at or below it}
+    private final Deque&lt;int[]&gt; stack = new ArrayDeque&lt;&gt;();
+
+    public void push(int val) {
+        int min = stack.isEmpty() ? val
+                : Math.min(val, stack.peek()[1]);
+        stack.push(new int[]{val, min});
+    }
+
+    public void pop() {
+        stack.pop();
+    }
+
+    public int top() {
+        return stack.peek()[0];
+    }
+
+    public int getMin() {
+        return stack.peek()[1];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(1) for every operation · <b>Space</b> O(n) — one extra number per entry.</p>
+<h4>Dry run</h4>
+<p>push −2 {−2,−2}, push 0 {0,−2}, push −3 {−3,−3}. getMin = −3. pop. top = 0, getMin = −2.</p>
+<h4>Watch out</h4>
+<p>Keeping only one "current min" variable breaks after you pop the min, because you no longer know the previous one. That is why every entry stores its own.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/insert-delete-getrandom-o1/">380. Insert Delete GetRandom O(1)</a> — animation 2.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Insert, remove and pick a random element, all in average O(1). A list gives O(1) random picks by index, and a map gives O(1) lookup of where a value sits. Removing from the middle of a list is slow, so <b>move the last element into the hole</b> and remove the last slot instead. Pattern: <b>array + hash map of indices</b>.</p>
+<h4>Brute force first</h4>
+<p>Use a HashSet alone: insert and remove are O(1), but a random pick needs O(n) iteration.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>insert(v): if v is in the map, return false. Otherwise map v → list.size() and append v.</li><li>remove(v): find its index i. Put the last value into slot i and update that value's index in the map.</li><li>Remove the last slot of the list and remove v from the map.</li><li>getRandom(): <code>list.get(random index)</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class RandomizedSet {
+    private final List&lt;Integer&gt; list = new ArrayList&lt;&gt;();
+    private final Map&lt;Integer, Integer&gt; index = new HashMap&lt;&gt;();
+    private final Random rnd = new Random();
+
+    public boolean insert(int val) {
+        if (index.containsKey(val)) return false;
+        index.put(val, list.size());
+        list.add(val);
+        return true;
+    }
+
+    public boolean remove(int val) {
+        Integer i = index.get(val);
+        if (i == null) return false;
+        // move the last value into the hole, drop the last
+        int last = list.get(list.size() - 1);
+        list.set(i, last);
+        index.put(last, i);
+        list.remove(list.size() - 1);
+        index.remove(val);
+        return true;
+    }
+
+    public int getRandom() {
+        return list.get(rnd.nextInt(list.size()));
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(1) average per operation · <b>Space</b> O(n) — one list slot and one map entry per value.</p>
+<h4>Dry run</h4>
+<p>insert 1 and 2: list [1,2], map {1:0, 2:1}. remove 1: the last value 2 moves into slot 0, map {2:0}, list [2]. getRandom always returns 2.</p>
+<h4>Watch out</h4>
+<p>Update the moved value's index <b>before</b> removing val from the map. If val is itself the last element, the order matters.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/time-based-key-value-store/">981. Time Based Key-Value Store</a> — animation 3.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Store values with timestamps, and <code>get(key, t)</code> returns the value set at the latest time ≤ t. The problem promises that timestamps for set only increase, so each key's list is already sorted. Then get is a <b>binary search</b> for the last time ≤ t. Pattern: <b>hash map + binary search on a sorted list</b>.</p>
+<h4>Brute force first</h4>
+<p>Scan the key's whole list backwards: O(n) per get.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>set: append the timestamp to <code>times[key]</code> and the value to <code>values[key]</code>.</li><li>get: if the key is unknown, return "".</li><li>Binary search: when <code>ts[mid] ≤ t</code>, remember mid and go right. Otherwise go left.</li><li>Return values[found], or "" if no time was ≤ t.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class TimeMap {
+    // key -&gt; timestamps in increasing order (given by problem)
+    private final Map&lt;String, List&lt;Integer&gt;&gt; times =
+        new HashMap&lt;&gt;();
+    private final Map&lt;String, List&lt;String&gt;&gt; values =
+        new HashMap&lt;&gt;();
+
+    public void set(String key, String value, int timestamp) {
+        times.computeIfAbsent(key, k -&gt; new ArrayList&lt;&gt;())
+             .add(timestamp);
+        values.computeIfAbsent(key, k -&gt; new ArrayList&lt;&gt;())
+              .add(value);
+    }
+
+    public String get(String key, int timestamp) {
+        List&lt;Integer&gt; ts = times.get(key);
+        if (ts == null) return "";
+        // last index with ts[i] &lt;= timestamp
+        int lo = 0, hi = ts.size() - 1, found = -1;
+        while (lo &lt;= hi) {
+            int mid = (lo + hi) &gt;&gt;&gt; 1;
+            if (ts.get(mid) &lt;= timestamp) {
+                found = mid;
+                lo = mid + 1;
+            } else {
+                hi = mid - 1;
+            }
+        }
+        return found == -1 ? "" : values.get(key).get(found);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(1) set, O(log n) get · <b>Space</b> O(n) — every set is stored once.</p>
+<h4>Dry run</h4>
+<p>set(foo, bar, 1), set(foo, bar2, 4). get(foo, 3): the times are [1,4], and the last one ≤ 3 is 1, so "bar". get(foo, 5) gives "bar2". get(foo, 0) gives "".</p>
+<h4>Watch out</h4>
+<p>You want the <b>last</b> time ≤ t, not an exact match. A <code>TreeMap.floorEntry</code> per key also works in O(log n).</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/design-hit-counter/">362. Design Hit Counter</a> — animation 4 (premium).
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Count the hits in the past 5 minutes (300 seconds). Keep a ring of 300 slots, where second s goes to slot <code>s % 300</code>. Each slot remembers <b>which</b> second it holds and how many hits it got then. If a hit lands in a slot that holds an old second, reset that slot first. To count, add up the slots whose second is within the last 300. Pattern: <b>circular buffer</b>. A queue of timestamps is the simpler alternative, but its memory grows with the number of hits.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make two arrays of size 300: time[] and hits[].</li><li>hit(t): i = t % 300. If time[i] ≠ t, set time[i] = t and hits[i] = 0. Then hits[i]++.</li><li>getHits(t): add up hits[i] for every slot where <code>t − time[i] &lt; 300</code>.</li><li>Return the total.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class HitCounter {
+    // ring of 300 slots, one per second of the window
+    private final int[] time = new int[300];
+    private final int[] hits = new int[300];
+
+    public void hit(int timestamp) {
+        int i = timestamp % 300;
+        if (time[i] != timestamp) { // old second: reuse slot
+            time[i] = timestamp;
+            hits[i] = 0;
+        }
+        hits[i]++;
+    }
+
+    public int getHits(int timestamp) {
+        int total = 0;
+        for (int i = 0; i &lt; 300; i++) {
+            // count only the last 300 seconds
+            if (timestamp - time[i] &lt; 300) total += hits[i];
+        }
+        return total;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(1) hit, O(300) = O(1) getHits · <b>Space</b> O(300) — fixed, no matter how many hits arrive.</p>
+<h4>Dry run</h4>
+<p>Hits at 1, 2, 3 and 300. getHits(300) = 4. getHits(301): second 1 is 300 seconds old, so it no longer counts. The answer is 3.</p>
+<h4>Watch out</h4>
+<p>Use <code>&lt; 300</code>, not ≤. A hit at second 1 is outside the window at second 301. Many hits in the same second share one slot.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/lru-cache/">146. LRU Cache</a> — map + doubly linked list.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Cache with a capacity. When it is full, evict the <b>least recently used</b> key. Both get and put must be O(1). A hash map finds a key's node in O(1). A <b>doubly linked list</b> (each node knows its previous and next node) keeps usage order: newest at the front, oldest at the back. A node can be moved in O(1) because it knows its neighbours. Pattern: <b>hash map + doubly linked list</b>.</p>
+<h4>Brute force first</h4>
+<p>Store a "last used" time per key and scan for the smallest when evicting: O(n) per eviction.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Two dummy nodes, head and tail, so that there are no null checks at the ends.</li><li>get(k): if k is missing, return −1. Otherwise unlink its node, add it at the front, and return its value.</li><li>put(k, v) for an existing key: update the value and move the node to the front.</li><li>put for a new key: if the cache is full, remove <code>tail.prev</code> (the oldest) from both the list and the map. Then add the new node at the front.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class LRUCache {
+    private static class Node {
+        int key, val;
+        Node prev, next;
+        Node(int k, int v) { key = k; val = v; }
+    }
+
+    private final int capacity;
+    private final Map&lt;Integer, Node&gt; map = new HashMap&lt;&gt;();
+    // dummy ends: head.next = newest, tail.prev = oldest
+    private final Node head = new Node(0, 0);
+    private final Node tail = new Node(0, 0);
+
+    public LRUCache(int capacity) {
+        this.capacity = capacity;
+        head.next = tail;
+        tail.prev = head;
+    }
+
+    public int get(int key) {
+        Node node = map.get(key);
+        if (node == null) return -1;
+        unlink(node);
+        addFront(node); // just used: now newest
+        return node.val;
+    }
+
+    public void put(int key, int value) {
+        Node node = map.get(key);
+        if (node != null) {
+            node.val = value;
+            unlink(node);
+            addFront(node);
+            return;
+        }
+        if (map.size() == capacity) {
+            Node old = tail.prev; // least recently used
+            unlink(old);
+            map.remove(old.key);
+        }
+        node = new Node(key, value);
+        map.put(key, node);
+        addFront(node);
+    }
+
+    private void unlink(Node n) {
+        n.prev.next = n.next;
+        n.next.prev = n.prev;
+    }
+
+    private void addFront(Node n) {
+        n.next = head.next;
+        n.prev = head;
+        head.next.prev = n;
+        head.next = n;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(1) per get and put · <b>Space</b> O(capacity) — one map entry and one node per key.</p>
+<h4>Dry run</h4>
+<p>Capacity 2. put 1, put 2, get 1 (order: 1, 2). put 3 evicts 2. get 2 = −1. put 4 evicts 1. get 1 = −1, get 3 = 3, get 4 = 4.</p>
+<h4>Watch out</h4>
+<p>The node must store its <b>key</b>, so that on eviction you can remove it from the map too. Updating an existing key must also count as a use.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/design-twitter/">355. Design Twitter</a> — map of lists + a heap to merge feeds.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Users post tweets and follow each other. A news feed is the 10 newest tweets from you and the people you follow. Give each tweet a global time number. Each user's tweets are already in time order, so the feed is a <b>merge of k sorted lists</b>: put each user's newest tweet in a max-heap, pop the newest, and push that user's next older tweet. Stop after 10. Pattern: <b>k-way merge with a heap</b>.</p>
+<h4>Brute force first</h4>
+<p>Collect every tweet of every followed user, sort them all and take 10: O(T log T) per feed.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>postTweet: append {clock++, tweetId} to that user's list.</li><li>follow and unfollow: add to or remove from a set of followees.</li><li>getNewsFeed: users = followees + yourself. Push each user's last tweet as {time, id, user, index}.</li><li>Pop up to 10 times. After each pop, push the same user's tweet at index − 1 if it exists.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Twitter {
+    private int clock = 0; // bigger = newer
+    // userId -&gt; list of {time, tweetId}, oldest first
+    private final Map&lt;Integer, List&lt;int[]&gt;&gt; tweets =
+        new HashMap&lt;&gt;();
+    private final Map&lt;Integer, Set&lt;Integer&gt;&gt; follows =
+        new HashMap&lt;&gt;();
+
+    public void postTweet(int userId, int tweetId) {
+        tweets.computeIfAbsent(userId, k -&gt; new ArrayList&lt;&gt;())
+              .add(new int[]{clock++, tweetId});
+    }
+
+    public List&lt;Integer&gt; getNewsFeed(int userId) {
+        Set&lt;Integer&gt; users = new HashSet&lt;&gt;(
+            follows.getOrDefault(userId, Set.of()));
+        users.add(userId); // see your own tweets too
+        // max-heap of {time, tweetId, user, index in list}
+        PriorityQueue&lt;int[]&gt; pq =
+            new PriorityQueue&lt;&gt;((x, y) -&gt; y[0] - x[0]);
+        for (int u : users) {
+            List&lt;int[]&gt; list = tweets.get(u);
+            if (list == null || list.isEmpty()) continue;
+            int i = list.size() - 1; // newest of this user
+            pq.offer(new int[]{list.get(i)[0], list.get(i)[1], u, i});
+        }
+        List&lt;Integer&gt; feed = new ArrayList&lt;&gt;();
+        while (!pq.isEmpty() &amp;&amp; feed.size() &lt; 10) {
+            int[] top = pq.poll();
+            feed.add(top[1]);
+            int i = top[3] - 1; // that user's next older tweet
+            if (i &gt;= 0) {
+                int[] t = tweets.get(top[2]).get(i);
+                pq.offer(new int[]{t[0], t[1], top[2], i});
+            }
+        }
+        return feed;
+    }
+
+    public void follow(int followerId, int followeeId) {
+        follows.computeIfAbsent(followerId, k -&gt; new HashSet&lt;&gt;())
+               .add(followeeId);
+    }
+
+    public void unfollow(int followerId, int followeeId) {
+        Set&lt;Integer&gt; s = follows.get(followerId);
+        if (s != null) s.remove(followeeId);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(f + 10 log f) per feed, f = number of followees · <b>Space</b> O(f) for the heap — only 10 pops, each O(log f).</p>
+<h4>Dry run</h4>
+<p>User 1 posts 5. Feed = [5]. Follow 2. User 2 posts 6. Feed = [6, 5] (6 is newer). Unfollow 2. Feed = [5].</p>
+<h4>Watch out</h4>
+<p>Include the user's own tweets, and do not show them twice if they "follow" themselves. A set handles that. Unfollowing someone you do not follow must not crash.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/insert-delete-getrandom-o1-duplicates-allowed/">381. GetRandom O(1) — Duplicates Allowed</a> — value → set of indices.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>The same as 380, but duplicates are allowed, and getRandom must favour values with more copies. The list still holds every copy. The map now goes from each value to a <b>set of indices</b> where it sits. Removing still moves the last element into the hole. Pattern: <b>array + map of index sets</b>.</p>
+<h4>Brute force first</h4>
+<p>A list alone: remove needs an O(n) search.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>insert(v): add the index list.size() to v's set and append v. Return true if the set now has size 1.</li><li>remove(v): take any index <code>hole</code> from v's set and remove it.</li><li>Move the last value into the hole: list[hole] = last. In last's set, add hole and remove lastIdx.</li><li>Drop the last slot of the list.</li><li>getRandom: a random index of the list. Copies are picked in proportion to their count.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class RandomizedCollection {
+    private final List&lt;Integer&gt; list = new ArrayList&lt;&gt;();
+    // value -&gt; every index where it sits in list
+    private final Map&lt;Integer, Set&lt;Integer&gt;&gt; idx = new HashMap&lt;&gt;();
+    private final Random rnd = new Random();
+
+    public boolean insert(int val) {
+        Set&lt;Integer&gt; s = idx.computeIfAbsent(val,
+            k -&gt; new HashSet&lt;&gt;());
+        s.add(list.size());
+        list.add(val);
+        return s.size() == 1; // true if it was not there
+    }
+
+    public boolean remove(int val) {
+        Set&lt;Integer&gt; s = idx.get(val);
+        if (s == null || s.isEmpty()) return false;
+        int hole = s.iterator().next(); // any copy of val
+        s.remove(hole);
+        int lastIdx = list.size() - 1;
+        int last = list.get(lastIdx);
+        // move the last value into the hole
+        list.set(hole, last);
+        Set&lt;Integer&gt; ls = idx.get(last);
+        ls.add(hole);
+        ls.remove(lastIdx); // safe even if hole == lastIdx
+        list.remove(lastIdx);
+        return true;
+    }
+
+    public int getRandom() {
+        return list.get(rnd.nextInt(list.size()));
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(1) average per operation · <b>Space</b> O(n) — each copy has one list slot and one set entry.</p>
+<h4>Dry run</h4>
+<p>insert 1, 1, 2: list [1,1,2], 1 → {0,1}, 2 → {2}. remove 1 (hole 0): the last value 2 moves into 0, so 2 → {0}, and the list is [2,1].</p>
+<h4>Watch out</h4>
+<p>When the removed element <b>is</b> the last one (hole == lastIdx), add hole first and remove lastIdx second. Doing it in the other order leaves a stale index.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/lfu-cache/">460. LFU Cache</a> — buckets of LRU lists + minFreq.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>When full, evict the key used the <b>fewest</b> times. Among keys with the same count, evict the least recently used one. Keep a bucket for each use count, where each bucket is an LRU-ordered set of keys (a <code>LinkedHashSet</code> keeps insertion order, oldest first). Also keep <code>minFreq</code>, the smallest count that has keys. Every get or put moves a key from bucket f to bucket f + 1. Pattern: <b>buckets of LRU lists + minFreq</b>.</p>
+<h4>Brute force first</h4>
+<p>Scan all keys for the smallest (count, last used) on every eviction: O(n).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Maps: key → value, key → freq, freq → LinkedHashSet of keys.</li><li>touch(key): remove it from bucket f and add it to bucket f + 1. If bucket f was the minFreq bucket and is now empty, do minFreq++.</li><li>get: if the key is missing, return −1. Otherwise touch it and return the value.</li><li>put for an existing key: update the value and touch it. For a new key: if full, evict the first key in <code>buckets[minFreq]</code>. Then insert it with freq 1 and set minFreq = 1.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class LFUCache {
+    private final int capacity;
+    private int minFreq = 0;
+    private final Map&lt;Integer, Integer&gt; vals = new HashMap&lt;&gt;();
+    private final Map&lt;Integer, Integer&gt; freq = new HashMap&lt;&gt;();
+    // freq -&gt; keys with that freq, oldest first (LRU order)
+    private final Map&lt;Integer, LinkedHashSet&lt;Integer&gt;&gt; buckets =
+        new HashMap&lt;&gt;();
+
+    public LFUCache(int capacity) {
+        this.capacity = capacity;
+    }
+
+    public int get(int key) {
+        if (!vals.containsKey(key)) return -1;
+        touch(key);
+        return vals.get(key);
+    }
+
+    public void put(int key, int value) {
+        if (capacity == 0) return;
+        if (vals.containsKey(key)) {
+            vals.put(key, value);
+            touch(key);
+            return;
+        }
+        if (vals.size() == capacity) {
+            // evict the oldest key of the lowest freq
+            LinkedHashSet&lt;Integer&gt; b = buckets.get(minFreq);
+            int victim = b.iterator().next();
+            b.remove(victim);
+            vals.remove(victim);
+            freq.remove(victim);
+        }
+        vals.put(key, value);
+        freq.put(key, 1);
+        buckets.computeIfAbsent(1, k -&gt; new LinkedHashSet&lt;&gt;())
+               .add(key);
+        minFreq = 1; // a new key always has freq 1
+    }
+
+    // move key from bucket f to bucket f + 1
+    private void touch(int key) {
+        int f = freq.get(key);
+        LinkedHashSet&lt;Integer&gt; b = buckets.get(f);
+        b.remove(key);
+        if (f == minFreq &amp;&amp; b.isEmpty()) minFreq++;
+        freq.put(key, f + 1);
+        buckets.computeIfAbsent(f + 1, k -&gt; new LinkedHashSet&lt;&gt;())
+               .add(key); // newest at the end
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(1) average per operation · <b>Space</b> O(capacity) — a constant number of map entries per key.</p>
+<h4>Dry run</h4>
+<p>Capacity 2. put 1, put 2, get 1 (1 now has freq 2). put 3 evicts 2 (freq 1). get 2 = −1, get 3 = 3 (freq 2). put 4: 1 and 3 both have freq 2, and 1 is older, so evict 1. get 1 = −1, get 3 = 3, get 4 = 4.</p>
+<h4>Watch out</h4>
+<p>Capacity 0 must ignore every put. After inserting a new key, minFreq is always 1. Forgetting that reset makes later evictions read the wrong bucket.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

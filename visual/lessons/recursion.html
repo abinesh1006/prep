@@ -203,12 +203,156 @@
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/fibonacci-number/">509. Fibonacci Number</a> — exactly animation 2; then add a memo array.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/power-of-two/">231. Power of Two</a> — base case n == 1, step n / 2.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/reverse-linked-list/">206. Reverse Linked List</a> — trust reverse(head.next), then fix one pointer.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/merge-two-sorted-lists/">21. Merge Two Sorted Lists</a> — pick the smaller head, trust the merge of the rest.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/powx-n/">50. Pow(x, n)</a> — x^n = (x^(n/2))², depth log n.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/k-th-symbol-in-grammar/">779. K-th Symbol in Grammar</a> — answer for row n comes from row n−1.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/fibonacci-number/">509. Fibonacci Number</a> — exactly animation 2; then add a memo array.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p><code>F(0) = 0</code>, <code>F(1) = 1</code>, and <code>F(n) = F(n-1) + F(n-2)</code>. <code>F(4) = 3</code>. The plain recursion recomputes the same values again and again (the call tree doubles). The insight: <b>memoization</b> (save each answer the first time) so every F(i) is computed once. Pattern: <b>recursion + memo</b>.</p>
+<h4>Brute force first</h4>
+<p>Plain <code>return fib(n-1) + fib(n-2)</code>: correct but O(2<sup>n</sup>) calls, because <code>fib(2)</code> is solved many times.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Base cases: <code>n &lt;= 1</code> returns n.</li><li>Make a memo array of size n + 1 (0 means "not computed yet"; real values for n &ge; 2 are &ge; 1).</li><li>Before computing <code>f(n)</code>, check the memo; if filled, return it.</li><li>Otherwise compute <code>f(n-1) + f(n-2)</code>, store it, return it.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private int[] memo;
+
+    public int fib(int n) {
+        memo = new int[n + 1];
+        return f(n);
+    }
+
+    private int f(int n) {
+        if (n &lt;= 1) return n;            // base cases
+        if (memo[n] != 0) return memo[n]; // already known
+        memo[n] = f(n - 1) + f(n - 2);
+        return memo[n];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(n) &mdash; each value is computed once; the memo and the call stack are n deep.</p>
+<h4>Dry run</h4>
+<p><code>fib(4)</code> &rarr; f(3) &rarr; f(2) &rarr; f(1)=1 + f(0)=0 = 1 (saved); f(3) = 1 + f(1) = 2 (saved); f(4) = 2 + f(2) <b>from memo</b> = 3.</p>
+<h4>Watch out</h4>
+<p><code>new int[n + 1]</code> works even for n = 0 (size 1). An iterative two-variable loop gives O(1) space, mention it as the follow-up.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/power-of-two/">231. Power of Two</a> — base case n == 1, step n / 2.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Is n equal to 1, 2, 4, 8, ...? <code>16</code> &rarr; true, <code>3</code> &rarr; false. Recursive thinking: n is a power of two if it is 1, or if it is even and <b>n / 2 is a power of two</b>. Base case n == 1, step n / 2.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If <code>n &lt;= 0</code>: false (no power of two is zero or negative).</li><li>If <code>n == 1</code>: true (2<sup>0</sup>).</li><li>If n is odd: false.</li><li>Otherwise answer for <code>n / 2</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean isPowerOfTwo(int n) {
+        if (n &lt;= 0) return false;
+        if (n == 1) return true;      // base case 2^0
+        if (n % 2 != 0) return false; // odd and &gt; 1
+        return isPowerOfTwo(n / 2);   // smaller problem
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(log n) &middot; <b>Space</b> O(log n) &mdash; n halves each call, and each call waits on the stack.</p>
+<h4>Dry run</h4>
+<p><code>16</code> &rarr; 8 &rarr; 4 &rarr; 2 &rarr; 1 true. <code>12</code> &rarr; 6 &rarr; 3 odd &rarr; false.</p>
+<h4>Watch out</h4>
+<p>Handle <code>n &lt;= 0</code> first (<code>Integer.MIN_VALUE</code> is even but negative). The O(1) bit trick is <code>n &gt; 0 &amp;&amp; (n &amp; (n - 1)) == 0</code>.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/reverse-linked-list/">206. Reverse Linked List</a> — trust reverse(head.next), then fix one pointer.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Reverse a singly linked list: <code>1&rarr;2&rarr;3</code> becomes <code>3&rarr;2&rarr;1</code>. Recursive insight: <b>trust</b> that <code>reverse(head.next)</code> reverses the rest and returns its new head. After that, <code>head.next</code> is the tail of the reversed part, so hang head after it and cut head's old link.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Base case: empty list or one node is already reversed; return head.</li><li><code>newHead = reverseList(head.next)</code>.</li><li>The node after head is now the last node of the reversed part: <code>head.next.next = head</code>.</li><li><code>head.next = null</code> so head becomes the new tail.</li><li>Return newHead.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public ListNode reverseList(ListNode head) {
+        if (head == null || head.next == null) return head;
+        ListNode newHead = reverseList(head.next); // trust it
+        head.next.next = head; // old next now points back
+        head.next = null;      // head is the new tail
+        return newHead;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(n) &mdash; one call per node, and the calls stack up n deep.</p>
+<h4>Dry run</h4>
+<p><code>1&rarr;2&rarr;3</code>: reverse(3) returns 3. Back in node 2: 3.next = 2, 2.next = null &rarr; <code>3&rarr;2</code>. Back in node 1: 2.next = 1, 1.next = null &rarr; <code>3&rarr;2&rarr;1</code>.</p>
+<h4>Watch out</h4>
+<p>Forgetting <code>head.next = null</code> leaves a cycle between the first two nodes. The iterative version (prev/curr pointers) uses O(1) space; interviewers often ask for both.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/merge-two-sorted-lists/">21. Merge Two Sorted Lists</a> — pick the smaller head, trust the merge of the rest.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Join two sorted linked lists into one sorted list. <code>1&rarr;2&rarr;4</code> + <code>1&rarr;3&rarr;4</code> &rarr; <code>1&rarr;1&rarr;2&rarr;3&rarr;4&rarr;4</code>. Recursive insight: the smaller head must come first; then <b>trust</b> that merging the rest gives a sorted list, and attach it after that head.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If one list is empty, return the other.</li><li>If <code>a.val &lt;= b.val</code>: <code>a.next = merge(a.next, b)</code>, return a.</li><li>Otherwise: <code>b.next = merge(a, b.next)</code>, return b.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public ListNode mergeTwoLists(ListNode a, ListNode b) {
+        if (a == null) return b;
+        if (b == null) return a;
+        if (a.val &lt;= b.val) {
+            a.next = mergeTwoLists(a.next, b); // rest
+            return a;
+        }
+        b.next = mergeTwoLists(a, b.next);
+        return b;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n + m) &middot; <b>Space</b> O(n + m) &mdash; one call per node placed, all on the call stack.</p>
+<h4>Dry run</h4>
+<p><code>[1,2,4]</code> vs <code>[1,3,4]</code>: pick a's 1, then b's 1, then 2, 3, a's 4, then a is empty &rarr; attach b's 4. Result <code>1,1,2,3,4,4</code>.</p>
+<h4>Watch out</h4>
+<p>Both base cases are needed (either list can run out first). For very long lists the recursion depth can overflow the stack; an iterative version with a dummy head node avoids that.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/powx-n/">50. Pow(x, n)</a> — x^n = (x^(n/2))², depth log n.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Compute x<sup>n</sup>, where n can be negative or as large as 2<sup>31</sup>. Multiplying n times is too slow. The insight (<b>fast power</b>): <code>x^n = (x^(n/2))&sup2;</code>, times one extra x when n is odd. Each call halves n, so the depth is only about log n.</p>
+<h4>Brute force first</h4>
+<p>Multiply x by itself |n| times: O(n), about 2&times;10<sup>9</sup> steps for the largest n: too slow.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Convert n to a <code>long</code> N (so &minus;2<sup>31</sup> can be negated safely).</li><li>If N is negative: use 1/x and &minus;N.</li><li>Recursive helper: if N == 0 return 1.</li><li><code>half = pow(x, N / 2)</code>; return <code>half * half</code>, times x if N is odd.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public double myPow(double x, int n) {
+        long N = n;           // -2^31 can't be negated as int
+        if (N &lt; 0) {
+            x = 1 / x;
+            N = -N;
+        }
+        return pow(x, N);
+    }
+
+    private double pow(double x, long n) {
+        if (n == 0) return 1;
+        double half = pow(x, n / 2); // solve half once
+        return n % 2 == 0 ? half * half : half * half * x;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(log n) &middot; <b>Space</b> O(log n) &mdash; n halves each call; the calls stack log n deep.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>pow(2,10) = pow(2,5)^2
+pow(2,5)  = pow(2,2)^2 * 2
+pow(2,2)  = pow(2,1)^2
+pow(2,1)  = pow(2,0)^2 * 2 = 2
+back up: 4 -&gt; 4*4*2 = 32 -&gt; 32*32 = 1024</code></pre>
+<h4>Watch out</h4>
+<p><code>-n</code> overflows for <code>n = Integer.MIN_VALUE</code>; that is why we use <code>long</code>. Call <code>pow(x, n / 2)</code> <b>once</b> and reuse it; calling it twice brings back O(n).</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/k-th-symbol-in-grammar/">779. K-th Symbol in Grammar</a> — answer for row n comes from row n−1.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Row 1 is <code>0</code>. Each next row replaces 0 with <code>01</code> and 1 with <code>10</code>: <code>0</code>, <code>01</code>, <code>0110</code>, ... Return the k-th symbol (1-based) of row n. The insight: symbol k of row n is made by its <b>parent</b>, symbol <code>(k + 1) / 2</code> of row n &minus; 1. An odd k copies the parent; an even k is its opposite.</p>
+<h4>Brute force first</h4>
+<p>Build every row as a string: row n has 2<sup>n&minus;1</sup> symbols, about 5&times;10<sup>8</sup> for n = 30. Far too big.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Base case: <code>n == 1</code> returns 0.</li><li>Find the parent: <code>p = kthGrammar(n - 1, (k + 1) / 2)</code>.</li><li>If k is odd, it is the left child: same as p.</li><li>If k is even, it is the right child: <code>1 - p</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int kthGrammar(int n, int k) {
+        if (n == 1) return 0;
+        int parent = kthGrammar(n - 1, (k + 1) / 2);
+        // odd k: left child = parent; even k: flipped
+        return k % 2 == 1 ? parent : 1 - parent;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(n) &mdash; one call per row, n calls deep.</p>
+<h4>Dry run</h4>
+<p>Row 3 is <code>0110</code>, k = 3. Parent: row 2, k = 2 &rarr; parent row 1, k = 1 = 0; k = 2 even &rarr; 1. Back in row 3: k = 3 odd &rarr; same as parent &rarr; 1. Check: <code>0110</code>[3] = 1.</p>
+<h4>Watch out</h4>
+<p>k is 1-based: the parent is <code>(k + 1) / 2</code>, not <code>k / 2</code>. Never build the strings. A neat O(1)-ish shortcut: the answer is the parity of <code>Integer.bitCount(k - 1)</code>.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

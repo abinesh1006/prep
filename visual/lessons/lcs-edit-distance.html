@@ -186,12 +186,202 @@
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-common-subsequence/">1143. Longest Common Subsequence</a> — the first animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/delete-operation-for-two-strings/">583. Delete Operation for Two Strings</a> — m + n − 2 × LCS.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/edit-distance/">72. Edit Distance</a> — the second animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-palindromic-subsequence/">516. Longest Palindromic Subsequence</a> — LCS of s and reverse(s).</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/interleaving-string/">97. Interleaving String</a> — boolean table, take the next letter from a or b.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/distinct-subsequences/">115. Distinct Subsequences</a> — count: on a match, add ↖ and ↑.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-common-subsequence/">1143. Longest Common Subsequence</a> — the first animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Length of the longest sequence of letters appearing in both strings in the same order (gaps allowed). <code>"abcde", "ace"</code> &rarr; 3. <code>dp[i][j]</code> = answer for the first i letters of a and the first j of b. If the last letters match, they extend the diagonal: <code>dp[i-1][j-1] + 1</code>. Otherwise drop one last letter: <code>max(dp[i-1][j], dp[i][j-1])</code>. Pattern: <b>2-D string DP</b>.</p>
+<h4>Brute force first</h4>
+<p>Try every subsequence of one string against the other: O(2<sup>m</sup> &middot; n).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make a (m+1)&times;(n+1) table; row 0 and column 0 stand for the empty string and stay 0.</li><li>Fill row by row.</li><li>Match: diagonal + 1. No match: max of up and left.</li><li>Answer at <code>dp[m][n]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int longestCommonSubsequence(String a,
+                                        String b) {
+        int m = a.length(), n = b.length();
+        // dp[i][j] = LCS of a's first i chars
+        //            and b's first j chars
+        int[][] dp = new int[m + 1][n + 1]; // row 0 = ""
+        for (int i = 1; i &lt;= m; i++) {
+            for (int j = 1; j &lt;= n; j++) {
+                if (a.charAt(i - 1) == b.charAt(j - 1)) {
+                    dp[i][j] = dp[i - 1][j - 1] + 1; // ↖ +1
+                } else {
+                    dp[i][j] = Math.max(dp[i - 1][j], // ↑
+                                        dp[i][j - 1]); // ←
+                }
+            }
+        }
+        return dp[m][n];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m &middot; n) &middot; <b>Space</b> O(m &middot; n) &mdash; one cell per pair of prefixes (can be cut to one row).</p>
+<h4>Dry run</h4>
+<p>a = "abc", b = "ac": row 'a': [1,1]; row 'b': [1,1]; row 'c': 'c' = 'c' &rarr; diagonal 1 + 1 = 2. Answer 2.</p>
+<h4>Watch out</h4>
+<p>The table is one bigger than the strings, so letters are <code>charAt(i-1)</code>, <code>charAt(j-1)</code>. Subsequence &ne; substring: gaps are fine.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/delete-operation-for-two-strings/">583. Delete Operation for Two Strings</a> — m + n − 2 × LCS.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Fewest single-letter deletions (from either word) to make the two words equal. What survives is a common subsequence, and to delete as little as possible keep the longest one. So the answer is <code>m + n &minus; 2 &times; LCS</code>. Pattern: <b>reduce to LCS</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Fill the LCS table exactly as in problem 1143.</li><li>Every letter not in the LCS gets deleted: m &minus; LCS from the first word, n &minus; LCS from the second.</li><li>Return m + n &minus; 2 &times; LCS.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int minDistance(String a, String b) {
+        int m = a.length(), n = b.length();
+        int[][] dp = new int[m + 1][n + 1];   // LCS table
+        for (int i = 1; i &lt;= m; i++) {
+            for (int j = 1; j &lt;= n; j++) {
+                if (a.charAt(i - 1) == b.charAt(j - 1))
+                    dp[i][j] = dp[i - 1][j - 1] + 1;
+                else
+                    dp[i][j] = Math.max(dp[i - 1][j],
+                                        dp[i][j - 1]);
+            }
+        }
+        // keep the LCS, delete everything else in both
+        return m + n - 2 * dp[m][n];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m &middot; n) &middot; <b>Space</b> O(m &middot; n) &mdash; the LCS table.</p>
+<h4>Dry run</h4>
+<p>"sea", "eat": LCS = "ea" = 2. 3 + 3 &minus; 4 = 2 (delete 's' and 't').</p>
+<h4>Watch out</h4>
+<p>This is not Edit Distance: only deletions are allowed, no replace. Two words with nothing in common need m + n deletions.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/edit-distance/">72. Edit Distance</a> — the second animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Fewest insert / delete / replace operations to turn word a into word b. <code>"horse" &rarr; "ros"</code> = 3. <code>dp[i][j]</code> = edits for the first i letters of a into the first j of b. If the last letters match, they cost nothing: <code>dp[i-1][j-1]</code>. Otherwise 1 + the cheapest of replace (&nwarr;), delete (&uarr;), insert (&larr;). Pattern: <b>2-D string DP</b> (Levenshtein distance).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Row 0: <code>dp[0][j] = j</code> (insert j letters). Column 0: <code>dp[i][0] = i</code> (delete i letters).</li><li>Fill the rest row by row.</li><li>Match: copy the diagonal.</li><li>No match: 1 + min(diagonal, up, left).</li><li>Answer at <code>dp[m][n]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int minDistance(String a, String b) {
+        int m = a.length(), n = b.length();
+        // dp[i][j] = edits to turn the first i chars of a
+        //            into the first j chars of b
+        int[][] dp = new int[m + 1][n + 1];
+        for (int i = 0; i &lt;= m; i++) dp[i][0] = i; // delete
+        for (int j = 0; j &lt;= n; j++) dp[0][j] = j; // insert
+        for (int i = 1; i &lt;= m; i++) {
+            for (int j = 1; j &lt;= n; j++) {
+                if (a.charAt(i - 1) == b.charAt(j - 1)) {
+                    dp[i][j] = dp[i - 1][j - 1];   // free
+                } else {
+                    dp[i][j] = 1 + Math.min(
+                        dp[i - 1][j - 1], // replace
+                        Math.min(dp[i - 1][j],     // delete
+                                 dp[i][j - 1]));   // insert
+                }
+            }
+        }
+        return dp[m][n];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m &middot; n) &middot; <b>Space</b> O(m &middot; n) &mdash; one cell per pair of prefixes.</p>
+<h4>Dry run</h4>
+<p>"horse" &rarr; "ros": replace h&rarr;r (rorse), delete r (rose), delete e (ros). The table cell dp[5][3] = 3.</p>
+<h4>Watch out</h4>
+<p>Forgetting the first row and column (they are not 0) is the classic bug. Empty word &rarr; answer is the other word's length.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-palindromic-subsequence/">516. Longest Palindromic Subsequence</a> — LCS of s and reverse(s).<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Longest subsequence of s that reads the same backwards. <code>"bbbab"</code> &rarr; "bbbb" = 4. A palindrome subsequence appears in s and, in the same order, in reverse(s). So the answer is the LCS of s and its reverse. Pattern: <b>reduce to LCS</b> (an interval DP <code>dp[i][j]</code> on s[i..j] also works).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Build r = reverse(s).</li><li>Fill the LCS table of s and r.</li><li>Return <code>dp[n][n]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int longestPalindromeSubseq(String s) {
+        String r = new StringBuilder(s).reverse().toString();
+        int n = s.length();
+        // a palindrome reads the same both ways, so it is
+        // a common subsequence of s and reverse(s)
+        int[][] dp = new int[n + 1][n + 1];
+        for (int i = 1; i &lt;= n; i++) {
+            for (int j = 1; j &lt;= n; j++) {
+                if (s.charAt(i - 1) == r.charAt(j - 1))
+                    dp[i][j] = dp[i - 1][j - 1] + 1;
+                else
+                    dp[i][j] = Math.max(dp[i - 1][j],
+                                        dp[i][j - 1]);
+            }
+        }
+        return dp[n][n];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n<sup>2</sup>) &middot; <b>Space</b> O(n<sup>2</sup>) &mdash; an n&times;n LCS table.</p>
+<h4>Dry run</h4>
+<p>s = "cbbd", r = "dbbc". Common: "bb" &rarr; 2.</p>
+<h4>Watch out</h4>
+<p>This trick works for the longest palindromic <b>subsequence</b>, not for the longest palindromic <b>substring</b> (problem 5), where it can give wrong answers.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/interleaving-string/">97. Interleaving String</a> — boolean table, take the next letter from a or b.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Can s3 be made by weaving s1 and s2 together while keeping each one's letter order? <code>ok[i][j]</code> = the first i letters of s1 and first j of s2 can form the first i+j of s3. The last letter of that s3 prefix came from s1 (then ok[i&minus;1][j] must hold and the letters match) or from s2 (ok[i][j&minus;1]). Pattern: <b>2-D boolean string DP</b>.</p>
+<h4>Brute force first</h4>
+<p>Recursively take the next letter from s1 or s2 whenever it matches: O(2<sup>m+n</sup>) without memo.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If the lengths do not add up, return false.</li><li>ok[0][0] = true.</li><li>For every (i, j) other than (0,0), let <code>want = s3[i+j-1]</code>.</li><li>ok[i][j] = (ok[i&minus;1][j] and s1[i&minus;1] == want) or (ok[i][j&minus;1] and s2[j&minus;1] == want).</li><li>Return ok[m][n].</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean isInterleave(String s1, String s2,
+                                String s3) {
+        int m = s1.length(), n = s2.length();
+        if (m + n != s3.length()) return false;
+        // ok[i][j] = first i of s1 + first j of s2 can
+        //            weave into the first i+j of s3
+        boolean[][] ok = new boolean[m + 1][n + 1];
+        ok[0][0] = true;
+        for (int i = 0; i &lt;= m; i++) {
+            for (int j = 0; j &lt;= n; j++) {
+                if (i == 0 &amp;&amp; j == 0) continue;  // base
+                char want = s3.charAt(i + j - 1);
+                if (i &gt; 0 &amp;&amp; ok[i - 1][j]
+                        &amp;&amp; s1.charAt(i - 1) == want)
+                    ok[i][j] = true; // last letter from s1
+                if (j &gt; 0 &amp;&amp; ok[i][j - 1]
+                        &amp;&amp; s2.charAt(j - 1) == want)
+                    ok[i][j] = true; // last letter from s2
+            }
+        }
+        return ok[m][n];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m &middot; n) &middot; <b>Space</b> O(m &middot; n) &mdash; one cell per (i, j) pair.</p>
+<h4>Dry run</h4>
+<p>s1 "a", s2 "b", s3 "ab": ok[1][0] ('a'='a') T; ok[1][1]: from s2, ok[1][0] T and 'b'='b' &rarr; T.</p>
+<h4>Watch out</h4>
+<p>Check <code>m + n == s3.length()</code> first, or <code>charAt</code> may go out of range. A greedy "take from s1 when it matches" fails when both strings offer the same letter.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/distinct-subsequences/">115. Distinct Subsequences</a> — count: on a match, add ↖ and ↑.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Count in how many ways t appears as a subsequence of s. <code>s = "rabbbit", t = "rabbit"</code> &rarr; 3 (pick which 'b' to skip). <code>dp[i][j]</code> = ways for the first i of s and first j of t. Letter s[i&minus;1] can be skipped (dp[i&minus;1][j], the &uarr; cell); if it equals t[j&minus;1] it can also be used (add dp[i&minus;1][j&minus;1], the &nwarr; cell). Pattern: <b>2-D counting DP</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>dp[i][0] = 1 for every i: the empty t appears once.</li><li>dp[0][j] = 0 for j &gt; 0.</li><li>Fill row by row: start with dp[i&minus;1][j]; if the letters match, add dp[i&minus;1][j&minus;1].</li><li>Return dp[m][n].</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int numDistinct(String s, String t) {
+        int m = s.length(), n = t.length();
+        // dp[i][j] = ways the first i of s contain
+        //            the first j of t as a subsequence
+        long[][] dp = new long[m + 1][n + 1];
+        for (int i = 0; i &lt;= m; i++) dp[i][0] = 1; // t=""
+        for (int i = 1; i &lt;= m; i++) {
+            for (int j = 1; j &lt;= n; j++) {
+                dp[i][j] = dp[i - 1][j];   // skip s[i-1]
+                if (s.charAt(i - 1) == t.charAt(j - 1))
+                    dp[i][j] += dp[i - 1][j - 1]; // use it
+            }
+        }
+        return (int) dp[m][n];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m &middot; n) &middot; <b>Space</b> O(m &middot; n) &mdash; one cell per pair of prefixes.</p>
+<h4>Dry run</h4>
+<p>s "abb", t "ab": dp for t-prefix "a": rows 1,1,1. "ab": row 'b'(1st) = 0 + 1 = 1; row 'b'(2nd) = 1 + 1 = 2. Answer 2.</p>
+<h4>Watch out</h4>
+<p>Counts can be huge in the middle of the table even when the answer fits an int; the code uses <code>long</code> and casts at the end (wrapping is harmless here since only additions are used).</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

@@ -183,13 +183,213 @@ count.put(<span class="n">0</span>, <span class="n">1</span>);
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/running-sum-of-1d-array/">1480. Running Sum of 1d Array</a> — just build the prefix array.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/range-sum-query-immutable/">303. Range Sum Query – Immutable</a> — the second animation.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/find-pivot-index/">724. Find Pivot Index</a> — left sum = total − left − nums[i].</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/subarray-sum-equals-k/">560. Subarray Sum Equals K</a> — the third animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/continuous-subarray-sum/">523. Continuous Subarray Sum</a> — store prefix mod k → first index.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/contiguous-array/">525. Contiguous Array</a> — treat 0 as −1, find equal prefix sums.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/range-sum-query-2d-immutable/">304. Range Sum Query 2D</a> — prefix sums on a grid.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/running-sum-of-1d-array/">1480. Running Sum of 1d Array</a> — just build the prefix array.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Return an array where position i holds <code>nums[0] + ... + nums[i]</code>. <code>[1,2,3,4]</code> &rarr; <code>[1,3,6,10]</code>. This <b>is</b> the prefix array: each entry is the previous entry plus one number.</p>
+<h4>Brute force first</h4>
+<p>For each i, loop from 0 to i and add up. That is 1 + 2 + ... + n additions = O(n&sup2;) time.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Start at index 1 (index 0 is already its own running sum).</li><li>Set <code>nums[i] += nums[i - 1]</code>: the previous cell already holds the sum of everything before.</li><li>Keep going to the end and return <code>nums</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] runningSum(int[] nums) {
+        for (int i = 1; i &lt; nums.length; i++) {
+            // nums[i-1] already holds the sum so far
+            nums[i] += nums[i - 1];
+        }
+        return nums;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one pass, and we reuse the input array for the answer.</p>
+<h4>Dry run</h4>
+<p><code>[1,2,3,4]</code>: i=1 &rarr; 2+1=3; i=2 &rarr; 3+3=6; i=3 &rarr; 4+6=10 &rarr; <code>[1,3,6,10]</code>.</p>
+<h4>Watch out</h4>
+<p>Start the loop at 1, not 0, or you read <code>nums[-1]</code>. If you must not change the input, copy it into a new array first (then space is O(n)).</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/range-sum-query-immutable/">303. Range Sum Query – Immutable</a> — the second animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Many questions "sum of <code>nums[left..right]</code>?" on an array that never changes. The insight: build <code>pre[i]</code> = sum of the first i numbers once; then any range sum is <code>pre[right + 1] - pre[left]</code> in O(1). Pattern: <b>prefix sums</b>.</p>
+<h4>Brute force first</h4>
+<p>Loop from left to right for each query: O(n) per query, O(n &middot; q) total.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make <code>pre</code> of size n + 1 with <code>pre[0] = 0</code>.</li><li><code>pre[i + 1] = pre[i] + nums[i]</code>.</li><li>For a query, return <code>pre[right + 1] - pre[left]</code>: everything up to right, minus everything before left.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class NumArray {
+    private final int[] pre; // pre[i] = sum of first i
+
+    public NumArray(int[] nums) {
+        pre = new int[nums.length + 1];
+        for (int i = 0; i &lt; nums.length; i++) {
+            pre[i + 1] = pre[i] + nums[i];
+        }
+    }
+
+    public int sumRange(int left, int right) {
+        return pre[right + 1] - pre[left];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) to build, O(1) per query &middot; <b>Space</b> O(n) &mdash; one extra array.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>nums = [-2, 0, 3,-5, 2,-1]
+pre  = [0,-2,-2, 1,-4,-2,-3]
+sumRange(2,5) = pre[6] - pre[2] = -3 - (-2) = -1</code></pre>
+<h4>Watch out</h4>
+<p>The extra leading 0 (size n + 1) removes the special case for <code>left = 0</code>. Off-by-one: it is <code>pre[right + 1]</code>, not <code>pre[right]</code>.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/find-pivot-index/">724. Find Pivot Index</a> — left sum = total − left − nums[i].<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the leftmost index where the sum of numbers to its left equals the sum to its right. <code>[1,7,3,6,5,6]</code> &rarr; 3 (1+7+3 = 11 = 5+6). The insight: once you know the <b>total</b>, the right sum is <code>total - left - nums[i]</code>, so one running left sum is enough.</p>
+<h4>Brute force first</h4>
+<p>For each index, add up its left and its right side: O(n&sup2;).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Compute <code>total</code>, the sum of all numbers.</li><li>Walk i with <code>left = 0</code> (sum of everything before i).</li><li>If <code>left == total - left - nums[i]</code>, return i.</li><li>Otherwise <code>left += nums[i]</code> and continue. Return &minus;1 if none.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int pivotIndex(int[] nums) {
+        int total = 0;
+        for (int x : nums) total += x;
+        int left = 0;
+        for (int i = 0; i &lt; nums.length; i++) {
+            int right = total - left - nums[i];
+            if (left == right) return i;
+            left += nums[i];
+        }
+        return -1;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; two passes, two variables.</p>
+<h4>Dry run</h4>
+<p><code>[1,7,3,6,5,6]</code>, total 28: i=0 left 0 right 27; i=1 left 1 right 20; i=2 left 8 right 17; i=3 left 11 right 28&minus;11&minus;6 = 11 &rarr; return 3.</p>
+<h4>Watch out</h4>
+<p>Check before adding <code>nums[i]</code> to left: the pivot itself belongs to neither side. Index 0 can be the pivot (left sum is 0), as in <code>[2,1,-1]</code>.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/subarray-sum-equals-k/">560. Subarray Sum Equals K</a> — the third animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Count the runs of neighbours that add up to exactly k (numbers can be negative). <code>[1,1,1]</code>, k = 2 &rarr; 2. The insight: a run ending at i sums to k exactly when some earlier prefix equals <code>prefix - k</code>. Keep a <b>hash map from prefix sum to how many times it has appeared</b>. Pattern: <b>prefix sum + hash map</b>.</p>
+<h4>Brute force first</h4>
+<p>Every start, extend to every end, keep a running sum: O(n&sup2;). Sliding window fails because of negative numbers.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Map <code>count</code> with <code>{0: 1}</code>: the empty prefix, so runs starting at index 0 are counted.</li><li>Walk the array keeping a running <code>sum</code>.</li><li>Add <code>count.get(sum - k)</code> to the answer: each such earlier prefix starts one valid run.</li><li>Then record the current sum: <code>count[sum]++</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int subarraySum(int[] nums, int k) {
+        Map&lt;Integer, Integer&gt; count = new HashMap&lt;&gt;();
+        count.put(0, 1); // empty prefix
+        int sum = 0, ans = 0;
+        for (int x : nums) {
+            sum += x;
+            ans += count.getOrDefault(sum - k, 0);
+            count.merge(sum, 1, Integer::sum);
+        }
+        return ans;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(n) &mdash; one pass; the map can hold n prefix sums.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>[1,2,3], k=3      map starts {0:1}
+x=1 sum 1: need -2 -&gt; 0   map {0:1,1:1}
+x=2 sum 3: need  0 -&gt; +1  map {..,3:1}   ([1,2])
+x=3 sum 6: need  3 -&gt; +1  ([3])          ans 2</code></pre>
+<h4>Watch out</h4>
+<p>Forgetting <code>count.put(0, 1)</code> misses every run that starts at index 0. Look up <code>sum - k</code> <b>before</b> adding the current sum, or k = 0 counts empty runs.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/continuous-subarray-sum/">523. Continuous Subarray Sum</a> — store prefix mod k → first index.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Is there a run of <b>at least 2</b> neighbours whose sum is a multiple of k? <code>[23,2,4,6,7]</code>, k = 6 &rarr; true (2+4 = 6). The insight: if two prefix sums leave the <b>same remainder mod k</b>, the numbers between them sum to a multiple of k. Store each remainder's <b>first index</b> and check the gap is &ge; 2.</p>
+<h4>Brute force first</h4>
+<p>All runs of length &ge; 2 with a running sum: O(n&sup2;). n can be 10<sup>5</sup>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Map <code>first</code> remainder &rarr; earliest index, starting with <code>{0: -1}</code> (empty prefix before index 0).</li><li>Walk i, keep <code>mod = (mod + nums[i]) % k</code>.</li><li>If <code>mod</code> was seen at index j and <code>i - j &gt;= 2</code>, return true.</li><li>If it was never seen, store <code>first[mod] = i</code> (keep the earliest; never overwrite).</li><li>Return false at the end.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean checkSubarraySum(int[] nums, int k) {
+        Map&lt;Integer, Integer&gt; first = new HashMap&lt;&gt;();
+        first.put(0, -1); // empty prefix
+        int mod = 0;
+        for (int i = 0; i &lt; nums.length; i++) {
+            mod = (mod + nums[i]) % k;
+            Integer j = first.get(mod);
+            if (j == null) first.put(mod, i);
+            else if (i - j &gt;= 2) return true;
+        }
+        return false;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(min(n, k)) &mdash; one pass; at most k different remainders.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>[23,2,4,6,7], k=6   first {0:-1}
+i=0 mod 23%6=5   new   {5:0}
+i=1 mod 25%6=1   new   {1:1}
+i=2 mod 29%6=5   seen at 0, gap 2 -&gt; true</code></pre>
+<h4>Watch out</h4>
+<p>Keep the <b>first</b> index of each remainder, never update it, or the length check fails. <code>{0: -1}</code> makes a run starting at index 0 count. A single 0 is not enough: length must be &ge; 2.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/contiguous-array/">525. Contiguous Array</a> — treat 0 as −1, find equal prefix sums.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>In a 0/1 array, find the longest run with as many 0s as 1s. <code>[0,1,0]</code> &rarr; 2. The insight: count 0 as &minus;1. Then "equal 0s and 1s" means "sums to 0", and a run sums to 0 when two <b>prefix sums are equal</b>. Store each prefix sum's first index.</p>
+<h4>Brute force first</h4>
+<p>Every run, count zeros and ones: O(n&sup2;).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Map <code>first</code>: prefix sum &rarr; earliest index, starting <code>{0: -1}</code>.</li><li>Walk i: <code>sum += nums[i] == 1 ? 1 : -1</code>.</li><li>If this sum was seen at j, the run <code>j+1..i</code> is balanced: length <code>i - j</code>; keep the max.</li><li>If not seen, store <code>first[sum] = i</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findMaxLength(int[] nums) {
+        Map&lt;Integer, Integer&gt; first = new HashMap&lt;&gt;();
+        first.put(0, -1);
+        int sum = 0, best = 0;
+        for (int i = 0; i &lt; nums.length; i++) {
+            sum += nums[i] == 1 ? 1 : -1; // 0 counts as -1
+            Integer j = first.get(sum);
+            if (j != null) best = Math.max(best, i - j);
+            else first.put(sum, i);
+        }
+        return best;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(n) &mdash; one pass; up to n different sums.</p>
+<h4>Dry run</h4>
+<p><code>[0,1,0]</code>: i=0 sum &minus;1 new; i=1 sum 0, seen at &minus;1 &rarr; length 2; i=2 sum &minus;1, seen at 0 &rarr; length 2. Answer 2.</p>
+<h4>Watch out</h4>
+<p>Store only the <b>first</b> index of each sum (that gives the longest run). Without <code>{0: -1}</code> you miss runs that start at index 0, like <code>[0,1]</code>.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/range-sum-query-2d-immutable/">304. Range Sum Query 2D</a> — prefix sums on a grid.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Many questions "sum of the rectangle from (r1,c1) to (r2,c2)?" on a fixed grid. The insight: <code>pre[i][j]</code> = sum of the rectangle from (0,0) to (i&minus;1, j&minus;1). Any rectangle is then <b>big box minus top strip minus left strip plus the corner</b> that was removed twice. Pattern: <b>2D prefix sums</b>.</p>
+<h4>Brute force first</h4>
+<p>Add every cell inside the rectangle for each query: O(rows &times; cols) per query.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make <code>pre</code> of size (m + 1) &times; (n + 1), all 0.</li><li>Fill <code>pre[i+1][j+1] = matrix[i][j] + pre[i][j+1] + pre[i+1][j] - pre[i][j]</code> (cell + above + left &minus; overlap).</li><li>Query: <code>pre[r2+1][c2+1] - pre[r1][c2+1] - pre[r2+1][c1] + pre[r1][c1]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class NumMatrix {
+    private final int[][] pre;
+
+    public NumMatrix(int[][] matrix) {
+        int m = matrix.length, n = matrix[0].length;
+        pre = new int[m + 1][n + 1];
+        for (int i = 0; i &lt; m; i++) {
+            for (int j = 0; j &lt; n; j++) {
+                // cell + above + left - counted twice
+                pre[i + 1][j + 1] = matrix[i][j]
+                    + pre[i][j + 1] + pre[i + 1][j]
+                    - pre[i][j];
+            }
+        }
+    }
+
+    public int sumRegion(int r1, int c1, int r2, int c2) {
+        return pre[r2 + 1][c2 + 1] - pre[r1][c2 + 1]
+             - pre[r2 + 1][c1] + pre[r1][c1];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m&middot;n) to build, O(1) per query &middot; <b>Space</b> O(m&middot;n) &mdash; one extra grid.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>grid [[1,2],     pre [[0,0,0],
+      [3,4]]          [0,1,3],
+                      [0,4,10]]
+sumRegion(1,1,1,1) = 10 - 3 - 4 + 1 = 4</code></pre>
+<h4>Watch out</h4>
+<p>The extra row and column of zeros remove edge cases for r1 = 0 or c1 = 0. Remember to <b>add back</b> the corner <code>pre[r1][c1]</code>: it was subtracted twice.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

@@ -242,13 +242,206 @@ dp[<span class="n">0</span>] = ...;                          <span class="c">// 
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/climbing-stairs/">70. Climbing Stairs</a> — the first three animations.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/min-cost-climbing-stairs/">746. Min Cost Climbing Stairs</a> — min instead of +.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/fibonacci-number/">509. Fibonacci Number</a> — the same recurrence.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/house-robber/">198. House Robber</a> — the fourth animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/house-robber-ii/">213. House Robber II</a> — houses in a circle: run twice, without first / without last.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/decode-ways/">91. Decode Ways</a> — like stairs: one digit or two digits.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/delete-and-earn/">740. Delete and Earn</a> — turn it into House Robber over values.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/climbing-stairs/">70. Climbing Stairs</a> — the first three animations.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>You climb n steps taking 1 or 2 at a time; count the different ways. The last move onto step n was either a 1-step (from n&minus;1) or a 2-step (from n&minus;2), so <code>ways(n) = ways(n-1) + ways(n-2)</code>. Pattern: <b>1-D DP</b> (the Fibonacci recurrence), keeping only the last two values.</p>
+<h4>Brute force first</h4>
+<p>Plain recursion on the same formula recomputes the same steps again and again: O(2<sup>n</sup>).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>ways(0) = 1 (stand still), ways(1) = 1.</li><li>For i = 2..n: cur = prev1 + prev2.</li><li>Shift: prev2 = prev1, prev1 = cur.</li><li>Return prev1.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int climbStairs(int n) {
+        // ways(i) = ways(i-1) + ways(i-2)
+        int prev2 = 1;   // ways to reach step 0
+        int prev1 = 1;   // ways to reach step 1
+        for (int i = 2; i &lt;= n; i++) {
+            int cur = prev1 + prev2; // last move 1 or 2
+            prev2 = prev1;
+            prev1 = cur;
+        }
+        return prev1;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one loop, two variables.</p>
+<h4>Dry run</h4>
+<p>n = 4: ways 1, 1 &rarr; i=2: 2 &rarr; i=3: 3 &rarr; i=4: 5. Answer 5.</p>
+<h4>Watch out</h4>
+<p>n = 1 must return 1; the loop does not run and prev1 = 1 handles it. Values grow like Fibonacci; n &le; 45 fits in an int.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/min-cost-climbing-stairs/">746. Min Cost Climbing Stairs</a> — min instead of +.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Each step i has a cost you pay when you step off it; you may start on step 0 or 1 and want to reach the top (just past the last step). Cheapest cost to stand on step i is <code>min(dp[i-1] + cost[i-1], dp[i-2] + cost[i-2])</code>. Same shape as Climbing Stairs, with min instead of +. Pattern: <b>1-D DP</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>dp[0] = dp[1] = 0 (starting there is free).</li><li>For i = 2..n: come from i&minus;1 paying cost[i&minus;1], or from i&minus;2 paying cost[i&minus;2]; keep the cheaper.</li><li>Keep only the last two values.</li><li>The top is index n; return dp[n].</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int minCostClimbingStairs(int[] cost) {
+        // dp[i] = cheapest way to stand on step i
+        // (you start free on step 0 or step 1)
+        int prev2 = 0, prev1 = 0;      // dp[0], dp[1]
+        for (int i = 2; i &lt;= cost.length; i++) {
+            int cur = Math.min(prev1 + cost[i - 1],
+                               prev2 + cost[i - 2]);
+            prev2 = prev1;
+            prev1 = cur;
+        }
+        return prev1;                  // the top = step n
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one pass, two variables.</p>
+<h4>Dry run</h4>
+<p><code>[10,15,20]</code>: dp0 = 0, dp1 = 0, dp2 = min(0+15, 0+10) = 10, dp3 = min(10+20, 0+15) = 15. Answer 15.</p>
+<h4>Watch out</h4>
+<p>The top is <b>past</b> the last step (index n), not the last step itself; looping only to n&minus;1 is the common off-by-one.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/fibonacci-number/">509. Fibonacci Number</a> — the same recurrence.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>F(0) = 0, F(1) = 1, F(n) = F(n&minus;1) + F(n&minus;2). Compute it bottom-up from the two smallest values instead of recursing. Pattern: <b>1-D DP with two rolling variables</b>.</p>
+<h4>Brute force first</h4>
+<p>Direct recursion <code>fib(n-1) + fib(n-2)</code> is O(2<sup>n</sup>) because the same values are recomputed; memoizing fixes it to O(n).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If n &lt; 2 return n.</li><li>a = F(0) = 0, b = F(1) = 1.</li><li>Repeat n &minus; 1 times: c = a + b, a = b, b = c.</li><li>Return b.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int fib(int n) {
+        if (n &lt; 2) return n;           // F(0)=0, F(1)=1
+        int a = 0, b = 1;              // F(i-2), F(i-1)
+        for (int i = 2; i &lt;= n; i++) {
+            int c = a + b;
+            a = b;
+            b = c;
+        }
+        return b;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one loop, two numbers.</p>
+<h4>Dry run</h4>
+<p>n = 4: (a,b) = (0,1) &rarr; (1,1) &rarr; (1,2) &rarr; (2,3). Answer 3.</p>
+<h4>Watch out</h4>
+<p>F(0) = 0, not 1. Off-by-one in the loop bounds shifts the whole sequence.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/house-robber/">198. House Robber</a> — the fourth animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Houses in a row hold money; you cannot rob two neighbours. For house i you either skip it (keep the best so far) or rob it (its money plus the best up to i&minus;2). <code>best(i) = max(best(i-1), best(i-2) + nums[i])</code>. Pattern: <b>1-D DP, take or skip</b>.</p>
+<h4>Brute force first</h4>
+<p>Try every subset with no two neighbours: O(2<sup>n</sup>).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>prev2 = best up to i&minus;2, prev1 = best up to i&minus;1, both 0 at the start.</li><li>For each house x: cur = max(prev1, prev2 + x).</li><li>Shift the two variables.</li><li>Return prev1.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int rob(int[] nums) {
+        // best(i) = max(best(i-1), best(i-2) + nums[i])
+        int prev2 = 0;   // best up to house i-2
+        int prev1 = 0;   // best up to house i-1
+        for (int x : nums) {
+            int cur = Math.max(prev1,      // skip house
+                               prev2 + x); // rob house
+            prev2 = prev1;
+            prev1 = cur;
+        }
+        return prev1;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one pass with two numbers.</p>
+<h4>Dry run</h4>
+<p><code>[2,7,9,3,1]</code>: best 2, 7, max(7, 2+9)=11, max(11, 7+3)=11, max(11, 11+1)=12. Answer 12.</p>
+<h4>Watch out</h4>
+<p>Greedy "take every other house" fails: <code>[2,1,1,2]</code> needs houses 0 and 3 for 4.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/house-robber-ii/">213. House Robber II</a> — houses in a circle: run twice, without first / without last.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Same as House Robber, but the houses form a circle, so the first and last are neighbours. Any valid plan leaves out the first house or the last house (or both). Run the line version twice: on houses 0..n&minus;2 and on 1..n&minus;1, and take the bigger. Pattern: <b>break a circle into two lines</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If there is one house, return its money.</li><li>Write <code>line(lo, hi)</code>: plain House Robber on a slice.</li><li>Answer = max(line(0, n&minus;2), line(1, n&minus;1)).</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int rob(int[] nums) {
+        int n = nums.length;
+        if (n == 1) return nums[0];    // only one house
+        // first and last are neighbours: never take both
+        return Math.max(line(nums, 0, n - 2),  // no last
+                        line(nums, 1, n - 1)); // no first
+    }
+
+    // plain House Robber on nums[lo..hi]
+    int line(int[] nums, int lo, int hi) {
+        int prev2 = 0, prev1 = 0;
+        for (int i = lo; i &lt;= hi; i++) {
+            int cur = Math.max(prev1, prev2 + nums[i]);
+            prev2 = prev1;
+            prev1 = cur;
+        }
+        return prev1;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; two linear passes.</p>
+<h4>Dry run</h4>
+<p><code>[2,3,2]</code>: without last &rarr; [2,3] best 3; without first &rarr; [3,2] best 3. Answer 3 (robbing both 2s is not allowed).</p>
+<h4>Watch out</h4>
+<p>n = 1 needs the special case: both slices would be empty and give 0.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/decode-ways/">91. Decode Ways</a> — like stairs: one digit or two digits.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Letters A&ndash;Z are coded 1&ndash;26; count how many ways a digit string can be decoded. <code>"226"</code> &rarr; 2-2-6, 22-6, 2-26 = 3. Like stairs: the last letter used one digit (valid if it is not '0') or two digits (valid if they form 10..26). <code>ways(i) = [one ok] ways(i-1) + [two ok] ways(i-2)</code>. Pattern: <b>1-D DP over prefixes</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If the string starts with '0', return 0.</li><li>ways(0) = 1 (empty prefix), ways(1) = 1.</li><li>For i = 2..n: one = digit i&minus;1, two = digits i&minus;2, i&minus;1.</li><li>cur = (one != '0' ? ways(i&minus;1) : 0) + (10 &le; two &le; 26 ? ways(i&minus;2) : 0).</li><li>Shift the two variables; return the last.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int numDecodings(String s) {
+        // ways(i) = ways to decode the first i chars
+        int prev2 = 1;   // ways(i-2); ways(0) = 1
+        int prev1 = 1;   // ways(i-1)
+        if (s.charAt(0) == '0') return 0;
+        for (int i = 2; i &lt;= s.length(); i++) {
+            int cur = 0;
+            char one = s.charAt(i - 1);      // last digit
+            int two = (s.charAt(i - 2) - '0') * 10
+                      + (one - '0'); // last 2 digits
+            if (one != '0') cur += prev1;    // 1..9 alone
+            if (two &gt;= 10 &amp;&amp; two &lt;= 26)
+                cur += prev2;                // 10..26 pair
+            prev2 = prev1;
+            prev1 = cur;
+        }
+        return prev1;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one pass, two counters.</p>
+<h4>Dry run</h4>
+<p><code>"226"</code>: ways0 = 1, ways1 = 1. i=2: '2' ok (+1), 22 ok (+1) &rarr; 2. i=3: '6' ok (+2), 26 ok (+1) &rarr; 3.</p>
+<h4>Watch out</h4>
+<p>'0' cannot stand alone, and "06" is not a two-digit code (it is &lt; 10). <code>"100"</code> gives 0 because the last 0 has no partner.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/delete-and-earn/">740. Delete and Earn</a> — turn it into House Robber over values.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Taking a value v earns v points but deletes every v&minus;1 and v+1. So if you take v once, take all copies: <code>points[v] = v &times; count(v)</code>. Now values on a number line are "houses", and v and v+1 are neighbours. Run House Robber over <code>points</code>. Pattern: <b>reduce to a known DP</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Find the max value.</li><li>Build <code>points[v]</code> = sum of every v in the array.</li><li>House Robber over v = 0..max: cur = max(prev1, prev2 + points[v]).</li><li>Return prev1.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int deleteAndEarn(int[] nums) {
+        int max = 0;
+        for (int x : nums) max = Math.max(max, x);
+        // points[v] = total you earn by taking every v
+        int[] points = new int[max + 1];
+        for (int x : nums) points[x] += x;
+        // House Robber: values v-1 and v+1 are neighbours
+        int prev2 = 0, prev1 = 0;
+        for (int v = 0; v &lt;= max; v++) {
+            int cur = Math.max(prev1, prev2 + points[v]);
+            prev2 = prev1;
+            prev1 = cur;
+        }
+        return prev1;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n + M) &middot; <b>Space</b> O(M) &mdash; M is the largest value (&le; 10<sup>4</sup>).</p>
+<h4>Dry run</h4>
+<p><code>[2,2,3,3,3,4]</code>: points[2]=4, points[3]=9, points[4]=4. Robber: v2 &rarr; 4, v3 &rarr; max(4, 0+9)=9, v4 &rarr; max(9, 4+4)=9. Answer 9.</p>
+<h4>Watch out</h4>
+<p>Neighbours are by <b>value</b>, not by position in the input, so do not sort and rob the array directly.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

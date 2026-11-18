@@ -242,13 +242,209 @@ void reverse(int[] a, int l, int r) {
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/move-zeroes/">283. Move Zeroes</a> — write pointer keeps non-zeros, rest becomes 0.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/missing-number/">268. Missing Number</a> — cyclic sort, XOR, or n(n+1)/2 − sum.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-colors/">75. Sort Colors</a> — the Dutch flag animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/rotate-array/">189. Rotate Array</a> — three reversals.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/product-of-array-except-self/">238. Product of Array Except Self</a> — left pass, right pass.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-all-duplicates-in-an-array/">442. Find All Duplicates in an Array</a> — mark seen values by negating a[v − 1].</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/first-missing-positive/">41. First Missing Positive</a> — cyclic sort for values 1..n, ignore the rest.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/move-zeroes/">283. Move Zeroes</a> — write pointer keeps non-zeros, rest becomes 0.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Push all 0s to the end, keep the other numbers in their order, no extra array. <code>[0,1,0,3,12]</code> &rarr; <code>[1,3,12,0,0]</code>. The insight: a <b>write pointer</b> <code>w</code> marks where the next non-zero belongs. Copy every non-zero to <code>w</code>, then fill the rest with 0.</p>
+<h4>Brute force first</h4>
+<p>Copy non-zeros into a new array and pad with zeros: O(n) time but O(n) space, and the problem says in place.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>w = 0</code>.</li><li>For each number: if it is not 0, write it to <code>nums[w]</code> and <code>w++</code>.</li><li>After the loop, set <code>nums[w..n-1]</code> to 0.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public void moveZeroes(int[] nums) {
+        int w = 0; // next slot for a non-zero
+        for (int x : nums) {
+            if (x != 0) nums[w++] = x;
+        }
+        while (w &lt; nums.length) nums[w++] = 0;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one pass plus filling the tail.</p>
+<h4>Dry run</h4>
+<p><code>[0,1,0,3,12]</code>: 1 &rarr; slot 0, 3 &rarr; slot 1, 12 &rarr; slot 2; w = 3, fill slots 3,4 with 0 &rarr; <code>[1,3,12,0,0]</code>.</p>
+<h4>Watch out</h4>
+<p>Writing never overtakes reading (<code>w</code> is always &le; the read index), so nothing is lost. A swap version (<code>swap(nums[w], nums[i])</code>) does it in one pass with fewer writes.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/missing-number/">268. Missing Number</a> — cyclic sort, XOR, or n(n+1)/2 − sum.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>The array holds n different numbers from 0..n, so exactly one is missing. <code>[3,0,1]</code> &rarr; 2. The insight: the full set 0..n adds up to <code>n(n+1)/2</code>; subtract the actual sum and what is left is the missing one. (XOR of all indexes and values also works, since equal numbers cancel.)</p>
+<h4>Brute force first</h4>
+<p>Sort and look for the first gap: O(n log n). Or a hash set: O(n) time, O(n) space.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>n = nums.length</code>.</li><li>Expected sum = <code>n * (n + 1) / 2</code>.</li><li>Subtract every number in the array.</li><li>What remains is the missing number.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int missingNumber(int[] nums) {
+        int n = nums.length;
+        int missing = n * (n + 1) / 2; // sum of 0..n
+        for (int x : nums) missing -= x;
+        return missing;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one pass, one variable.</p>
+<h4>Dry run</h4>
+<p><code>[3,0,1]</code>, n = 3: expected 0+1+2+3 = 6; 6 &minus; 3 &minus; 0 &minus; 1 = 2.</p>
+<h4>Watch out</h4>
+<p>n &le; 10<sup>4</sup>, so <code>n(n+1)/2</code> fits in <code>int</code>; for huge n use <code>long</code> or the XOR trick. The missing number can be 0 or n itself.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-colors/">75. Sort Colors</a> — the Dutch flag animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Sort an array of only 0s, 1s and 2s in place, in one pass. <code>[2,0,2,1,1,0]</code> &rarr; <code>[0,0,1,1,2,2]</code>. The insight: <b>Dutch national flag</b>. Three pointers split the array into zone of 0s <code>[0, lo)</code>, 1s <code>[lo, i)</code>, unknown <code>[i, hi]</code>, 2s <code>(hi, end]</code>. Look at <code>nums[i]</code> and send it to the right zone.</p>
+<h4>Brute force first</h4>
+<p>Count the 0s, 1s and 2s, then rewrite the array: two passes, also fine (O(n)). The one-pass version is what the follow-up asks.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>lo = 0</code>, <code>i = 0</code>, <code>hi = n - 1</code>.</li><li>If <code>nums[i] == 0</code>: swap with <code>lo</code>, then <code>lo++</code>, <code>i++</code>.</li><li>If it is 1: just <code>i++</code>.</li><li>If it is 2: swap with <code>hi</code>, <code>hi--</code>, and do <b>not</b> move i (the swapped-in value is still unknown).</li><li>Stop when <code>i &gt; hi</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public void sortColors(int[] nums) {
+        int lo = 0, i = 0, hi = nums.length - 1;
+        while (i &lt;= hi) {
+            if (nums[i] == 0) swap(nums, lo++, i++);
+            else if (nums[i] == 1) i++;
+            else swap(nums, i, hi--); // re-check nums[i]
+        }
+    }
+
+    private void swap(int[] a, int x, int y) {
+        int t = a[x]; a[x] = a[y]; a[y] = t;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; each step either moves i forward or shrinks hi.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>[2,0,1]  lo=0 i=0 hi=2
+i=0: 2 -&gt; swap with hi -&gt; [1,0,2] hi=1
+i=0: 1 -&gt; i=1
+i=1: 0 -&gt; swap with lo -&gt; [0,1,2] lo=1 i=2
+i &gt; hi, stop</code></pre>
+<h4>Watch out</h4>
+<p>After swapping a 2 to the back, do not <code>i++</code>: the number that came from <code>hi</code> has not been looked at yet. After swapping a 0, you can move i because <code>nums[lo]</code> was already checked (it is a 1).</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/rotate-array/">189. Rotate Array</a> — three reversals.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Shift every number k places right, wrapping around, in place. <code>[1,2,3,4,5,6,7]</code>, k = 3 &rarr; <code>[5,6,7,1,2,3,4]</code>. The insight: <b>three reversals</b>. Reverse all &rarr; <code>[7,6,5,4,3,2,1]</code>; reverse the first k &rarr; <code>[5,6,7,...]</code>; reverse the rest &rarr; <code>[...,1,2,3,4]</code>.</p>
+<h4>Brute force first</h4>
+<p>Rotate by 1, k times: O(n &middot; k). Or copy into a new array at <code>(i + k) % n</code>: O(n) time, O(n) space.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>k %= n</code> (rotating by n changes nothing).</li><li>Reverse the whole array.</li><li>Reverse the first k numbers.</li><li>Reverse the remaining n &minus; k numbers.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public void rotate(int[] nums, int k) {
+        int n = nums.length;
+        k %= n;                 // k may exceed n
+        reverse(nums, 0, n - 1);
+        reverse(nums, 0, k - 1);
+        reverse(nums, k, n - 1);
+    }
+
+    private void reverse(int[] a, int l, int r) {
+        while (l &lt; r) {
+            int t = a[l]; a[l++] = a[r]; a[r--] = t;
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; every number is swapped about twice.</p>
+<h4>Dry run</h4>
+<p><code>[1,2,3,4,5,6,7]</code>, k = 3: reverse all &rarr; <code>[7,6,5,4,3,2,1]</code>; first 3 &rarr; <code>[5,6,7,4,3,2,1]</code>; last 4 &rarr; <code>[5,6,7,1,2,3,4]</code>.</p>
+<h4>Watch out</h4>
+<p>Always do <code>k %= n</code> first; k can be larger than n (k = 5, n = 2 means rotate by 1).</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/product-of-array-except-self/">238. Product of Array Except Self</a> — left pass, right pass.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>For each i, the product of every number except <code>nums[i]</code>, without division. <code>[1,2,3,4]</code> &rarr; <code>[24,12,8,6]</code>. The insight: answer[i] = (product of everything left of i) &times; (product of everything right of i). Fill the left products in one pass, then multiply in the right products on a pass backwards.</p>
+<h4>Brute force first</h4>
+<p>For each i multiply all the others: O(n&sup2;). Dividing the total by <code>nums[i]</code> is banned and breaks on zeros.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>ans[0] = 1</code>; going right, <code>ans[i] = ans[i - 1] * nums[i - 1]</code>: ans now holds left products.</li><li>Keep <code>right = 1</code>. Walk i from n &minus; 1 down to 0.</li><li><code>ans[i] *= right</code>, then <code>right *= nums[i]</code>.</li><li>Return ans.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] productExceptSelf(int[] nums) {
+        int n = nums.length;
+        int[] ans = new int[n];
+        ans[0] = 1;
+        for (int i = 1; i &lt; n; i++) {
+            ans[i] = ans[i - 1] * nums[i - 1]; // left part
+        }
+        int right = 1;
+        for (int i = n - 1; i &gt;= 0; i--) {
+            ans[i] *= right;   // times the right part
+            right *= nums[i];
+        }
+        return ans;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) extra (the output array does not count) &mdash; two passes.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>nums     [1, 2, 3, 4]
+left     [1, 1, 2, 6]
+right    [24,12, 4, 1]
+answer   [24,12, 8, 6]</code></pre>
+<h4>Watch out</h4>
+<p>Do not divide: zeros break it. Multiply by <code>right</code> <b>before</b> updating it with <code>nums[i]</code>, or each answer includes its own number.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-all-duplicates-in-an-array/">442. Find All Duplicates in an Array</a> — mark seen values by negating a[v − 1].<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Values are in 1..n and each appears once or twice; list the ones that appear twice, with O(1) extra space. <code>[4,3,2,7,8,2,3,1]</code> &rarr; <code>[2,3]</code>. The insight: use the array itself as the "seen" table. For value v, look at slot <code>v - 1</code>: make it negative the first time; if it is already negative, v is a duplicate.</p>
+<h4>Brute force first</h4>
+<p>A hash set of seen values: O(n) time but O(n) space.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>For each number, take <code>v = Math.abs(nums[i])</code> (it may already be negated).</li><li>Look at slot <code>v - 1</code>.</li><li>If <code>nums[v - 1]</code> is negative, v was seen before: add v to the answer.</li><li>Otherwise negate it to mark v as seen.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;Integer&gt; findDuplicates(int[] nums) {
+        List&lt;Integer&gt; res = new ArrayList&lt;&gt;();
+        for (int i = 0; i &lt; nums.length; i++) {
+            int v = Math.abs(nums[i]); // may be marked
+            if (nums[v - 1] &lt; 0) res.add(v); // seen twice
+            else nums[v - 1] = -nums[v - 1]; // mark seen
+        }
+        return res;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) extra &mdash; the sign bit of each slot is the "seen" flag.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>[4,3,2,7,8,2,3,1]
+4 -&gt; negate slot 3;  3 -&gt; slot 2;  2 -&gt; slot 1
+7 -&gt; slot 6;  8 -&gt; slot 7
+2 -&gt; slot 1 already negative -&gt; add 2
+3 -&gt; slot 2 already negative -&gt; add 3
+1 -&gt; negate slot 0           result [2,3]</code></pre>
+<h4>Watch out</h4>
+<p>Always use <code>Math.abs(nums[i])</code>: the value you read may have been negated by an earlier step. The trick only works because every value is between 1 and n.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/first-missing-positive/">41. First Missing Positive</a> — cyclic sort for values 1..n, ignore the rest.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Smallest positive integer not in the array, in O(n) time and O(1) space. <code>[3,4,-1,1]</code> &rarr; 2. The insight: the answer is in 1..n+1. <b>Cyclic sort</b>: put each value v in 1..n at index <code>v - 1</code> by swapping; ignore negatives, zeros and numbers &gt; n. Then the first index i with <code>nums[i] != i + 1</code> gives the answer.</p>
+<h4>Brute force first</h4>
+<p>Put everything in a hash set and test 1, 2, 3, ...: O(n) time but O(n) space. Sorting is O(n log n).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>For each i: while <code>nums[i]</code> is in 1..n and is not already at its home <code>nums[i] - 1</code>, swap it home.</li><li>The home check <code>nums[nums[i] - 1] != nums[i]</code> also stops endless swaps with duplicates.</li><li>Scan: the first i where <code>nums[i] != i + 1</code> means i + 1 is missing.</li><li>If every slot is correct, the answer is n + 1.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int firstMissingPositive(int[] nums) {
+        int n = nums.length;
+        for (int i = 0; i &lt; n; i++) {
+            // send nums[i] to its home index nums[i]-1
+            while (nums[i] &gt; 0 &amp;&amp; nums[i] &lt;= n
+                    &amp;&amp; nums[nums[i] - 1] != nums[i]) {
+                int j = nums[i] - 1;
+                int t = nums[i]; nums[i] = nums[j]; nums[j] = t;
+            }
+        }
+        for (int i = 0; i &lt; n; i++) {
+            if (nums[i] != i + 1) return i + 1;
+        }
+        return n + 1;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; every swap puts one value in its final home, so at most n swaps overall.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>[3,4,-1,1]
+i=0: 3 -&gt; index 2   [-1,4,3,1]   -1 stays
+i=1: 4 -&gt; index 3   [-1,1,3,4]   1 -&gt; index 0  [1,-1,3,4]
+scan: index 1 holds -1, not 2 -&gt; answer 2</code></pre>
+<h4>Watch out</h4>
+<p>Compute <code>j = nums[i] - 1</code> <b>before</b> swapping; writing <code>nums[nums[i]-1]</code> after changing <code>nums[i]</code> swaps the wrong slot. The duplicate check stops <code>[1,1]</code> from looping forever.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

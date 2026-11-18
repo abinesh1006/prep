@@ -269,11 +269,141 @@ map.get(k); a[i];        <span class="c">// hash lookup, index read   -> O(1)</s
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/contains-duplicate/">217. Contains Duplicate</a> — write the O(n²) pair check, then beat it with a set in O(n).</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/running-sum-of-1d-array/">1480. Running Sum of 1d Array</a> — turn an O(n²) "sum each prefix again" into one O(n) pass.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/binary-search/">704. Binary Search</a> — feel O(log n): count how many halvings for n = 10<sup>4</sup>.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/sqrtx/">69. Sqrt(x)</a> — x up to 2<sup>31</sup>: the constraint forces O(log n).</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/two-sum/">1. Two Sum</a> — n ≤ 10<sup>4</sup>: O(n²) passes, but say how a map makes it O(n).</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/contains-duplicate/">217. Contains Duplicate</a> — write the O(n²) pair check, then beat it with a set in O(n).<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Given numbers, say whether any value appears twice. <code>[1,2,3,1]</code> &rarr; true because 1 shows up twice. The insight: instead of comparing every pair, remember what you have already seen in a <b>hash set</b> (a bag that answers "have I seen this?" in O(1)). Pattern: <b>hashing to replace a nested loop</b>.</p>
+<h4>Brute force first</h4>
+<p>Compare every pair <code>i &lt; j</code> and return true if <code>nums[i] == nums[j]</code>. Two nested loops: O(n&sup2;) time, O(1) space. For n = 10<sup>5</sup> that is about 5&times;10<sup>9</sup> checks, far too slow.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make an empty <code>HashSet</code>.</li><li>Walk the array one number at a time.</li><li><code>set.add(x)</code> returns <code>false</code> if <code>x</code> was already inside: that is a duplicate, return true.</li><li>If the loop ends, no number repeated: return false.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean containsDuplicate(int[] nums) {
+        Set&lt;Integer&gt; seen = new HashSet&lt;&gt;();
+        for (int x : nums) {
+            // add() is false when x was already there
+            if (!seen.add(x)) return true;
+        }
+        return false;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(n) &mdash; each number is added once, and the set may hold all n.</p>
+<h4>Dry run</h4>
+<p><code>[1,2,3,1]</code>: add 1 &rarr; {1}; add 2 &rarr; {1,2}; add 3 &rarr; {1,2,3}; add 1 fails &rarr; return true.</p>
+<h4>Watch out</h4>
+<p>Sorting first and checking neighbours also works in O(n log n) time with O(1) extra space; mention it if the interviewer asks for less memory. A single-element array has no duplicate.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/running-sum-of-1d-array/">1480. Running Sum of 1d Array</a> — turn an O(n²) "sum each prefix again" into one O(n) pass.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Return an array where position i holds <code>nums[0] + ... + nums[i]</code>. <code>[1,2,3,4]</code> &rarr; <code>[1,3,6,10]</code>. The insight: each answer is the previous answer plus one number, so never re-add from the start. Pattern: <b>running total (prefix sum)</b>.</p>
+<h4>Brute force first</h4>
+<p>For each i, loop from 0 to i and add up. That is 1 + 2 + ... + n additions = O(n&sup2;) time.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Start at index 1 (index 0 is already its own running sum).</li><li>Set <code>nums[i] += nums[i - 1]</code>: the previous cell already holds the sum of everything before.</li><li>Keep going to the end and return <code>nums</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] runningSum(int[] nums) {
+        for (int i = 1; i &lt; nums.length; i++) {
+            // nums[i-1] already holds the sum so far
+            nums[i] += nums[i - 1];
+        }
+        return nums;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one pass, and we reuse the input array for the answer.</p>
+<h4>Dry run</h4>
+<p><code>[1,2,3,4]</code>: i=1 &rarr; 2+1=3; i=2 &rarr; 3+3=6; i=3 &rarr; 4+6=10 &rarr; <code>[1,3,6,10]</code>.</p>
+<h4>Watch out</h4>
+<p>Start the loop at 1, not 0, or you read <code>nums[-1]</code>. If you must not change the input, copy it into a new array first (then space is O(n)).</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/binary-search/">704. Binary Search</a> — feel O(log n): count how many halvings for n = 10<sup>4</sup>.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find <code>target</code> in a <b>sorted</b> array and return its index, or -1. The insight: look at the middle; if it is too small the answer can only be on the right, so throw away the left half. Each step halves the range, so n = 10<sup>4</sup> needs only about 14 looks (2<sup>14</sup> = 16384). Pattern: <b>binary search</b>, O(log n).</p>
+<h4>Brute force first</h4>
+<p>Scan left to right until you find the target: O(n). It works but ignores that the array is sorted.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Keep two ends: <code>lo = 0</code>, <code>hi = n - 1</code>. The answer, if it exists, is between them.</li><li>While <code>lo &lt;= hi</code>, take <code>mid = lo + (hi - lo) / 2</code>.</li><li>If <code>nums[mid]</code> equals target, return <code>mid</code>.</li><li>If it is smaller, the target is to the right: <code>lo = mid + 1</code>. Otherwise <code>hi = mid - 1</code>.</li><li>If the range becomes empty, return -1.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int search(int[] nums, int target) {
+        int lo = 0, hi = nums.length - 1;
+        while (lo &lt;= hi) {
+            int mid = lo + (hi - lo) / 2; // no overflow
+            if (nums[mid] == target) return mid;
+            if (nums[mid] &lt; target) lo = mid + 1;
+            else hi = mid - 1;
+        }
+        return -1;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(log n) &middot; <b>Space</b> O(1) &mdash; the search range halves every loop.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>nums = [-1,0,3,5,9,12], target = 9
+lo=0 hi=5 mid=2 -&gt; 3 &lt; 9  -&gt; lo=3
+lo=3 hi=5 mid=4 -&gt; 9 == 9 -&gt; return 4</code></pre>
+<h4>Watch out</h4>
+<p>Use <code>lo &lt;= hi</code> (not <code>&lt;</code>) or you skip the last single element. Write <code>lo + (hi - lo) / 2</code> instead of <code>(lo + hi) / 2</code> so huge indexes cannot overflow.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/sqrtx/">69. Sqrt(x)</a> — x up to 2<sup>31</sup>: the constraint forces O(log n).<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Return the whole-number square root of x, rounded down: <code>sqrt(8)</code> &rarr; 2. x can be about 2&times;10<sup>9</sup>, so trying 1, 2, 3, ... could take ~46,000 steps per call and is the wrong shape; the constraint is a hint to <b>binary search on the answer</b>: find the largest m with m&times;m &le; x.</p>
+<h4>Brute force first</h4>
+<p>Try m = 1, 2, 3, ... while <code>m * m &lt;= x</code>. That is O(&radic;x) steps; it passes, but the interviewer wants O(log x).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Search range: <code>lo = 0</code>, <code>hi = x</code>.</li><li>Take <code>mid</code>. Compute <code>mid * mid</code> as a <code>long</code> so it cannot overflow.</li><li>If it is &le; x, mid could be the answer: remember it and try bigger (<code>lo = mid + 1</code>).</li><li>Otherwise mid is too big: <code>hi = mid - 1</code>.</li><li>Return the last remembered mid.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int mySqrt(int x) {
+        int lo = 0, hi = x, ans = 0;
+        while (lo &lt;= hi) {
+            int mid = lo + (hi - lo) / 2;
+            if ((long) mid * mid &lt;= x) {
+                ans = mid;      // fits, try bigger
+                lo = mid + 1;
+            } else {
+                hi = mid - 1;   // too big
+            }
+        }
+        return ans;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(log x) &middot; <b>Space</b> O(1) &mdash; about 31 halvings at most for a 32-bit x.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>x = 8
+lo=0 hi=8 mid=4  16 &gt; 8  -&gt; hi=3
+lo=0 hi=3 mid=1   1 &lt;= 8 -&gt; ans=1 lo=2
+lo=2 hi=3 mid=2   4 &lt;= 8 -&gt; ans=2 lo=3
+lo=3 hi=3 mid=3   9 &gt; 8  -&gt; hi=2  stop, return 2</code></pre>
+<h4>Watch out</h4>
+<p><code>mid * mid</code> in <code>int</code> overflows for big x and turns negative; cast to <code>long</code>. Remember x = 0 and x = 1.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/two-sum/">1. Two Sum</a> — n ≤ 10<sup>4</sup>: O(n²) passes, but say how a map makes it O(n).<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the two indexes whose values add up to <code>target</code>. <code>[2,7,11,15]</code>, target 9 &rarr; <code>[0,1]</code>. The insight: when you stand on x, the partner you need is <code>target - x</code>; a <b>hash map</b> from value to index tells you in O(1) if you already passed it. Pattern: <b>hash map lookup of the complement</b>.</p>
+<h4>Brute force first</h4>
+<p>Try every pair <code>i &lt; j</code>: O(n&sup2;). With n &le; 10<sup>4</sup> that is ~5&times;10<sup>7</sup> checks, which passes, but say how the map makes it O(n).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make an empty map: value &rarr; index.</li><li>For each index i, compute <code>need = target - nums[i]</code>.</li><li>If <code>need</code> is in the map, return <code>[map.get(need), i]</code>.</li><li>Otherwise put <code>nums[i] &rarr; i</code> into the map and continue.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] twoSum(int[] nums, int target) {
+        Map&lt;Integer, Integer&gt; seen = new HashMap&lt;&gt;();
+        for (int i = 0; i &lt; nums.length; i++) {
+            int need = target - nums[i];
+            if (seen.containsKey(need)) {
+                return new int[]{seen.get(need), i};
+            }
+            seen.put(nums[i], i); // store after checking
+        }
+        return new int[0]; // problem says never happens
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(n) &mdash; one pass, each lookup O(1), the map can hold n values.</p>
+<h4>Dry run</h4>
+<p><code>[3,2,4]</code>, target 6: i=0 need 3, map empty, store 3&rarr;0. i=1 need 4, not there, store 2&rarr;1. i=2 need 2, found at 1 &rarr; return <code>[1,2]</code>.</p>
+<h4>Watch out</h4>
+<p>Check the map <b>before</b> putting the current number in, otherwise <code>[3,2,4]</code>, target 6 would pair index 0 with itself. Duplicates like <code>[3,3]</code> work because the first 3 is stored before the second is checked.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

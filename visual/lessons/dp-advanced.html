@@ -273,14 +273,295 @@ in = (mask &gt;&gt; i &amp; <span class="n">1</span>) == <span class="n">1</span
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-cooldown/">309. Stock with Cooldown</a> — animation 1.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-transaction-fee/">714. Stock with Transaction Fee</a> — two states, pay fee on sell.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/house-robber-iii/">337. House Robber III</a> — animation 4.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/burst-balloons/">312. Burst Balloons</a> — animation 2.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/minimum-cost-to-cut-a-stick/">1547. Minimum Cost to Cut a Stick</a> — same interval shape, k = first cut.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/shortest-path-visiting-all-nodes/">847. Shortest Path Visiting All Nodes</a> — BFS over (node, mask).</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/binary-tree-cameras/">968. Binary Tree Cameras</a> — tree DP with three states.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock-iv/">188. Stock IV</a> — states hold/free for each of k transactions.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-cooldown/">309. Stock with Cooldown</a> — animation 1.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Buy and sell as often as you like, but after a sale you must skip one day. Each day you are in one of three <b>states</b>: <code>hold</code> (you own a share), <code>sold</code> (you sold today, so tomorrow is a cooldown) and <code>rest</code> (no share, free to buy). Each state's best profit today comes from yesterday's states. Pattern: <b>state machine DP</b>.</p>
+<h4>Brute force first</h4>
+<p>Try buy, sell or wait on every day with recursion: O(3ⁿ) without memo.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Day 0: hold = −price, sold = 0, rest = 0.</li><li>newHold = max(hold, rest − p): keep the share, or buy today (only from rest, never right after a sale).</li><li>newSold = hold + p: sell today.</li><li>newRest = max(rest, sold): stay free, or come out of cooldown.</li><li>The answer is max(sold, rest), because you should not end holding a share.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maxProfit(int[] prices) {
+        // profit at the end of today, in each state
+        int hold = -prices[0]; // own a share
+        int sold = 0;          // sold today -&gt; cooldown next
+        int rest = 0;          // free, may buy tomorrow
+        for (int i = 1; i &lt; prices.length; i++) {
+            int p = prices[i];
+            int newHold = Math.max(hold, rest - p); // keep / buy
+            int newSold = hold + p;                 // sell today
+            int newRest = Math.max(rest, sold);     // wait
+            hold = newHold;
+            sold = newSold;
+            rest = newRest;
+        }
+        return Math.max(sold, rest); // end without a share
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — three numbers updated per day.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>prices   1    2    3    0    2
+hold    -1   -1   -1    1    1
+sold     0    1    2   -1    3
+rest     0    0    1    2    2     answer max(3, 2) = 3</code></pre>
+<h4>Watch out</h4>
+<p>Compute all three new values from the <b>old</b> ones (use temporaries). Buying from <code>sold</code> instead of <code>rest</code> breaks the cooldown.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-transaction-fee/">714. Stock with Transaction Fee</a> — two states, pay fee on sell.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Unlimited trades, but each sale costs a fee. Two states per day: <code>free</code> (no share) and <code>hold</code> (own one). Selling moves hold → free and pays the fee. Buying moves free → hold. Pattern: <b>state machine DP</b>.</p>
+<h4>Brute force first</h4>
+<p>Recursion over buy, sell or wait each day: exponential without memo.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>hold = −prices[0], free = 0.</li><li>Each day: newFree = max(free, hold + p − fee).</li><li>newHold = max(hold, free − p).</li><li>Return free.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maxProfit(int[] prices, int fee) {
+        int hold = -prices[0]; // best profit while owning
+        int free = 0;          // best profit with no share
+        for (int i = 1; i &lt; prices.length; i++) {
+            int p = prices[i];
+            int newFree = Math.max(free, hold + p - fee); // sell
+            int newHold = Math.max(hold, free - p);       // buy
+            free = newFree;
+            hold = newHold;
+        }
+        return free;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — two numbers per day.</p>
+<h4>Dry run</h4>
+<p>[1,3,2,8,4,9], fee 2. Buy at 1 and sell at 8 for 8 − 1 − 2 = 5, then buy at 4 and sell at 9 for 3. Total 8. The DP finds this: free ends at 8.</p>
+<h4>Watch out</h4>
+<p>Charge the fee only once per trade (on the sale here). Charging it on both buy and sell doubles it.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/house-robber-iii/">337. House Robber III</a> — animation 4.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Houses form a binary tree, and you cannot rob a house together with its direct parent or child. For every node, return two answers: the best total if this node is <b>skipped</b>, and the best total if it is <b>robbed</b>. If you rob it, both children must be skipped. If you skip it, each child takes its own better option. Pattern: <b>tree DP returning a pair</b>.</p>
+<h4>Brute force first</h4>
+<p>Plain recursion "rob me + grandchildren, or skip me + children" recomputes subtrees and becomes exponential without a memo.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>dfs(null) = {0, 0}.</li><li>Get l = dfs(left) and r = dfs(right).</li><li>rob = node.val + l.skip + r.skip.</li><li>skip = max(l.skip, l.rob) + max(r.skip, r.rob).</li><li>At the root, return max(skip, rob).</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int rob(TreeNode root) {
+        int[] r = dfs(root);
+        return Math.max(r[0], r[1]);
+    }
+
+    // {best if we skip node, best if we rob node}
+    private int[] dfs(TreeNode node) {
+        if (node == null) return new int[]{0, 0};
+        int[] l = dfs(node.left), r = dfs(node.right);
+        // rob: children must be skipped
+        int rob = node.val + l[0] + r[0];
+        // skip: each child is free to be robbed or not
+        int skip = Math.max(l[0], l[1]) + Math.max(r[0], r[1]);
+        return new int[]{skip, rob};
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(h) — each node is visited once; the recursion depth is the tree height.</p>
+<h4>Dry run</h4>
+<p>[3,2,3,null,3,null,1]. Left child 2 gives {skip 3, rob 2}. Right child 3 gives {skip 1, rob 3}. Root: rob = 3 + 3 + 1 = 7, skip = 3 + 3 = 6. The answer is 7.</p>
+<h4>Watch out</h4>
+<p>"Skip" does not force the children to be robbed. Each child takes its own max. That is the common mistake.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/burst-balloons/">312. Burst Balloons</a> — animation 2.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Bursting balloon i gives <code>left · i · right</code> coins from its current neighbours. The order changes the neighbours, so pick the <b>last</b> balloon to burst in a range instead of the first. If k is the last one burst between walls l and r, its neighbours at that moment are exactly l and r, and the two sides are independent. Pattern: <b>interval DP</b>.</p>
+<h4>Brute force first</h4>
+<p>Try every burst order: O(n!).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Pad the array with 1 at both ends, so v has n + 2 values.</li><li><code>dp[l][r]</code> = best coins from bursting everything strictly between l and r.</li><li>For lengths from small to large, and each k strictly between l and r: <code>v[l]·v[k]·v[r] + dp[l][k] + dp[k][r]</code>.</li><li>Keep the max. The answer is dp[0][n+1].</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maxCoins(int[] nums) {
+        int n = nums.length;
+        // pad with 1 on both sides
+        int[] v = new int[n + 2];
+        v[0] = v[n + 1] = 1;
+        for (int i = 0; i &lt; n; i++) v[i + 1] = nums[i];
+        // dp[l][r] = best coins bursting all between l and r
+        // (l and r themselves stay)
+        int[][] dp = new int[n + 2][n + 2];
+        for (int len = 2; len &lt;= n + 1; len++) {
+            for (int l = 0; l + len &lt;= n + 1; l++) {
+                int r = l + len;
+                for (int k = l + 1; k &lt; r; k++) {
+                    // k is the LAST balloon burst in (l, r)
+                    int coins = v[l] * v[k] * v[r]
+                              + dp[l][k] + dp[k][r];
+                    dp[l][r] = Math.max(dp[l][r], coins);
+                }
+            }
+        }
+        return dp[0][n + 1];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n³) · <b>Space</b> O(n²) — n² intervals, each trying up to n split points.</p>
+<h4>Dry run</h4>
+<p>[1,5] padded to 1,1,5,1. If 5 is last: 1·5·1 + dp(burst 1 first) = 5 + 1·1·5 = 10. If 1 is last: 1·1·1 + 1·5·1 = 6. The best is 10.</p>
+<h4>Watch out</h4>
+<p>Thinking "which balloon goes <b>first</b>" fails, because the neighbours then depend on what remains. Fill shorter intervals before longer ones.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/minimum-cost-to-cut-a-stick/">1547. Minimum Cost to Cut a Stick</a> — same interval shape, k = first cut.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Cutting a stick costs its current length. Choose the cut order that makes the total smallest. Add the ends 0 and n to the sorted cuts. For the piece between positions i and j, choose the <b>first</b> cut k inside it: that cut costs <code>pos[j] − pos[i]</code> and splits the piece into two independent pieces. Pattern: <b>interval DP</b> (the same shape as Burst Balloons).</p>
+<h4>Brute force first</h4>
+<p>Try every cut order: O(m!).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Sort the cuts and build pos = [0, cuts…, n].</li><li>dp[i][j] = min cost for all cuts strictly between pos[i] and pos[j]. Neighbours (j = i + 1) cost 0.</li><li>For each length and each k between i and j: <code>pos[j] − pos[i] + dp[i][k] + dp[k][j]</code>.</li><li>Return dp[0][m+1].</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int minCost(int n, int[] cuts) {
+        int m = cuts.length;
+        // positions: 0, sorted cuts, n
+        int[] pos = new int[m + 2];
+        Arrays.sort(cuts);
+        for (int i = 0; i &lt; m; i++) pos[i + 1] = cuts[i];
+        pos[m + 1] = n;
+        // dp[i][j] = min cost to make every cut strictly
+        // between pos[i] and pos[j]
+        int[][] dp = new int[m + 2][m + 2];
+        for (int len = 2; len &lt;= m + 1; len++) {
+            for (int i = 0; i + len &lt;= m + 1; i++) {
+                int j = i + len;
+                dp[i][j] = Integer.MAX_VALUE;
+                for (int k = i + 1; k &lt; j; k++) {
+                    // k is the FIRST cut; it costs the length
+                    int cost = pos[j] - pos[i]
+                             + dp[i][k] + dp[k][j];
+                    dp[i][j] = Math.min(dp[i][j], cost);
+                }
+            }
+        }
+        return dp[0][m + 1];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m³) · <b>Space</b> O(m²) — m = number of cuts, not n.</p>
+<h4>Dry run</h4>
+<p>n = 7, cuts [1,3,4,5]. The best order is 3, 5, 1, 4: 7 + 4 + 3 + 2 = 16.</p>
+<h4>Watch out</h4>
+<p>Build the DP over the <b>cut indices</b>, not over stick positions 0..n (n can be 10⁶). Sort the cuts first.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/shortest-path-visiting-all-nodes/">847. Shortest Path Visiting All Nodes</a> — BFS over (node, mask).
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the shortest walk that visits every node, where you may start anywhere and reuse edges. Plain BFS on nodes is not enough, because the same node can be "fresh" with different sets of visited nodes. So BFS over the state (node, mask), where mask is a bitmask of the visited nodes (bit i set = node i seen). n ≤ 12, so there are at most 12 · 4096 states. Pattern: <b>BFS over bitmask states</b>.</p>
+<h4>Brute force first</h4>
+<p>Try every order of nodes with shortest paths between them: O(n! · n).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Push (i, 1 &lt;&lt; i) for every node i: a multi-source start.</li><li>BFS level by level and count steps.</li><li>Pop (node, mask). If mask == full (all bits set), return steps.</li><li>For each neighbour, newMask = mask | (1 &lt;&lt; next). If (next, newMask) is unseen, mark it and push it.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int shortestPathLength(int[][] graph) {
+        int n = graph.length, full = (1 &lt;&lt; n) - 1;
+        // state = (node, mask of visited nodes)
+        boolean[][] seen = new boolean[n][1 &lt;&lt; n];
+        Deque&lt;int[]&gt; q = new ArrayDeque&lt;&gt;();
+        for (int i = 0; i &lt; n; i++) { // start anywhere
+            q.offer(new int[]{i, 1 &lt;&lt; i});
+            seen[i][1 &lt;&lt; i] = true;
+        }
+        int steps = 0;
+        while (!q.isEmpty()) {
+            for (int size = q.size(); size &gt; 0; size--) {
+                int[] cur = q.poll();
+                int node = cur[0], mask = cur[1];
+                if (mask == full) return steps;
+                for (int next : graph[node]) {
+                    int nm = mask | (1 &lt;&lt; next);
+                    if (!seen[next][nm]) {
+                        seen[next][nm] = true;
+                        q.offer(new int[]{next, nm});
+                    }
+                }
+            }
+            steps++;
+        }
+        return -1; // graph is connected, so never reached
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(2ⁿ · n²) · <b>Space</b> O(2ⁿ · n) — each state is seen once, and has up to n edges.</p>
+<h4>Dry run</h4>
+<p>A star with centre 0 and leaves 1,2,3. Start at 1: 1→0→2→0→3 is 4 steps, and the state mask goes 0010, 0011, 0111, 0111, 1111. The answer is 4.</p>
+<h4>Watch out</h4>
+<p>Mark states as seen when you <b>push</b> them, not when you pop them, or the queue blows up. A single node gives 0.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/binary-tree-cameras/">968. Binary Tree Cameras</a> — tree DP with three states.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Place the fewest cameras so every node is watched. A camera covers itself, its parent and its children. Go bottom-up (post-order: children before parent). Each node reports one of three states: <code>0</code> not covered, <code>1</code> has a camera, <code>2</code> covered. Greedy: never put a camera on a leaf; put it on the leaf's parent, which also covers the grandparent. Pattern: <b>tree DP with three states</b>.</p>
+<h4>Brute force first</h4>
+<p>Try camera or no camera on every node: O(2ⁿ).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>A null child returns 2 (covered), so leaves see "covered" children.</li><li>If either child is 0 (uncovered), this node must hold a camera: count it and return 1.</li><li>Else if either child is 1, this node is covered: return 2.</li><li>Else both children are covered but nothing watches this node: return 0 and let the parent handle it.</li><li>After the DFS, if the root returned 0, add one more camera.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    // 0 = not covered, 1 = has a camera, 2 = covered
+    private int cameras = 0;
+
+    public int minCameraCover(TreeNode root) {
+        // a root left uncovered needs its own camera
+        if (dfs(root) == 0) cameras++;
+        return cameras;
+    }
+
+    private int dfs(TreeNode node) {
+        if (node == null) return 2; // null needs nothing
+        int l = dfs(node.left), r = dfs(node.right);
+        if (l == 0 || r == 0) { // a child is uncovered
+            cameras++;
+            return 1;
+        }
+        if (l == 1 || r == 1) return 2; // a child watches me
+        return 0; // let my parent cover me
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(h) — one post-order pass.</p>
+<h4>Dry run</h4>
+<p>[0,0,null,0,0]: the root has one child, and that child has two leaves. The leaves return 0, so the middle node gets a camera and returns 1. The root sees 1 and returns 2. Total 1.</p>
+<h4>Watch out</h4>
+<p>Forgetting the final root check gives a wrong answer for a single node (the answer is 1, not 0).</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock-iv/">188. Stock IV</a> — states hold/free for each of k transactions.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>At most k transactions. Keep two values for each transaction number j: <code>hold[j]</code> = best profit while holding the share bought in the j-th buy, and <code>free[j]</code> = best profit after completing j sales. Buy j uses the money from j − 1 sales. Pattern: <b>state machine DP over k transactions</b>.</p>
+<h4>Brute force first</h4>
+<p>Recursion over (day, transactions left, holding?): the same DP but with a memo table, O(n · k) states.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>hold[1..k] = −∞ (impossible yet), free[0..k] = 0.</li><li>For each price p, for j = 1..k:</li><li><code>hold[j] = max(hold[j], free[j−1] − p)</code> (buy).</li><li><code>free[j] = max(free[j], hold[j] + p)</code> (sell).</li><li>Return free[k].</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maxProfit(int k, int[] prices) {
+        // hold[j] = best profit owning a share in buy #j
+        // free[j] = best profit after j full transactions
+        int[] hold = new int[k + 1];
+        int[] free = new int[k + 1];
+        Arrays.fill(hold, Integer.MIN_VALUE / 2);
+        for (int p : prices) {
+            for (int j = 1; j &lt;= k; j++) {
+                // buy #j uses the profit from j-1 sales
+                hold[j] = Math.max(hold[j], free[j - 1] - p);
+                free[j] = Math.max(free[j], hold[j] + p);
+            }
+        }
+        return free[k];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n · k) · <b>Space</b> O(k) — k states updated each day.</p>
+<h4>Dry run</h4>
+<p>k = 2, [3,2,6,5,0,3]. Buy at 2 and sell at 6 for +4, then buy at 0 and sell at 3 for +3. free[2] ends at 7.</p>
+<h4>Watch out</h4>
+<p>Use <code>MIN_VALUE / 2</code> for "impossible" so that adding a price does not overflow. If k ≥ n/2, the limit no longer matters (that is unlimited trading), which is a common speed-up.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

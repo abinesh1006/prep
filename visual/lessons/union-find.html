@@ -198,12 +198,293 @@ boolean union(int a, int b) {
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/number-of-connected-components-in-an-undirected-graph/">323. Number of Connected Components</a> — start at n, subtract every successful union.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/number-of-provinces/">547. Number of Provinces</a> — same thing from a matrix.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/redundant-connection/">684. Redundant Connection</a> — exactly animation 2.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/satisfiability-of-equality-equations/">990. Satisfiability of Equality Equations</a> — union all "==", then check every "!=".</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/accounts-merge/">721. Accounts Merge</a> — union emails, group by leader.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/number-of-islands-ii/">305. Number of Islands II</a> — land arrives one cell at a time; union with land neighbours.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/number-of-connected-components-in-an-undirected-graph/">323. Number of Connected Components</a> — start at n, subtract every successful union.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>n nodes, a list of undirected edges; how many separate groups (connected components) are there? Key insight with <b>Union-Find</b> (a structure where each node points to a leader, and <code>find</code> returns the group's leader): start with n groups of one. Every edge that joins two <b>different</b> groups merges them, so the count drops by 1. Edges inside one group change nothing.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>parent[i] = i</code>: everyone is their own leader. <code>components = n</code>.</li><li>For each edge, call <code>union(a, b)</code>.</li><li><code>union</code> finds both leaders. If they are the same, return false. Otherwise point one leader at the other and return true.</li><li>Subtract 1 for every true. Return <code>components</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private int[] parent;
+
+    public int countComponents(int n, int[][] edges) {
+        parent = new int[n];
+        for (int i = 0; i &lt; n; i++) parent[i] = i; // own leader
+        int components = n;            // everyone alone at first
+        for (int[] e : edges) {
+            if (union(e[0], e[1])) components--; // two merged
+        }
+        return components;
+    }
+
+    private int find(int x) {
+        if (parent[x] != x) {
+            parent[x] = find(parent[x]); // path compression
+        }
+        return parent[x];
+    }
+
+    private boolean union(int a, int b) {
+        int ra = find(a), rb = find(b);
+        if (ra == rb) return false;    // already one group
+        parent[ra] = rb;
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n + E·α(n)) · <b>Space</b> O(n) — α is the inverse-Ackermann function, effectively a constant; path compression keeps the trees flat.</p>
+<h4>Dry run</h4>
+<p>n = 5, edges 0–1, 1–2, 3–4. Start 5. Union 0,1 → 4. Union 1,2 → 3. Union 3,4 → 2. Answer 2.</p>
+<h4>Watch out</h4>
+<p>Always compare <code>find(a)</code> with <code>find(b)</code>, never <code>parent[a]</code> with <code>parent[b]</code>; parents can differ while the leaders are equal. Adding union by size/rank makes the worst case safe too. DFS counting also works in O(n + E).</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/number-of-provinces/">547. Number of Provinces</a> — same thing from a matrix.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Number of Provinces again, now with Union-Find instead of DFS. The matrix says which cities are directly connected. Key insight: start with n provinces and subtract 1 every time a 1 in the matrix joins two <b>different</b> groups. Pattern: <b>Union-Find component counting</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Set every city as its own leader; <code>provinces = n</code>.</li><li>Loop over pairs i &lt; j (the matrix is symmetric, so the upper half is enough).</li><li>If <code>isConnected[i][j] == 1</code> and <code>union(i, j)</code> merged two groups, subtract 1.</li><li>Return <code>provinces</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private int[] parent;
+
+    public int findCircleNum(int[][] isConnected) {
+        int n = isConnected.length;
+        parent = new int[n];
+        for (int i = 0; i &lt; n; i++) parent[i] = i;
+        int provinces = n;
+        for (int i = 0; i &lt; n; i++) {
+            for (int j = i + 1; j &lt; n; j++) { // upper half only
+                if (isConnected[i][j] == 1 &amp;&amp; union(i, j)) {
+                    provinces--;
+                }
+            }
+        }
+        return provinces;
+    }
+
+    private int find(int x) {
+        if (parent[x] != x) parent[x] = find(parent[x]);
+        return parent[x];
+    }
+
+    private boolean union(int a, int b) {
+        int ra = find(a), rb = find(b);
+        if (ra == rb) return false;
+        parent[ra] = rb;
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n²·α(n)) · <b>Space</b> O(n) — every matrix cell above the diagonal is read once.</p>
+<h4>Dry run</h4>
+<p>[[1,1,0],[1,1,0],[0,0,1]]. Start 3. (0,1) is 1 → union → 2. (0,2) and (1,2) are 0. Answer 2.</p>
+<h4>Watch out</h4>
+<p>Subtract only when the union actually merged (returned true). Counting every 1 in the matrix counts the diagonal and both halves too.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/redundant-connection/">684. Redundant Connection</a> — exactly animation 2.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>A tree with n nodes got one extra edge, which created exactly one cycle. Return the edge that can be removed, and if several work, the one that appears <b>last</b> in the input. Key insight: add edges one by one with <b>Union-Find</b>. The first edge whose two ends are <b>already connected</b> closes the cycle, and because it is the last edge of that cycle in input order, it is the answer.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make a parent array for nodes 1..n.</li><li>Go through the edges in order.</li><li>If <code>union(a, b)</code> returns false, the two ends already had the same leader: return this edge.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private int[] parent;
+
+    public int[] findRedundantConnection(int[][] edges) {
+        int n = edges.length;          // nodes are 1..n
+        parent = new int[n + 1];
+        for (int i = 0; i &lt;= n; i++) parent[i] = i;
+        for (int[] e : edges) {
+            // both ends already connected -&gt; this edge
+            // closes a loop, so it is the extra one
+            if (!union(e[0], e[1])) return e;
+        }
+        return new int[0];             // never happens
+    }
+
+    private int find(int x) {
+        if (parent[x] != x) parent[x] = find(parent[x]);
+        return parent[x];
+    }
+
+    private boolean union(int a, int b) {
+        int ra = find(a), rb = find(b);
+        if (ra == rb) return false;
+        parent[ra] = rb;
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n·α(n)) · <b>Space</b> O(n) — one union per edge.</p>
+<h4>Dry run</h4>
+<p>[[1,2],[1,3],[2,3]]. Union 1,2 ok. Union 1,3 ok (now 1, 2, 3 share a leader). Union 2,3: same leader → return [2,3].</p>
+<h4>Watch out</h4>
+<p>Nodes are numbered 1..n, so the parent array needs size n + 1. DFS works too (for each edge, check whether its ends are already reachable) but costs O(n²).</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/satisfiability-of-equality-equations/">990. Satisfiability of Equality Equations</a> — union all "==", then check every "!=".
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Equations like "a==b" and "b!=c" over single letters. Can all hold at once? Key insight: equality is <b>transitive</b> (a==b and b==c give a==c), so "==" builds groups, and Union-Find builds them. Do <b>all</b> unions first, then check each "!=": if both letters share a leader, they were forced equal, so it is impossible.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make a parent array of 26 letters.</li><li>Pass 1: for each "x==y", union x and y.</li><li>Pass 2: for each "x!=y", if <code>find(x) == find(y)</code>, return false.</li><li>Return true.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private final int[] parent = new int[26]; // a..z
+
+    public boolean equationsPossible(String[] equations) {
+        for (int i = 0; i &lt; 26; i++) parent[i] = i;
+        // pass 1: glue together everything that is equal
+        for (String e : equations) {
+            if (e.charAt(1) == '=') {
+                union(e.charAt(0) - 'a', e.charAt(3) - 'a');
+            }
+        }
+        // pass 2: a "!=" inside one group is a contradiction
+        for (String e : equations) {
+            if (e.charAt(1) == '!'
+                    &amp;&amp; find(e.charAt(0) - 'a')
+                       == find(e.charAt(3) - 'a')) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private int find(int x) {
+        if (parent[x] != x) parent[x] = find(parent[x]);
+        return parent[x];
+    }
+
+    private void union(int a, int b) {
+        parent[find(a)] = find(b);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n·α(26)) · <b>Space</b> O(1) — two passes over n equations; the array has 26 slots.</p>
+<h4>Dry run</h4>
+<p>["a==b","b==c","a!=c"]. Pass 1: a, b, c in one group. Pass 2: a!=c, but find(a) == find(c) → false.</p>
+<h4>Watch out</h4>
+<p>Checking "!=" while still doing unions (in one pass) is wrong: a later "==" can join letters you already accepted as different. And "a!=a" must return false, which the check handles since a's leader equals itself.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/accounts-merge/">721. Accounts Merge</a> — union emails, group by leader.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Each account is a name plus emails. Two accounts belong to the same person if they share <b>any</b> email, and this chains (A shares with B, B with C). Merge them and return each person's name with sorted emails. Key insight: <b>Union-Find over accounts</b>. Map each email to the first account that had it; when a later account lists the same email, union the two accounts. Then group every email under its account's leader.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>One Union-Find node per account.</li><li>For each email in account i: if the map has no owner yet, owner = i; otherwise union(owner, i).</li><li>For each email in the map, find the leader of its owner and add the email to that leader's sorted set (TreeSet).</li><li>For each group, output the leader's name followed by its sorted emails.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private int[] parent;
+
+    public List&lt;List&lt;String&gt;&gt; accountsMerge(
+            List&lt;List&lt;String&gt;&gt; accounts) {
+        int n = accounts.size();
+        parent = new int[n];           // one node per account
+        for (int i = 0; i &lt; n; i++) parent[i] = i;
+        // email -&gt; first account that listed it
+        Map&lt;String, Integer&gt; owner = new HashMap&lt;&gt;();
+        for (int i = 0; i &lt; n; i++) {
+            List&lt;String&gt; acc = accounts.get(i);
+            for (int j = 1; j &lt; acc.size(); j++) {
+                Integer prev = owner.putIfAbsent(acc.get(j), i);
+                if (prev != null) union(prev, i); // shared email
+            }
+        }
+        // leader account -&gt; its emails, kept sorted
+        Map&lt;Integer, TreeSet&lt;String&gt;&gt; groups = new HashMap&lt;&gt;();
+        for (var entry : owner.entrySet()) {
+            int leader = find(entry.getValue());
+            groups.computeIfAbsent(leader, k -&gt; new TreeSet&lt;&gt;())
+                  .add(entry.getKey());
+        }
+        List&lt;List&lt;String&gt;&gt; result = new ArrayList&lt;&gt;();
+        for (var entry : groups.entrySet()) {
+            List&lt;String&gt; row = new ArrayList&lt;&gt;();
+            row.add(accounts.get(entry.getKey()).get(0)); // name
+            row.addAll(entry.getValue());
+            result.add(row);
+        }
+        return result;
+    }
+
+    private int find(int x) {
+        if (parent[x] != x) parent[x] = find(parent[x]);
+        return parent[x];
+    }
+
+    private void union(int a, int b) {
+        parent[find(a)] = find(b);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(N log N) · <b>Space</b> O(N) — N = total emails; sorting the emails dominates, the unions are nearly O(1).</p>
+<h4>Dry run</h4>
+<p>Accounts 0: John [js, jny], 1: John [js, j00], 2: Mary [m], 3: John [jb]. js is seen in 0 then in 1 → union(0, 1). Groups: leader of 0 and 1 → {j00, jny, js}, 2 → {m}, 3 → {jb}. Three accounts out.</p>
+<h4>Watch out</h4>
+<p>Two different people can share a name, so never merge by name, only by email. Remember to put the name first in each output row, and sort the emails.</p>
+</div></details>
+</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/number-of-islands-ii/">305. Number of Islands II</a> — land arrives one cell at a time; union with land neighbours.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>An m×n grid starts as all water. Land is added one cell at a time; after each addition, report the number of islands. Key insight: rerunning a flood fill after every addition is too slow. With <b>Union-Find</b>, a new land cell adds 1 island, then each successful union with a land neighbour removes 1, because two islands just became one. Pattern: <b>online (incremental) Union-Find</b>.</p>
+<h4>Brute force first</h4>
+<p>After each addition, count islands with DFS: O(k·m·n) for k positions.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Number each cell <code>r·n + c</code>. <code>parent = −1</code> means water.</li><li>For a new position: if it is already land, just repeat the current count.</li><li>Otherwise set <code>parent[id] = id</code> and add 1 to <code>islands</code>.</li><li>For each of the 4 neighbours that is land, if <code>union</code> merged two groups, subtract 1.</li><li>Append the count.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private int[] parent;
+
+    public List&lt;Integer&gt; numIslands2(int m, int n,
+                                     int[][] positions) {
+        parent = new int[m * n];
+        Arrays.fill(parent, -1);       // -1 = still water
+        int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        List&lt;Integer&gt; result = new ArrayList&lt;&gt;();
+        int islands = 0;
+        for (int[] p : positions) {
+            int id = p[0] * n + p[1];  // cell -&gt; one number
+            if (parent[id] != -1) {    // already land
+                result.add(islands);
+                continue;
+            }
+            parent[id] = id;
+            islands++;                 // a new island of 1 cell
+            for (int[] d : dirs) {
+                int r = p[0] + d[0], c = p[1] + d[1];
+                if (r &lt; 0 || c &lt; 0 || r &gt;= m || c &gt;= n) continue;
+                int nb = r * n + c;
+                if (parent[nb] != -1 &amp;&amp; union(id, nb)) {
+                    islands--;         // merged with a neighbour
+                }
+            }
+            result.add(islands);
+        }
+        return result;
+    }
+
+    private int find(int x) {
+        if (parent[x] != x) parent[x] = find(parent[x]);
+        return parent[x];
+    }
+
+    private boolean union(int a, int b) {
+        int ra = find(a), rb = find(b);
+        if (ra == rb) return false;
+        parent[ra] = rb;
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m·n + k·α(m·n)) · <b>Space</b> O(m·n) — the array is filled once; each position does 4 near-constant unions.</p>
+<h4>Dry run</h4>
+<p>3×3, positions (0,0), (0,1), (1,2), (2,1). (0,0) → 1. (0,1) → 2, merges with (0,0) → 1. (1,2) → 2, no land neighbour. (2,1) → 3. Output [1,1,2,3].</p>
+<h4>Watch out</h4>
+<p>The same position can be added twice; without the "already land" check you count it as a new island. Two neighbours may already be in the same island, which is why you subtract only when <code>union</code> returns true.</p>
+</div></details>
+</li>
 </ul>
 
 <h2>Test yourself</h2>

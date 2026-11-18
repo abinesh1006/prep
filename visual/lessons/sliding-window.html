@@ -212,14 +212,273 @@
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/maximum-average-subarray-i/">643. Maximum Average Subarray I</a> — the fixed window above, divide by k.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock/">121. Best Time to Buy and Sell Stock</a> — l is the cheapest day so far.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-substring-without-repeating-characters/">3. Longest Substring Without Repeating Characters</a> — the animation above.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/minimum-size-subarray-sum/">209. Minimum Size Subarray Sum</a> — shortest window with sum ≥ target.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-repeating-character-replacement/">424. Longest Repeating Character Replacement</a> — valid while length − maxCount ≤ k.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/permutation-in-string/">567. Permutation in String</a> — fixed window of size |s1| with letter counts.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/minimum-window-substring/">76. Minimum Window Substring</a> — need counts + missing, as above.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/sliding-window-maximum/">239. Sliding Window Maximum</a> — fixed window plus a monotonic deque.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/maximum-average-subarray-i/">643. Maximum Average Subarray I</a> — the fixed window above, divide by k.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Among all runs of exactly k neighbours, find the biggest average. <code>[1,12,-5,-6,50,3]</code>, k = 4 &rarr; 12.75 (12&minus;5&minus;6+50 = 51, /4). The insight: the biggest average is the biggest sum divided by k. Slide a <b>fixed window</b>: add the number entering on the right, subtract the one leaving on the left.</p>
+<h4>Brute force first</h4>
+<p>Re-add k numbers for every start: O(n &middot; k). Sliding makes each move O(1).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Sum the first k numbers: that is the first window.</li><li>For i from k to n &minus; 1: <code>sum += nums[i] - nums[i - k]</code> (one in, one out).</li><li>Keep the largest sum.</li><li>Return <code>best / (double) k</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public double findMaxAverage(int[] nums, int k) {
+        int sum = 0;
+        for (int i = 0; i &lt; k; i++) sum += nums[i];
+        int best = sum;
+        for (int i = k; i &lt; nums.length; i++) {
+            sum += nums[i] - nums[i - k]; // in, out
+            best = Math.max(best, sum);
+        }
+        return best / (double) k;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; each number enters and leaves the window once.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>[1,12,-5,-6,50,3], k=4
+first window 1+12-5-6 = 2   best 2
+i=4: +50 -1  -&gt; 51          best 51
+i=5: +3  -12 -&gt; 42          best 51
+51 / 4 = 12.75</code></pre>
+<h4>Watch out</h4>
+<p>Start <code>best</code> at the first window sum, not 0: all numbers can be negative. Divide as <code>double</code>, or integer division drops the .75.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock/">121. Best Time to Buy and Sell Stock</a> — l is the cheapest day so far.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Buy on one day, sell on a later day, maximise profit (or 0). <code>[7,1,5,3,6,4]</code> &rarr; 5 (buy at 1, sell at 6). The insight: as you walk right, the best buy day so far is simply the <b>cheapest price so far</b> (the window's left end l). Each day, check "sell today" against it.</p>
+<h4>Brute force first</h4>
+<p>Every buy/sell pair: O(n&sup2;). Too slow for 10<sup>5</sup> days.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Keep <code>minPrice</code> = cheapest price seen so far (start with the first day).</li><li>For each day: profit if sold today = <code>price - minPrice</code>; keep the best.</li><li>If today is cheaper than <code>minPrice</code>, today becomes the new buy day.</li><li>Return the best profit (0 if prices only fall).</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maxProfit(int[] prices) {
+        int minPrice = prices[0], best = 0;
+        for (int p : prices) {
+            best = Math.max(best, p - minPrice); // sell today
+            minPrice = Math.min(minPrice, p);    // cheaper buy
+        }
+        return best;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one pass, two variables.</p>
+<h4>Dry run</h4>
+<p><code>[7,1,5,3,6,4]</code>: min 7 &rarr; 1 at day 2; day 3 profit 4; day 5 profit 5 (best); day 6 profit 3. Answer 5.</p>
+<h4>Watch out</h4>
+<p>You must buy before you sell, so never subtract a later minimum from an earlier price. If prices only go down, the answer is 0, not negative.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-substring-without-repeating-characters/">3. Longest Substring Without Repeating Characters</a> — the animation above.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Longest stretch of a string with no repeated character. <code>"abcabcbb"</code> &rarr; 3 (<code>"abc"</code>). The insight: grow a <b>variable window</b> with the right pointer; when the new character is already inside, jump the left pointer just past its previous position. Remember each character's <b>last index</b>.</p>
+<h4>Brute force first</h4>
+<p>Check every substring for repeats: O(n&sup3;), or O(n&sup2;) with a set per start.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make <code>last</code>, an array of 128 ints filled with &minus;1 (last index of each ASCII character).</li><li>Walk <code>r</code> from left to right. Let c = <code>s.charAt(r)</code>.</li><li>If c was seen at or after <code>l</code>, move <code>l = last[c] + 1</code>.</li><li>Record <code>last[c] = r</code>; window length is <code>r - l + 1</code>; keep the max.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int lengthOfLongestSubstring(String s) {
+        int[] last = new int[128];
+        Arrays.fill(last, -1);
+        int l = 0, best = 0;
+        for (int r = 0; r &lt; s.length(); r++) {
+            char c = s.charAt(r);
+            // c repeats inside the window: jump past it
+            if (last[c] &gt;= l) l = last[c] + 1;
+            last[c] = r;
+            best = Math.max(best, r - l + 1);
+        }
+        return best;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; r moves once across, l only jumps forward, the table is a fixed 128.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>"abba"
+r=0 a: l=0 len 1
+r=1 b: l=0 len 2
+r=2 b: last[b]=1 &gt;= 0 -&gt; l=2, len 1
+r=3 a: last[a]=0 &lt;  2 -&gt; keep l=2, len 2</code></pre>
+<h4>Watch out</h4>
+<p>The <code>last[c] &gt;= l</code> check matters: in <code>"abba"</code>, the old <code>a</code> at index 0 is already outside the window, so l must not move back. Spaces and digits are characters too, hence 128 slots.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/minimum-size-subarray-sum/">209. Minimum Size Subarray Sum</a> — shortest window with sum ≥ target.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Shortest run of neighbours whose sum is at least <code>target</code> (all numbers positive); 0 if none. target 7, <code>[2,3,1,2,4,3]</code> &rarr; 2 (<code>[4,3]</code>). The insight: grow the window on the right until the sum is big enough, then <b>shrink from the left</b> as long as it stays big enough, recording the length each time.</p>
+<h4>Brute force first</h4>
+<p>Every start, extend until the sum reaches target: O(n&sup2;).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>l = 0</code>, <code>sum = 0</code>, <code>best = infinity</code>.</li><li>For each r: add <code>nums[r]</code> to sum.</li><li>While <code>sum &gt;= target</code>: record <code>r - l + 1</code>, then remove <code>nums[l]</code> and <code>l++</code>.</li><li>Return best, or 0 if it never changed.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int minSubArrayLen(int target, int[] nums) {
+        int l = 0, sum = 0, best = Integer.MAX_VALUE;
+        for (int r = 0; r &lt; nums.length; r++) {
+            sum += nums[r];
+            while (sum &gt;= target) {   // valid: try smaller
+                best = Math.min(best, r - l + 1);
+                sum -= nums[l++];
+            }
+        }
+        return best == Integer.MAX_VALUE ? 0 : best;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; each index is added once and removed once.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>target 7, [2,3,1,2,4,3]
+r=3 sum 8 &gt;= 7: len 4, drop 2 -&gt; 6
+r=4 sum 10: len 4, drop 3 -&gt; 7: len 3, drop 1 -&gt; 6
+r=5 sum 9: len 3, drop 2 -&gt; 7: len 2, drop 4 -&gt; 3
+best = 2</code></pre>
+<h4>Watch out</h4>
+<p>This works only because all numbers are positive (adding makes the sum bigger, removing makes it smaller). Return 0, not <code>MAX_VALUE</code>, when no window reaches the target.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-repeating-character-replacement/">424. Longest Repeating Character Replacement</a> — valid while length − maxCount ≤ k.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>You may change up to k letters. What is the longest stretch that can become one repeated letter? <code>"AABABBA"</code>, k = 1 &rarr; 4. The insight: a window is fixable if <code>length - (count of its most common letter) &le; k</code> (the rest are the letters you change). Grow on the right; when it breaks, slide the left by one.</p>
+<h4>Brute force first</h4>
+<p>Every substring, count its letters: O(26 &middot; n&sup2;).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Keep <code>count[26]</code> for the window and <code>maxCount</code>, the highest count seen.</li><li>For each r: add <code>s[r]</code>, update <code>maxCount</code>.</li><li>If <code>(r - l + 1) - maxCount &gt; k</code>, remove <code>s[l]</code> and <code>l++</code> (the window slides, never shrinks).</li><li>Answer is the final largest window size <code>r - l + 1</code>; track the max.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int characterReplacement(String s, int k) {
+        int[] count = new int[26];
+        int l = 0, maxCount = 0, best = 0;
+        for (int r = 0; r &lt; s.length(); r++) {
+            int c = s.charAt(r) - 'A';
+            maxCount = Math.max(maxCount, ++count[c]);
+            // too many letters to change: slide left
+            if (r - l + 1 - maxCount &gt; k) {
+                count[s.charAt(l) - 'A']--;
+                l++;
+            }
+            best = Math.max(best, r - l + 1);
+        }
+        return best;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one pass, a 26-slot table.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>"AABABBA", k=1
+r=0..3 "AABA": len 4, maxCount 3, 4-3=1 ok  best 4
+r=4 "AABAB": 5-3=2 &gt; 1 -&gt; drop A, window "ABAB"
+r=5 "ABABB": maxCount 3 (B), 5-3=2 -&gt; drop A
+r=6 "BABBA": 5-3=2 -&gt; drop B. best stays 4</code></pre>
+<h4>Watch out</h4>
+<p>It is fine that <code>maxCount</code> is never decreased: the answer only grows when a letter really reaches a new higher count. Letters are uppercase, so subtract <code>'A'</code>.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/permutation-in-string/">567. Permutation in String</a> — fixed window of size |s1| with letter counts.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Does s2 contain some rearrangement of s1 as a block? s1 = <code>"ab"</code>, s2 = <code>"eidbaooo"</code> &rarr; true (<code>"ba"</code>). The insight: a rearrangement has the same letter counts, so slide a <b>fixed window of length |s1|</b> over s2 and compare its 26 counts with s1's.</p>
+<h4>Brute force first</h4>
+<p>Generate every permutation of s1 and search for it: O(n!), hopeless. Or count letters fresh for every window: O(26 &middot; n &middot; |s1|).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If s1 is longer than s2, return false.</li><li>Count s1's letters in <code>need[26]</code>, and the first |s1| letters of s2 in <code>win[26]</code>.</li><li>If the arrays are equal, return true.</li><li>Slide: add <code>s2[i]</code>, remove <code>s2[i - m]</code>, compare again.</li><li>If no window matches, return false.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean checkInclusion(String s1, String s2) {
+        int m = s1.length(), n = s2.length();
+        if (m &gt; n) return false;
+        int[] need = new int[26], win = new int[26];
+        for (int i = 0; i &lt; m; i++) {
+            need[s1.charAt(i) - 'a']++;
+            win[s2.charAt(i) - 'a']++;
+        }
+        if (Arrays.equals(need, win)) return true;
+        for (int i = m; i &lt; n; i++) {
+            win[s2.charAt(i) - 'a']++;     // enters
+            win[s2.charAt(i - m) - 'a']--; // leaves
+            if (Arrays.equals(need, win)) return true;
+        }
+        return false;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(26 &middot; n) = O(n) &middot; <b>Space</b> O(1) &mdash; each slide is O(1) plus a 26-slot compare.</p>
+<h4>Dry run</h4>
+<p>s1 <code>"ab"</code>: need a1 b1. s2 <code>"eidbaooo"</code>, windows: <code>ei</code>, <code>id</code>, <code>db</code>, <code>ba</code> &rarr; a1 b1 matches &rarr; true.</p>
+<h4>Watch out</h4>
+<p>Check the very first window before sliding (the match may start at index 0). A faster version keeps a "matches" counter of equal slots instead of comparing all 26 each time.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/minimum-window-substring/">76. Minimum Window Substring</a> — need counts + missing, as above.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Smallest block of s containing every character of t (with repeats). s = <code>"ADOBECODEBANC"</code>, t = <code>"ABC"</code> &rarr; <code>"BANC"</code>. The insight: <code>need[c]</code> = how many more c the window still needs, and <code>missing</code> = total characters still needed. Grow right until <code>missing == 0</code>, then shrink left as far as possible and record. Pattern: <b>variable window with need counts</b>.</p>
+<h4>Brute force first</h4>
+<p>Check every substring of s for containing t: O(n&sup2;) substrings &times; counting each.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Fill <code>need[c]</code> from t; <code>missing = t.length()</code>.</li><li>Move r: if <code>need[s[r]] &gt; 0</code>, this char was really needed, so <code>missing--</code>. Then <code>need[s[r]]--</code> (can go negative = extra copies).</li><li>While <code>missing == 0</code>: record the window if smaller; then give back <code>s[l]</code>: <code>need[s[l]]++</code>, and if it became &gt; 0 the window lacks it now, so <code>missing++</code>. <code>l++</code>.</li><li>Return the best window, or <code>""</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public String minWindow(String s, String t) {
+        int[] need = new int[128];
+        for (char c : t.toCharArray()) need[c]++;
+        int missing = t.length();
+        int l = 0, bestL = 0, bestLen = Integer.MAX_VALUE;
+        for (int r = 0; r &lt; s.length(); r++) {
+            char c = s.charAt(r);
+            if (need[c] &gt; 0) missing--; // a needed char
+            need[c]--;
+            while (missing == 0) {       // window is valid
+                if (r - l + 1 &lt; bestLen) {
+                    bestLen = r - l + 1;
+                    bestL = l;
+                }
+                char d = s.charAt(l++);
+                need[d]++;
+                if (need[d] &gt; 0) missing++; // lost one
+            }
+        }
+        return bestLen == Integer.MAX_VALUE ? ""
+                : s.substring(bestL, bestL + bestLen);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(|s| + |t|) &middot; <b>Space</b> O(1) &mdash; l and r each cross s once; the table has 128 slots.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>s="ADOBECODEBANC" t="ABC"
+r=5 "ADOBEC" missing 0 -&gt; best 6, drop A -&gt; missing 1
+r=10 "DOBECODEBA" valid -&gt; shrink to "CODEBA"(6), drop C
+r=12 "ODEBANC" valid -&gt; shrink to "BANC"(4)
+answer "BANC"</code></pre>
+<h4>Watch out</h4>
+<p>Decrement <code>missing</code> only when <code>need[c] &gt; 0</code> before the decrement; extra copies must not count. Duplicates in t (<code>"aa"</code>) are why we count, not just use a set.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/sliding-window-maximum/">239. Sliding Window Maximum</a> — fixed window plus a monotonic deque.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>For every window of size k, report its maximum. <code>[1,3,-1,-3,5,3,6,7]</code>, k = 3 &rarr; <code>[3,3,5,5,6,7]</code>. The insight: keep a <b>monotonic deque</b> (double-ended queue) of indexes whose values are decreasing from front to back. The front is always the window max. A new number kicks out smaller ones from the back: they can never be a max again.</p>
+<h4>Brute force first</h4>
+<p>Scan each window for its max: O(n &middot; k). A max-heap with lazy removal gives O(n log n).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Deque stores <b>indexes</b>, values decreasing front to back.</li><li>For each i: if the front index is <code>i - k</code> or older, it left the window: <code>pollFirst</code>.</li><li>While the back value is &le; <code>nums[i]</code>, <code>pollLast</code> (useless now). Then add i at the back.</li><li>Once <code>i &gt;= k - 1</code>, the front is the window max: record <code>nums[front]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] maxSlidingWindow(int[] nums, int k) {
+        int n = nums.length;
+        int[] ans = new int[n - k + 1];
+        Deque&lt;Integer&gt; dq = new ArrayDeque&lt;&gt;(); // indexes
+        for (int i = 0; i &lt; n; i++) {
+            // front fell out of the window
+            if (!dq.isEmpty() &amp;&amp; dq.peekFirst() &lt;= i - k) {
+                dq.pollFirst();
+            }
+            // smaller values behind i are never a max
+            while (!dq.isEmpty()
+                    &amp;&amp; nums[dq.peekLast()] &lt;= nums[i]) {
+                dq.pollLast();
+            }
+            dq.offerLast(i);
+            if (i &gt;= k - 1) ans[i - k + 1] = nums[dq.peekFirst()];
+        }
+        return ans;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(k) &mdash; each index is pushed once and popped at most once.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>[1,3,-1,-3,5,3,6,7], k=3  (deque shows values)
+i=1: 3 kicks 1   -&gt; [3]
+i=2: [3,-1]      -&gt; max 3
+i=3: [3,-1,-3]   -&gt; max 3
+i=4: 3 leaves; 5 kicks -1,-3 -&gt; [5]  max 5
+i=5: [5,3] max 5; i=6: [6] max 6; i=7: [7] max 7</code></pre>
+<h4>Watch out</h4>
+<p>Store indexes, not values, so you can tell when the front has left the window. The answer array has <code>n - k + 1</code> slots.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

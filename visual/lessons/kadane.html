@@ -138,11 +138,149 @@
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock/">121. Best Time to Buy and Sell Stock</a> — Kadane on daily price differences, or track the minimum price.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-subarray/">53. Maximum Subarray</a> — the first animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-product-subarray/">152. Maximum Product Subarray</a> — the second animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-sum-circular-subarray/">918. Maximum Sum Circular Subarray</a> — total minus the minimum subarray.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-absolute-sum-of-any-subarray/">1749. Maximum Absolute Sum of Any Subarray</a> — run Kadane for max and for min.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock/">121. Best Time to Buy and Sell Stock</a> — Kadane on daily price differences, or track the minimum price.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Buy one day, sell a later day, maximise profit (or 0). <code>[7,1,5,3,6,4]</code> &rarr; 5. The insight: as you walk, the best buy is the <b>cheapest price so far</b>; selling today earns <code>price - minPrice</code>. (Same answer as Kadane on the daily differences <code>[-6,4,-2,3,-2]</code>: best run 4&minus;2+3 = 5.)</p>
+<h4>Brute force first</h4>
+<p>Every buy/sell pair: O(n&sup2;).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>minPrice</code> = first price, <code>best</code> = 0.</li><li>For each price: <code>best = max(best, price - minPrice)</code>.</li><li>Then <code>minPrice = min(minPrice, price)</code>.</li><li>Return best.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maxProfit(int[] prices) {
+        int minPrice = prices[0], best = 0;
+        for (int p : prices) {
+            best = Math.max(best, p - minPrice); // sell
+            minPrice = Math.min(minPrice, p);    // buy
+        }
+        return best;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one pass, two variables.</p>
+<h4>Dry run</h4>
+<p><code>[7,1,5,3,6,4]</code>: min 7, then 1; profits 4 (sell at 5), 2, 5 (sell at 6), 3. Best 5.</p>
+<h4>Watch out</h4>
+<p>Update <code>best</code> before <code>minPrice</code> so you never buy and sell on the same moment (it would only give 0 anyway, but the order shows the idea). Falling prices give 0.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-subarray/">53. Maximum Subarray</a> — the first animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the run of neighbours with the largest sum. <code>[-2,1,-3,4,-1,2,1,-5,4]</code> &rarr; 6 (<code>[4,-1,2,1]</code>). The insight (<b>Kadane</b>): at each number, either extend the run ending at the previous number, or start fresh here. If the run so far is negative, it only hurts, so start fresh.</p>
+<h4>Brute force first</h4>
+<p>Every start and end with a running sum: O(n&sup2;).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>cur</code> = best sum of a run ending here; <code>best</code> = best seen. Both start at <code>nums[0]</code>.</li><li>For each next x: <code>cur = max(x, cur + x)</code> (start fresh or extend).</li><li><code>best = max(best, cur)</code>.</li><li>Return best.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maxSubArray(int[] nums) {
+        int cur = nums[0], best = nums[0];
+        for (int i = 1; i &lt; nums.length; i++) {
+            // extend the run, or start again at nums[i]
+            cur = Math.max(nums[i], cur + nums[i]);
+            best = Math.max(best, cur);
+        }
+        return best;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one pass, two variables.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>x:    -2  1 -3  4 -1  2  1 -5  4
+cur:  -2  1 -2  4  3  5  6  1  5
+best: -2  1  1  4  4  5  6  6  6</code></pre>
+<h4>Watch out</h4>
+<p>Start with <code>nums[0]</code>, not 0: if every number is negative the answer is the largest single number (&minus;1 for <code>[-3,-1,-2]</code>), not 0.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-product-subarray/">152. Maximum Product Subarray</a> — the second animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Largest <b>product</b> of a run of neighbours. <code>[2,3,-2,4]</code> &rarr; 6. The twist: a negative number turns the smallest product into the largest. So track <b>both</b> the max and the min product of a run ending here; when x is negative they swap roles. Pattern: <b>Kadane with max and min</b>.</p>
+<h4>Brute force first</h4>
+<p>Every run with a running product: O(n&sup2;).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>hi = lo = best = nums[0]</code>.</li><li>For each next x: if x &lt; 0, swap hi and lo (negative flips big and small).</li><li><code>hi = max(x, hi * x)</code>, <code>lo = min(x, lo * x)</code>: extend or start fresh.</li><li><code>best = max(best, hi)</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maxProduct(int[] nums) {
+        int hi = nums[0], lo = nums[0], best = nums[0];
+        for (int i = 1; i &lt; nums.length; i++) {
+            int x = nums[i];
+            if (x &lt; 0) { // negative swaps biggest/smallest
+                int t = hi; hi = lo; lo = t;
+            }
+            hi = Math.max(x, hi * x);
+            lo = Math.min(x, lo * x);
+            best = Math.max(best, hi);
+        }
+        return best;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one pass, three variables.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>[-2,3,-4]
+start hi=-2 lo=-2 best=-2
+x=3:  hi=max(3,-6)=3   lo=min(3,-6)=-6  best 3
+x=-4: swap -&gt; hi=-6 lo=3
+      hi=max(-4,24)=24 lo=min(-4,-12)=-12 best 24</code></pre>
+<h4>Watch out</h4>
+<p>Zero resets both (start fresh after it) and is handled by the <code>max(x, ...)</code>. Do the swap <b>before</b> multiplying, or compute both new values from the old ones at the same time.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-sum-circular-subarray/">918. Maximum Sum Circular Subarray</a> — total minus the minimum subarray.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Like Maximum Subarray, but the run may wrap from the end back to the start. <code>[5,-3,5]</code> &rarr; 10 (5 + 5 wrapping). The insight: a wrapping run is <b>everything except a middle run</b>; to make it largest, remove the <b>smallest</b> middle run. So answer = <code>max(maxSubarray, total - minSubarray)</code>.</p>
+<h4>Brute force first</h4>
+<p>Try every start and every length up to n, wrapping with <code>% n</code>: O(n&sup2;).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Run Kadane for the max run (<code>curMax</code>, <code>bestMax</code>) and, in the same loop, for the min run (<code>curMin</code>, <code>bestMin</code>). Also add up <code>total</code>.</li><li>If <code>bestMax &lt; 0</code>, every number is negative: return bestMax.</li><li>Otherwise return <code>max(bestMax, total - bestMin)</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maxSubarraySumCircular(int[] nums) {
+        int curMax = 0, bestMax = nums[0];
+        int curMin = 0, bestMin = nums[0], total = 0;
+        for (int x : nums) {
+            curMax = Math.max(x, curMax + x);
+            bestMax = Math.max(bestMax, curMax);
+            curMin = Math.min(x, curMin + x);
+            bestMin = Math.min(bestMin, curMin);
+            total += x;
+        }
+        // all negative: total - bestMin would be empty
+        if (bestMax &lt; 0) return bestMax;
+        return Math.max(bestMax, total - bestMin);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one pass running both Kadanes.</p>
+<h4>Dry run</h4>
+<p><code>[5,-3,5]</code>: bestMax = 7 (5&minus;3+5), bestMin = &minus;3, total = 7. Wrap = 7 &minus; (&minus;3) = 10. Answer max(7, 10) = 10.</p>
+<h4>Watch out</h4>
+<p>All-negative input: the min run is the whole array, so <code>total - bestMin = 0</code> would mean picking nothing, which is not allowed. That is why we return <code>bestMax</code> when it is negative.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-absolute-sum-of-any-subarray/">1749. Maximum Absolute Sum of Any Subarray</a> — run Kadane for max and for min.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Largest <code>|sum|</code> of any run (the empty run counts as 0). <code>[2,-5,1,-4,3,-2]</code> &rarr; 8 (&minus;5+1&minus;4 = &minus;8). The insight: the biggest absolute value is either the biggest sum or the most negative sum, so run <b>Kadane twice</b> (max and min) in one loop and take the larger magnitude.</p>
+<h4>Brute force first</h4>
+<p>Every run with a running sum: O(n&sup2;). (Alternative O(n): answer = max prefix &minus; min prefix.)</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>curMax = curMin = 0</code>, <code>best = 0</code>.</li><li>For each x: <code>curMax = max(0, curMax + x)</code>, <code>curMin = min(0, curMin + x)</code> (0 = restart with an empty run).</li><li><code>best = max(best, curMax, -curMin)</code>.</li><li>Return best.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maxAbsoluteSum(int[] nums) {
+        int curMax = 0, curMin = 0, best = 0;
+        for (int x : nums) {
+            curMax = Math.max(0, curMax + x); // biggest sum
+            curMin = Math.min(0, curMin + x); // most negative
+            best = Math.max(best, Math.max(curMax, -curMin));
+        }
+        return best;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) &middot; <b>Space</b> O(1) &mdash; one pass, three variables.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>[1,-3,2,3,-4]
+x:      1 -3  2  3 -4
+curMax: 1  0  2  5  1
+curMin: 0 -3 -1  0 -4
+best:   1  3  3  5  5</code></pre>
+<h4>Watch out</h4>
+<p>Here restarting at 0 is allowed because the empty run (sum 0) counts. <code>|x|</code> fits in <code>int</code>: n &le; 10<sup>5</sup> and |x| &le; 10<sup>4</sup> gives at most 10<sup>9</sup>.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

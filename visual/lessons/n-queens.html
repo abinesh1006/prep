@@ -168,11 +168,227 @@ boolean safe(int row, int col) {
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/n-queens/">51. N-Queens</a> — the animation, save every solution.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/n-queens-ii/">52. N-Queens II</a> — count instead of saving.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/valid-sudoku/">36. Valid Sudoku</a> — the same "sets per row / column / box" check, no backtracking.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/sudoku-solver/">37. Sudoku Solver</a> — next empty cell, try 1–9, undo.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/word-search-ii/">212. Word Search II</a> — grid backtracking plus a trie for pruning.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/n-queens/">51. N-Queens</a> — the animation, save every solution.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Place n queens on an n&times;n board so none attack each other, and return every board. Each row holds exactly one queen, so go row by row and pick a column. A column is safe if no earlier queen shares its column or either diagonal. On a "/" diagonal <code>r + c</code> is constant, on a "\" diagonal <code>r - c</code> is constant, so three boolean arrays answer "attacked?" in O(1). Pattern: <b>backtracking with constraint sets</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make a board of '.' and three arrays: <code>col[n]</code>, <code>d1[2n]</code> for r + c, <code>d2[2n]</code> for r &minus; c + n (shifted so it is never negative).</li><li>In row r, try each column c that is not attacked.</li><li>Mark the three arrays, put 'Q', recurse to row r + 1.</li><li>Undo: put '.', clear the marks.</li><li>When r == n, copy the board rows into strings and save.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;List&lt;String&gt;&gt; solveNQueens(int n) {
+        List&lt;List&lt;String&gt;&gt; res = new ArrayList&lt;&gt;();
+        char[][] board = new char[n][n];
+        for (char[] row : board) Arrays.fill(row, '.');
+        place(0, n, board, new boolean[n],
+              new boolean[2 * n], new boolean[2 * n], res);
+        return res;
+    }
+
+    // col[c]: column c taken
+    // d1[r + c]: "/" diagonal taken (r + c is constant)
+    // d2[r - c + n]: "\" diagonal taken (r - c constant)
+    void place(int r, int n, char[][] b, boolean[] col,
+               boolean[] d1, boolean[] d2,
+               List&lt;List&lt;String&gt;&gt; res) {
+        if (r == n) {                       // all rows done
+            List&lt;String&gt; sol = new ArrayList&lt;&gt;();
+            for (char[] row : b) sol.add(new String(row));
+            res.add(sol);
+            return;
+        }
+        for (int c = 0; c &lt; n; c++) {
+            if (col[c] || d1[r + c] || d2[r - c + n])
+                continue;                   // attacked
+            col[c] = d1[r + c] = d2[r - c + n] = true;
+            b[r][c] = 'Q';                  // place
+            place(r + 1, n, b, col, d1, d2, res);
+            b[r][c] = '.';                  // remove
+            col[c] = d1[r + c] = d2[r - c + n] = false;
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n!) roughly &middot; <b>Space</b> O(n<sup>2</sup>) &mdash; row r has at most n &minus; r safe columns; the board itself is n&times;n.</p>
+<h4>Dry run</h4>
+<p>n = 4: row 0 col 0 &rarr; row 1 col 2 &rarr; row 2 has no safe column &rarr; back; row 1 col 3 &rarr; row 2 col 1 &rarr; row 3 stuck &rarr; back to row 0, col 1 &rarr; row 1 col 3 &rarr; row 2 col 0 &rarr; row 3 col 2 &rarr; save [".Q..","...Q","Q...","..Q."].</p>
+<h4>Watch out</h4>
+<p><code>r - c</code> ranges from &minus;(n&minus;1) to n&minus;1, so add n before indexing. n = 2 and n = 3 have no solutions; return an empty list.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/n-queens-ii/">52. N-Queens II</a> — count instead of saving.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Same search as N-Queens, but only the number of boards is needed. Let the recursive function return how many ways the rows below can be finished; a full board counts 1. No board strings, no copies. Pattern: <b>backtracking that counts</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Keep the same <code>col</code>, <code>d1</code>, <code>d2</code> arrays.</li><li><code>count(r)</code>: if r == n return 1.</li><li>Otherwise sum <code>count(r + 1)</code> over every safe column, marking before and unmarking after.</li><li>Return <code>count(0)</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    boolean[] col, d1, d2;
+    int n;
+
+    public int totalNQueens(int n) {
+        this.n = n;
+        col = new boolean[n];
+        d1 = new boolean[2 * n];       // r + c
+        d2 = new boolean[2 * n];       // r - c + n
+        return count(0);
+    }
+
+    // number of ways to finish from row r down
+    int count(int r) {
+        if (r == n) return 1;          // a full board
+        int ways = 0;
+        for (int c = 0; c &lt; n; c++) {
+            if (col[c] || d1[r + c] || d2[r - c + n])
+                continue;              // attacked
+            col[c] = d1[r + c] = d2[r - c + n] = true;
+            ways += count(r + 1);
+            col[c] = d1[r + c] = d2[r - c + n] = false;
+        }
+        return ways;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n!) roughly &middot; <b>Space</b> O(n) &mdash; only three flag arrays and the recursion stack.</p>
+<h4>Dry run</h4>
+<p>n = 4: row 0 col 0 &rarr; 0 ways; col 1 &rarr; 1 way; col 2 &rarr; 1 way; col 3 &rarr; 0 ways. Total 2.</p>
+<h4>Watch out</h4>
+<p>Return the sum, do not keep a global counter that is never reset if the same object is reused. Expected values to remember: n = 8 gives 92.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/valid-sudoku/">36. Valid Sudoku</a> — the same "sets per row / column / box" check, no backtracking.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Check a partly filled 9&times;9 Sudoku: no digit may repeat in a row, a column, or a 3&times;3 box. No solving needed. Keep "seen" flags per row, per column and per box; the box number is <code>(r/3)*3 + c/3</code>. Pattern: <b>hashing / seen sets</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make three 9&times;9 boolean tables: row, col, box (index = which row/col/box, then digit).</li><li>Walk every cell; skip '.'.</li><li>Digit d = <code>ch - '1'</code> (0..8), box b = <code>(r/3)*3 + c/3</code>.</li><li>If any of the three flags is already true, return false; else set all three.</li><li>If the walk ends, return true.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean isValidSudoku(char[][] board) {
+        // seen[r][d]: digit d already in row r, etc.
+        boolean[][] row = new boolean[9][9];
+        boolean[][] col = new boolean[9][9];
+        boolean[][] box = new boolean[9][9];
+        for (int r = 0; r &lt; 9; r++) {
+            for (int c = 0; c &lt; 9; c++) {
+                char ch = board[r][c];
+                if (ch == '.') continue;      // empty cell
+                int d = ch - '1'; // '1'..'9' -&gt; 0..8
+                int b = (r / 3) * 3 + c / 3;  // box 0..8
+                if (row[r][d] || col[c][d] || box[b][d])
+                    return false; // repeat found
+                row[r][d] = col[c][d] = box[b][d] = true;
+            }
+        }
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(81) = O(1) &middot; <b>Space</b> O(1) &mdash; the board is always 9&times;9, the tables are fixed size.</p>
+<h4>Dry run</h4>
+<p>Cell (0,0) = '5' &rarr; row 0, col 0, box 0 mark 5. Later (1,0)='6' etc. In the bad board, '8' at (0,0) and '8' at (3,0) share column 0 &rarr; col[0][7] already true &rarr; false.</p>
+<h4>Watch out</h4>
+<p>Box index: <code>(r / 3) * 3 + c / 3</code>, with integer division. Writing <code>r / 3 + c / 3</code> mixes boxes. A valid board need not be solvable; do not try to solve it.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/sudoku-solver/">37. Sudoku Solver</a> — next empty cell, try 1–9, undo.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Fill every '.' so the Sudoku rules hold (one solution is guaranteed). Go through the cells in order; at an empty cell try digits 1&ndash;9 that are not already in its row, column or box, place one, and continue. If a later cell has no option, come back and try the next digit. Pattern: <b>backtracking with constraint sets</b> (like N-Queens).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Record the given digits in <code>row</code>, <code>col</code>, <code>box</code> flag tables.</li><li><code>solve(i)</code> handles cell number i (0..80): r = i/9, c = i%9.</li><li>If the cell is filled, go to i + 1.</li><li>Else for d = 1..9 that is allowed: write it, mark, and if <code>solve(i+1)</code> returns true, stop.</li><li>If no digit worked, undo and return false so the caller tries its next digit.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    boolean[][] row = new boolean[9][10];
+    boolean[][] col = new boolean[9][10];
+    boolean[][] box = new boolean[9][10];
+
+    public void solveSudoku(char[][] board) {
+        for (int r = 0; r &lt; 9; r++) // record givens
+            for (int c = 0; c &lt; 9; c++)
+                if (board[r][c] != '.')
+                    mark(r, c, board[r][c] - '0', true);
+        solve(board, 0);
+    }
+
+    // fill cells from index i (0..80) onward
+    boolean solve(char[][] b, int i) {
+        if (i == 81) return true;            // board full
+        int r = i / 9, c = i % 9;
+        if (b[r][c] != '.') return solve(b, i + 1);
+        for (int d = 1; d &lt;= 9; d++) {
+            if (row[r][d] || col[c][d]
+                    || box[r / 3 * 3 + c / 3][d]) continue;
+            b[r][c] = (char) ('0' + d);      // try d
+            mark(r, c, d, true);
+            if (solve(b, i + 1)) return true; // it worked
+            mark(r, c, d, false);            // undo
+            b[r][c] = '.';
+        }
+        return false;                        // dead end
+    }
+
+    void mark(int r, int c, int d, boolean v) {
+        row[r][d] = col[c][d] = box[r / 3 * 3 + c / 3][d] = v;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(9<sup>e</sup>) worst case for e empty cells, fast in practice &middot; <b>Space</b> O(81) &mdash; recursion depth is at most 81 and the tables are fixed.</p>
+<h4>Dry run</h4>
+<p>First empty cell (0,2): row 0 has 5,3,7; column 2 has 8; box 0 has 5,3,6,9,8 &rarr; 1, 2, 4 allowed; try 1&hellip; later dead ends force a change to 4, which is in the final answer "534678912".</p>
+<h4>Watch out</h4>
+<p>Return true up the stack as soon as the board is full, or the undo step erases the finished solution. The method is void: change <code>board</code> in place.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/word-search-ii/">212. Word Search II</a> — grid backtracking plus a trie for pruning.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find which dictionary words can be traced in a letter grid by moving up, down, left, right without reusing a cell. Searching each word separately repeats a lot of work. Put all words in a <b>trie</b> (a tree where each edge is a letter, so shared prefixes share a path) and run one DFS from every cell, walking the trie in step with the grid. If the trie has no child for the next letter, stop right away. Pattern: <b>grid backtracking + trie pruning</b>.</p>
+<h4>Brute force first</h4>
+<p>Run Word Search (problem 79) once per word: O(W &middot; m &middot; n &middot; 4<sup>L</sup>), too slow for 3&times;10<sup>4</sup> words.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Insert every word into a trie; store the whole word on its last node.</li><li>From every cell, call <code>dfs(r, c, root)</code>.</li><li>In <code>dfs</code>: stop if off the grid, if the cell is in use ('#'), or if the trie node has no child for this letter.</li><li>If the child node holds a word, add it and set it to null (so it is found once).</li><li>Mark the cell '#', recurse in four directions with the child node, then restore the letter.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    static class Node {
+        Node[] next = new Node[26];
+        String word;             // set where a word ends
+    }
+
+    public List&lt;String&gt; findWords(char[][] board,
+                                  String[] words) {
+        Node root = new Node();
+        for (String w : words) { // build the trie
+            Node cur = root;
+            for (char ch : w.toCharArray()) {
+                int k = ch - 'a';
+                if (cur.next[k] == null)
+                    cur.next[k] = new Node();
+                cur = cur.next[k];
+            }
+            cur.word = w;
+        }
+        List&lt;String&gt; res = new ArrayList&lt;&gt;();
+        for (int r = 0; r &lt; board.length; r++)
+            for (int c = 0; c &lt; board[0].length; c++)
+                dfs(board, r, c, root, res);
+        return res;
+    }
+
+    void dfs(char[][] b, int r, int c, Node parent,
+             List&lt;String&gt; res) {
+        if (r &lt; 0 || c &lt; 0 || r &gt;= b.length
+                || c &gt;= b[0].length) return;   // off grid
+        char ch = b[r][c];
+        if (ch == '#') return;                 // in path
+        Node node = parent.next[ch - 'a'];
+        if (node == null) return; // no word here
+        if (node.word != null) {
+            res.add(node.word);
+            node.word = null; // no duplicates
+        }
+        b[r][c] = '#';                         // mark used
+        dfs(b, r + 1, c, node, res);
+        dfs(b, r - 1, c, node, res);
+        dfs(b, r, c + 1, node, res);
+        dfs(b, r, c - 1, node, res);
+        b[r][c] = ch;                          // unmark
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m &middot; n &middot; 4 &middot; 3<sup>L&minus;1</sup>) &middot; <b>Space</b> O(total letters in words) &mdash; L is the longest word; after the first step each cell has at most 3 new directions; the trie holds every letter once.</p>
+<h4>Dry run</h4>
+<p>Words oath, pea, eat, rain. From 'o' (0,0): o &rarr; a (0,1) &rarr; t (1,1) &rarr; h (2,1) &rarr; node holds "oath", save it. From 'e' (1,3): e &rarr; a (1,2) &rarr; t (1,1) &rarr; "eat". No cell is 'p', so the trie stops "pea" at once; "rain" stops because no 'a' touches 'r'. Result [oath, eat].</p>
+<h4>Watch out</h4>
+<p>Clear <code>node.word</code> after adding it, or a word reachable by two paths appears twice. Always restore the cell letter after the four calls.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

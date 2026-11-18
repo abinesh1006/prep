@@ -275,14 +275,328 @@ win[s[i]]++;  <span class="k">if</span> (i &gt;= m) win[s[i - m]]--;
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/valid-anagram/">242. Valid Anagram</a> — compare 26 counts.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-palindromic-substring/">5. Longest Palindromic Substring</a> — animation 1.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/palindromic-substrings/">647. Palindromic Substrings</a> — same loop, count every grow step.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-all-anagrams-in-a-string/">438. Find All Anagrams in a String</a> — animation 2.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/permutation-in-string/">567. Permutation in String</a> — same window, return true at the first match.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/find-the-index-of-the-first-occurrence-in-a-string/">28. Find the Index of the First Occurrence</a> — write KMP once by hand.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/shortest-palindrome/">214. Shortest Palindrome</a> — lps of <code>s + "#" + reverse(s)</code>.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/longest-duplicate-substring/">1044. Longest Duplicate Substring</a> — binary search the length + rolling hash.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/valid-anagram/">242. Valid Anagram</a> — compare 26 counts.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Two words are anagrams when they use exactly the same letters the same number of times: "anagram" and "nagaram" both have three a's, one n, one g, one r, one m. So count the letters. Keep 26 counters (one per letter), add 1 for each letter of <code>s</code>, take 1 away for each letter of <code>t</code>. If every counter ends at 0, they match. Pattern: <b>frequency count</b>.</p>
+<h4>Brute force first</h4>
+<p>Sort both strings and compare them. That works but costs O(n log n) for the sort.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If the lengths differ, they cannot be anagrams. Return false.</li><li>Make an array <code>count</code> of 26 zeros. Index 0 is 'a', index 25 is 'z'.</li><li>Walk both strings together. For position i, do <code>count[s[i]]++</code> and <code>count[t[i]]--</code>.</li><li>At the end, if any counter is not 0, some letter appears more in one word. Return false. Otherwise return true.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean isAnagram(String s, String t) {
+        if (s.length() != t.length()) return false;
+        int[] count = new int[26];
+        for (int i = 0; i &lt; s.length(); i++) {
+            count[s.charAt(i) - 'a']++; // s adds
+            count[t.charAt(i) - 'a']--; // t removes
+        }
+        for (int c : count) {
+            if (c != 0) return false;
+        }
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — one pass over the strings, and the array is always 26 long.</p>
+<h4>Dry run</h4>
+<p>s = "rat", t = "car". After the loop: r: +1, a: +1 −1 = 0, t: +1, c: −1. The counters for r, t and c are not 0, so the answer is false.</p>
+<h4>Watch out</h4>
+<p><code>s.charAt(i) - 'a'</code> only works for lowercase a–z. For Unicode (the follow-up), use a <code>HashMap&lt;Character, Integer&gt;</code> instead of the array.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-palindromic-substring/">5. Longest Palindromic Substring</a> — animation 1.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the longest piece of the string that reads the same both ways. In "babad" that is "bab" (or "aba"). Every palindrome has a middle. So try each middle and grow outwards while the left and right letters are equal. A middle is either one letter ("aba") or the gap between two letters ("abba"). Pattern: <b>expand around centre</b>.</p>
+<h4>Brute force first</h4>
+<p>Check every substring (O(n²) of them) to see if it is a palindrome (O(n) each). That is O(n³), too slow for n = 1000.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>For each index c, try two centres: (c, c) for odd lengths and (c, c+1) for even lengths.</li><li>Grow: while <code>l &gt;= 0</code>, <code>r &lt; n</code> and <code>s[l] == s[r]</code>, move l left and r right.</li><li>When the loop stops, the last good palindrome is <code>s[l+1 .. r-1]</code>.</li><li>If it is longer than the best so far, remember its ends.</li><li>Return the best substring.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public String longestPalindrome(String s) {
+        int bestL = 0, bestR = 0; // best = s[bestL..bestR]
+        for (int c = 0; c &lt; s.length(); c++) {
+            // odd length: centre is one letter
+            int[] odd = grow(s, c, c);
+            // even length: centre is the gap c | c+1
+            int[] even = grow(s, c, c + 1);
+            if (odd[1] - odd[0] &gt; bestR - bestL) {
+                bestL = odd[0]; bestR = odd[1];
+            }
+            if (even[1] - even[0] &gt; bestR - bestL) {
+                bestL = even[0]; bestR = even[1];
+            }
+        }
+        return s.substring(bestL, bestR + 1);
+    }
+
+    // expand while both ends match; return last good [l, r]
+    private int[] grow(String s, int l, int r) {
+        while (l &gt;= 0 &amp;&amp; r &lt; s.length()
+                &amp;&amp; s.charAt(l) == s.charAt(r)) {
+            l--;
+            r++;
+        }
+        return new int[]{l + 1, r - 1};
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n²) · <b>Space</b> O(1) — 2n centres, each grows at most n steps.</p>
+<h4>Dry run</h4>
+<p>s = "cbbd". Centre (1,1) "b" stays length 1. Centre (1,2): s[1] = s[2] = 'b', grow to (0,3): 'c' ≠ 'd', stop. Palindrome is s[1..2] = "bb", length 2, the answer.</p>
+<h4>Watch out</h4>
+<p>Forgetting the even centre (c, c+1) misses answers like "bb". Also return <code>l + 1</code> and <code>r - 1</code>: the loop has already stepped one past the last match.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/palindromic-substrings/">647. Palindromic Substrings</a> — same loop, count every grow step.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Count every substring that is a palindrome. "aaa" has six: a, a, a, aa, aa, aaa. Use the same expand-around-centre loop as problem 5, but instead of keeping the longest, add 1 for every step that still matches, because each successful step is a new palindrome. Pattern: <b>expand around centre</b>.</p>
+<h4>Brute force first</h4>
+<p>Test all O(n²) substrings with an O(n) check: O(n³).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Set <code>count = 0</code>.</li><li>For each index c, grow from centre (c, c) and from (c, c+1).</li><li>Inside the grow loop, every time <code>s[l] == s[r]</code> holds, add 1 and step outwards.</li><li>Return the total.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int countSubstrings(String s) {
+        int count = 0;
+        for (int c = 0; c &lt; s.length(); c++) {
+            count += grow(s, c, c);     // odd centres
+            count += grow(s, c, c + 1); // even centres
+        }
+        return count;
+    }
+
+    // every successful grow step is one palindrome
+    private int grow(String s, int l, int r) {
+        int found = 0;
+        while (l &gt;= 0 &amp;&amp; r &lt; s.length()
+                &amp;&amp; s.charAt(l) == s.charAt(r)) {
+            found++;
+            l--;
+            r++;
+        }
+        return found;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n²) · <b>Space</b> O(1) — the same 2n centres, each growing at most n steps.</p>
+<h4>Dry run</h4>
+<p>s = "aaa". Odd centres give 1 + 2 + 1 = 4 (index 1 grows to "aaa"). Even centres give 1 ("aa" at 0–1) + 1 ("aa" at 1–2) + 0 = 2. Total 6.</p>
+<h4>Watch out</h4>
+<p>Each single letter is a palindrome, so the answer is always at least n. If you get less, the odd centre is missing.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-all-anagrams-in-a-string/">438. Find All Anagrams in a String</a> — animation 2.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find every place in <code>s</code> where a block of length <code>p.length()</code> is a reshuffle of <code>p</code>. Slide a window of that fixed size across <code>s</code> and keep 26 letter counts for the window. When a letter enters, add it; when one leaves, take it away. If the window's counts equal <code>p</code>'s counts, record the start. Pattern: <b>fixed-size sliding window</b>.</p>
+<h4>Brute force first</h4>
+<p>Sort or count every window from scratch: O(n · k) where k is the length of p.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If p is longer than s, return an empty list.</li><li>Count p's letters into <code>need</code>.</li><li>For each i in s, add <code>s[i]</code> to <code>have</code>. If i ≥ k, remove <code>s[i-k]</code>, which just left the window.</li><li>Once i ≥ k−1 the window is full: if <code>need</code> equals <code>have</code>, add the start <code>i-k+1</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;Integer&gt; findAnagrams(String s, String p) {
+        List&lt;Integer&gt; res = new ArrayList&lt;&gt;();
+        int k = p.length();
+        if (k &gt; s.length()) return res;
+        int[] need = new int[26], have = new int[26];
+        for (char ch : p.toCharArray()) need[ch - 'a']++;
+        for (int i = 0; i &lt; s.length(); i++) {
+            have[s.charAt(i) - 'a']++;          // letter enters
+            if (i &gt;= k) {
+                have[s.charAt(i - k) - 'a']--;  // letter leaves
+            }
+            // window is s[i-k+1 .. i] once i &gt;= k-1
+            if (i &gt;= k - 1 &amp;&amp; Arrays.equals(need, have)) {
+                res.add(i - k + 1);
+            }
+        }
+        return res;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n · 26) = O(n) · <b>Space</b> O(1) — each step compares two arrays of 26.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>s = "abab", p = "ab", k = 2
+i=1 window "ab"  match -&gt; add 0
+i=2 window "ba"  match -&gt; add 1
+i=3 window "ab"  match -&gt; add 2      result [0, 1, 2]</code></pre>
+<h4>Watch out</h4>
+<p>The start index is <code>i - k + 1</code>, not <code>i - k</code>. To avoid the 26-step compare, you can keep a "matches" counter instead, but the array compare is simpler and still O(n).</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/permutation-in-string/">567. Permutation in String</a> — same window, return true at the first match.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Does <code>s2</code> contain some reshuffle of <code>s1</code> as one solid block? That is problem 438 asked as yes/no. Slide a window the size of <code>s1</code> over <code>s2</code> with 26 counts, and return true the first time the counts match. Pattern: <b>fixed-size sliding window</b>.</p>
+<h4>Brute force first</h4>
+<p>Generate every permutation of s1 and search for it: factorial time, hopeless.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If s1 is longer than s2, return false.</li><li>Count s1's letters into <code>need</code>.</li><li>Slide over s2: add the new letter, and once the window is longer than k remove the letter k places back.</li><li>When the window is full and <code>need</code> equals <code>have</code>, return true.</li><li>If the loop ends, return false.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean checkInclusion(String s1, String s2) {
+        int k = s1.length();
+        if (k &gt; s2.length()) return false;
+        int[] need = new int[26], have = new int[26];
+        for (char ch : s1.toCharArray()) need[ch - 'a']++;
+        for (int i = 0; i &lt; s2.length(); i++) {
+            have[s2.charAt(i) - 'a']++;
+            if (i &gt;= k) have[s2.charAt(i - k) - 'a']--;
+            if (i &gt;= k - 1 &amp;&amp; Arrays.equals(need, have)) {
+                return true; // first match is enough
+            }
+        }
+        return false;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — one pass and two arrays of 26.</p>
+<h4>Dry run</h4>
+<p>s1 = "ab", s2 = "eidbaooo". Windows: "ei", "id", "db", "ba". At "ba" the counts are a:1, b:1, the same as "ab", so the answer is true.</p>
+<h4>Watch out</h4>
+<p>Order inside the window does not matter, only counts. Do not compare strings.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/find-the-index-of-the-first-occurrence-in-a-string/">28. Find the Index of the First Occurrence</a> — write KMP once by hand.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find where <code>needle</code> first appears in <code>haystack</code>. KMP avoids starting over after a mismatch. First build <code>lps</code>: for each prefix of the needle, how long its longest "prefix that is also a suffix" is. On a mismatch you jump back to that length instead of to zero, because those letters already match. Pattern: <b>KMP string matching</b>.</p>
+<h4>Brute force first</h4>
+<p>Try each start in the haystack and compare letter by letter: O(n · m). That is accepted here, but interviewers ask for KMP.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Build lps. Keep <code>len</code>, the current matched prefix length. For each i from 1: while there is a mismatch and len &gt; 0, set <code>len = lps[len-1]</code>. If the letters match, add 1 to len. Store <code>lps[i] = len</code>.</li><li>Scan the haystack with j = letters of needle matched so far.</li><li>On a mismatch with j &gt; 0, fall back: <code>j = lps[j-1]</code> (repeat while needed).</li><li>On a match, add 1 to j. When j reaches m, the match starts at <code>i - m + 1</code>.</li><li>If the scan ends without a full match, return −1.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int strStr(String haystack, String needle) {
+        int m = needle.length();
+        if (m == 0) return 0;
+        // lps[i] = length of the longest proper prefix of
+        // needle[0..i] that is also a suffix of it
+        int[] lps = new int[m];
+        int len = 0;
+        for (int i = 1; i &lt; m; i++) {
+            while (len &gt; 0
+                    &amp;&amp; needle.charAt(i) != needle.charAt(len)) {
+                len = lps[len - 1]; // fall back
+            }
+            if (needle.charAt(i) == needle.charAt(len)) len++;
+            lps[i] = len;
+        }
+        int j = 0; // letters of needle matched so far
+        for (int i = 0; i &lt; haystack.length(); i++) {
+            while (j &gt; 0
+                    &amp;&amp; haystack.charAt(i) != needle.charAt(j)) {
+                j = lps[j - 1]; // keep the matched prefix
+            }
+            if (haystack.charAt(i) == needle.charAt(j)) j++;
+            if (j == m) return i - m + 1; // full match
+        }
+        return -1;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n + m) · <b>Space</b> O(m) — j only falls back as far as it has gone forward, so the total work is linear.</p>
+<h4>Dry run</h4>
+<p>needle = "aabaaac" gives lps = [0,1,0,1,2,2,0]. In "aabaaabaaac", after "aabaaa" fails on 'c' vs 'b', j falls back to lps[5] = 2 ("aa" is kept) instead of restarting. The full match ends at i = 10, so the start is 10 − 7 + 1 = 4.</p>
+<h4>Watch out</h4>
+<p>lps[0] is always 0 (a "proper" prefix cannot be the whole string), so the loop starts at i = 1. Use <code>while</code>, not <code>if</code>, for the fall back.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/shortest-palindrome/">214. Shortest Palindrome</a> — lps of <code>s + "#" + reverse(s)</code>.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>You may only add letters to the front. So keep the longest palindrome that already starts at index 0, and put the rest of the string, reversed, in front of it. For "aacecaaa" the longest palindrome prefix is "aacecaa", so add the leftover "a" in front: "aaacecaaa". To find that prefix fast, build <code>s + "#" + reverse(s)</code> and take the KMP lps value at its last position. Pattern: <b>KMP prefix function</b>.</p>
+<h4>Brute force first</h4>
+<p>For each length from n down, check whether <code>s[0..len)</code> is a palindrome: O(n²).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Let <code>rev</code> be s reversed, and <code>t = s + "#" + rev</code>.</li><li>Build the lps array of t, the same as in KMP.</li><li><code>keep = lps[last]</code> is the longest prefix of s that equals a suffix of rev, which means it is a palindrome.</li><li>Return <code>rev.substring(0, n - keep) + s</code>: the reversed leftover goes in front.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public String shortestPalindrome(String s) {
+        String rev = new StringBuilder(s).reverse().toString();
+        String t = s + "#" + rev; // '#' stops overlap
+        int[] lps = new int[t.length()];
+        int len = 0;
+        for (int i = 1; i &lt; t.length(); i++) {
+            while (len &gt; 0 &amp;&amp; t.charAt(i) != t.charAt(len)) {
+                len = lps[len - 1];
+            }
+            if (t.charAt(i) == t.charAt(len)) len++;
+            lps[i] = len;
+        }
+        // longest palindrome that starts at index 0
+        int keep = lps[t.length() - 1];
+        // put the rest, reversed, in front
+        return rev.substring(0, s.length() - keep) + s;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — one lps pass over a string of length 2n + 1.</p>
+<h4>Dry run</h4>
+<p>s = "abcd", rev = "dcba", t = "abcd#dcba". The last lps value is 1 (only "a"). Add rev[0..3) = "dcb" in front: "dcbabcd".</p>
+<h4>Watch out</h4>
+<p>The '#' matters. Without it, for s = "aaa" the lps could run past the middle and come out longer than s. The empty string must return "".</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/longest-duplicate-substring/">1044. Longest Duplicate Substring</a> — binary search the length + rolling hash.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the longest substring that appears at least twice. If a repeat of length L exists, a repeat of length L−1 also exists (cut one letter off), so we can <b>binary search the length</b>. To test one length L fast, slide a <b>rolling hash</b> over every window of length L and look for a hash seen before. A rolling hash is a number for the window that you update in O(1) when it moves one step.</p>
+<h4>Brute force first</h4>
+<p>Compare all pairs of substrings: O(n³) or worse.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Binary search L between 1 and n−1. For each middle value, run <code>findDup(L)</code>.</li><li>findDup: hash the first L letters as a base-31 number mod a big prime.</li><li>Slide: remove the leaving letter (times BASE^(L−1)), multiply by BASE, add the new letter.</li><li>If the hash was seen before, compare the actual text to rule out a false match (two different strings with the same hash). If it truly repeats, return this start.</li><li>If findDup succeeds, keep the answer and try longer; otherwise try shorter.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private static final long MOD = 1_000_000_007L;
+    private static final long BASE = 31;
+
+    public String longestDupSubstring(String s) {
+        int lo = 1, hi = s.length() - 1, bestStart = -1;
+        int bestLen = 0;
+        while (lo &lt;= hi) {
+            int mid = (lo + hi) / 2;
+            int start = findDup(s, mid);
+            if (start != -1) {      // length mid works
+                bestStart = start;
+                bestLen = mid;
+                lo = mid + 1;       // try longer
+            } else {
+                hi = mid - 1;       // try shorter
+            }
+        }
+        return bestStart == -1 ? ""
+                : s.substring(bestStart, bestStart + bestLen);
+    }
+
+    // start of a repeated substring of length len, or -1
+    private int findDup(String s, int len) {
+        long hash = 0, power = 1; // power = BASE^(len-1)
+        for (int i = 0; i &lt; len; i++) {
+            hash = (hash * BASE + s.charAt(i) - 'a' + 1) % MOD;
+            if (i &gt; 0) power = power * BASE % MOD;
+        }
+        Map&lt;Long, List&lt;Integer&gt;&gt; seen = new HashMap&lt;&gt;();
+        seen.computeIfAbsent(hash, x -&gt; new ArrayList&lt;&gt;())
+            .add(0);
+        for (int i = len; i &lt; s.length(); i++) {
+            // drop s[i-len], add s[i]
+            long out = (s.charAt(i - len) - 'a' + 1) * power % MOD;
+            hash = (hash - out + MOD) % MOD;
+            hash = (hash * BASE + s.charAt(i) - 'a' + 1) % MOD;
+            int start = i - len + 1;
+            List&lt;Integer&gt; list = seen.get(hash);
+            if (list != null) {
+                // same hash: compare text to rule out a clash
+                String cur = s.substring(start, start + len);
+                for (int p : list) {
+                    if (s.startsWith(cur, p)) return start;
+                }
+            }
+            seen.computeIfAbsent(hash, x -&gt; new ArrayList&lt;&gt;())
+                .add(start);
+        }
+        return -1;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log n) on average · <b>Space</b> O(n) — log n lengths, each a linear hash scan; text checks only run on hash hits.</p>
+<h4>Dry run</h4>
+<p>s = "banana". L = 2: "an" repeats, so try longer. L = 4: "bana", "anan", "nana" are all different, so try shorter. L = 3: "ana" appears at 1 and at 3, so it works. The answer is "ana".</p>
+<h4>Watch out</h4>
+<p>Keep every value in range: add MOD before taking <code>%</code> after a subtraction, or the hash goes negative. Without the text check, a hash clash can return a wrong answer.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

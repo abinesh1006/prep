@@ -191,14 +191,313 @@ void backtrack(int[] c, int start, int remain,
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/subsets/">78. Subsets</a> — exactly the first animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/combinations/">77. Combinations</a> — subsets, but only save when path size is k.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/combination-sum/">39. Combination Sum</a> — the second animation; recurse with i.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/subsets-ii/">90. Subsets II</a> — sort, skip <code>nums[i] == nums[i-1]</code> when i &gt; start.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/combination-sum-ii/">40. Combination Sum II</a> — recurse with i + 1 and skip duplicates.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/generate-parentheses/">22. Generate Parentheses</a> — choose "(" if open &lt; n, ")" if close &lt; open.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/word-search/">79. Word Search</a> — mark the cell, explore 4 neighbours, unmark.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/palindrome-partitioning/">131. Palindrome Partitioning</a> — choose the next palindrome piece.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/subsets/">78. Subsets</a> — exactly the first animation.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Return every subset of distinct numbers, e.g. [1,2] → [], [1], [1,2], [2]. Key insight: picture a decision tree where each level chooses the <b>next</b> number to add, only from positions after the last one used (so [2,1] never appears next to [1,2]). Every node of that tree is a valid subset, so save the path at every call. Pattern: <b>backtracking</b> (choose, explore, un-choose).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Call <code>build(start = 0, path = [])</code>.</li><li>First, save a copy of <code>path</code>: it is a subset.</li><li>For i from <code>start</code> to the end: add <code>nums[i]</code>, recurse with <code>start = i + 1</code>, then remove it.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;List&lt;Integer&gt;&gt; subsets(int[] nums) {
+        List&lt;List&lt;Integer&gt;&gt; result = new ArrayList&lt;&gt;();
+        build(nums, 0, new ArrayList&lt;&gt;(), result);
+        return result;
+    }
+
+    private void build(int[] nums, int start, List&lt;Integer&gt; path,
+                       List&lt;List&lt;Integer&gt;&gt; result) {
+        result.add(new ArrayList&lt;&gt;(path)); // every node counts
+        for (int i = start; i &lt; nums.length; i++) {
+            path.add(nums[i]);             // choose
+            build(nums, i + 1, path, result); // explore
+            path.remove(path.size() - 1);  // un-choose
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n · 2ⁿ) · <b>Space</b> O(n) besides the output — there are 2ⁿ subsets and each copy costs up to n; the path and recursion are n deep.</p>
+<h4>Dry run</h4>
+<p>[1,2,3]: save [] → add 1, save [1] → add 2, save [1,2] → add 3, save [1,2,3] → back, add 3, save [1,3] → back to [] → add 2, save [2] → add 3, save [2,3] → back → add 3, save [3]. 8 subsets.</p>
+<h4>Watch out</h4>
+<p>Save <code>new ArrayList&lt;&gt;(path)</code>, not <code>path</code>, or every saved list ends up empty after backtracking. Recursing with <code>start</code> instead of <code>i + 1</code> creates duplicates and very deep recursion. The bitmask method (count 0..2ⁿ − 1) is another way.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/combinations/">77. Combinations</a> — subsets, but only save when path size is k.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Return all ways to choose k numbers from 1..n, e.g. n = 4, k = 2 → [1,2] [1,3] [1,4] [2,3] [2,4] [3,4]. Key insight: it is the Subsets tree, but you save a path only when its size reaches k and then stop going deeper. Bonus pruning: if there are not enough numbers left to fill the path, stop the loop early. Pattern: <b>backtracking with a size limit</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>build(start = 1, path = [])</code>.</li><li>If <code>path.size() == k</code>, save a copy and return.</li><li><code>need = k − path.size()</code>. Try x from <code>start</code> up to <code>n − need + 1</code> (any higher x leaves too few numbers).</li><li>Add x, recurse with <code>x + 1</code>, remove x.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;List&lt;Integer&gt;&gt; combine(int n, int k) {
+        List&lt;List&lt;Integer&gt;&gt; result = new ArrayList&lt;&gt;();
+        build(n, k, 1, new ArrayList&lt;&gt;(), result);
+        return result;
+    }
+
+    private void build(int n, int k, int start,
+                       List&lt;Integer&gt; path,
+                       List&lt;List&lt;Integer&gt;&gt; result) {
+        if (path.size() == k) {            // full: save it
+            result.add(new ArrayList&lt;&gt;(path));
+            return;
+        }
+        // stop early when too few numbers are left
+        int need = k - path.size();
+        for (int x = start; x &lt;= n - need + 1; x++) {
+            path.add(x);
+            build(n, k, x + 1, path, result);
+            path.remove(path.size() - 1);
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(k · C(n, k)) · <b>Space</b> O(k) besides the output — C(n, k) combinations, each copied in O(k).</p>
+<h4>Dry run</h4>
+<p>n = 4, k = 2. Path [] → x up to 3. [1] → x 2..4: save [1,2], [1,3], [1,4]. [2] → save [2,3], [2,4]. [3] → save [3,4]. x = 4 is never tried at the first level (it could not get a partner).</p>
+<h4>Watch out</h4>
+<p>The pruning bound is an easy off-by-one: with <code>need</code> numbers still to pick, the largest first choice is <code>n − need + 1</code>. Without pruning the code is still correct, only slower.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/combination-sum/">39. Combination Sum</a> — the second animation; recurse with i.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Distinct positive candidates; find every combination that sums to target, where a number <b>may be used many times</b>, e.g. [2,3,6,7], target 7 → [2,2,3], [7]. Key insight: in the loop, recurse with <code>i</code> (not <code>i + 1</code>) so the same number can be picked again, but never go back to earlier numbers, so [2,3,2] does not repeat [2,2,3]. Sorting lets you stop as soon as a number is too big. Pattern: <b>backtracking with reuse</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Sort the candidates and call <code>build(left = target, start = 0)</code>.</li><li>If <code>left == 0</code>, save a copy of the path.</li><li>For i from <code>start</code>: if <code>c[i] &gt; left</code>, break (the rest are even bigger).</li><li>Add <code>c[i]</code>, recurse with <code>left − c[i]</code> and start <b>i</b>, then remove it.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;List&lt;Integer&gt;&gt; combinationSum(int[] candidates,
+                                              int target) {
+        List&lt;List&lt;Integer&gt;&gt; result = new ArrayList&lt;&gt;();
+        Arrays.sort(candidates);           // lets us stop early
+        build(candidates, target, 0, new ArrayList&lt;&gt;(), result);
+        return result;
+    }
+
+    private void build(int[] c, int left, int start,
+                       List&lt;Integer&gt; path,
+                       List&lt;List&lt;Integer&gt;&gt; result) {
+        if (left == 0) {                   // exact sum
+            result.add(new ArrayList&lt;&gt;(path));
+            return;
+        }
+        for (int i = start; i &lt; c.length; i++) {
+            if (c[i] &gt; left) break;        // rest are bigger
+            path.add(c[i]);
+            // i, not i + 1: the same number may repeat
+            build(c, left - c[i], i, path, result);
+            path.remove(path.size() - 1);
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(N^(T/m)) roughly · <b>Space</b> O(T/m) — N candidates, T target, m the smallest candidate: the tree is at most T/m deep with up to N branches.</p>
+<h4>Dry run</h4>
+<p>[2,3,6,7], 7. [2] left 5 → [2,2] left 3 → [2,2,2] left 1 (next 2 &gt; 1, break) → [2,2,3] left 0 save. [2,3] left 2 → 3 &gt; 2 break. [3] left 4 → [3,3] left 1 break. [6] left 1 break. [7] left 0 save. Answer [[2,2,3],[7]].</p>
+<h4>Watch out</h4>
+<p>Using <code>i + 1</code> forbids reuse (that is 40). Using 0 instead of <code>i</code> as the next start creates the same combination in different orders. The <code>break</code> is only correct because the array is sorted.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/subsets-ii/">90. Subsets II</a> — sort, skip <code>nums[i] == nums[i-1]</code> when i &gt; start.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Subsets again, but the input can have duplicates, and the answer must not, e.g. [1,2,2] gives [2] once, not twice. Key insight: <b>sort</b> so equal values sit next to each other. At one level of the tree (one loop), choosing the second 2 gives exactly the same subtrees as choosing the first 2, so skip a value equal to the one just before it <b>in the same loop</b> (<code>i &gt; start</code>). Pattern: <b>backtracking with duplicate skipping</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Sort <code>nums</code>.</li><li>In <code>build(start)</code>, save a copy of the path first.</li><li>For i from <code>start</code>: if <code>i &gt; start</code> and <code>nums[i] == nums[i − 1]</code>, skip.</li><li>Otherwise add <code>nums[i]</code>, recurse with <code>i + 1</code>, remove it.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;List&lt;Integer&gt;&gt; subsetsWithDup(int[] nums) {
+        Arrays.sort(nums);                 // equal values touch
+        List&lt;List&lt;Integer&gt;&gt; result = new ArrayList&lt;&gt;();
+        build(nums, 0, new ArrayList&lt;&gt;(), result);
+        return result;
+    }
+
+    private void build(int[] nums, int start, List&lt;Integer&gt; path,
+                       List&lt;List&lt;Integer&gt;&gt; result) {
+        result.add(new ArrayList&lt;&gt;(path));
+        for (int i = start; i &lt; nums.length; i++) {
+            // same value already tried at this position
+            if (i &gt; start &amp;&amp; nums[i] == nums[i - 1]) continue;
+            path.add(nums[i]);
+            build(nums, i + 1, path, result);
+            path.remove(path.size() - 1);
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n · 2ⁿ) · <b>Space</b> O(n) besides the output — worst case all values distinct.</p>
+<h4>Dry run</h4>
+<p>[1,2,2]: [] → [1] → [1,2] → [1,2,2] → back; at [1] the second 2 is skipped (i &gt; start). Back at []: [2] → [2,2]; the second 2 at the top level is skipped. Result [], [1], [1,2], [1,2,2], [2], [2,2].</p>
+<h4>Watch out</h4>
+<p>The condition is <code>i &gt; start</code>, not <code>i &gt; 0</code>. With <code>i &gt; 0</code> you also skip the second 2 when going <b>deeper</b>, and lose [1,2,2] and [2,2].</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/combination-sum-ii/">40. Combination Sum II</a> — recurse with i + 1 and skip duplicates.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Like Combination Sum, but each candidate may be used <b>once</b>, and the candidates can contain duplicates, while the answer must not. Example: [10,1,2,7,6,1,5], target 8 → [1,1,6], [1,2,5], [1,7], [2,6]. Key insight: combine two tricks. Recurse with <code>i + 1</code> (no reuse), and after sorting, skip equal values in the same loop exactly as in Subsets II.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Sort the candidates; call <code>build(left = target, start = 0)</code>.</li><li>If <code>left == 0</code>, save a copy.</li><li>For i from <code>start</code>: skip if <code>i &gt; start</code> and <code>c[i] == c[i − 1]</code>; break if <code>c[i] &gt; left</code>.</li><li>Add <code>c[i]</code>, recurse with <code>left − c[i]</code> and <code>i + 1</code>, remove it.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;List&lt;Integer&gt;&gt; combinationSum2(int[] candidates,
+                                               int target) {
+        Arrays.sort(candidates);
+        List&lt;List&lt;Integer&gt;&gt; result = new ArrayList&lt;&gt;();
+        build(candidates, target, 0, new ArrayList&lt;&gt;(), result);
+        return result;
+    }
+
+    private void build(int[] c, int left, int start,
+                       List&lt;Integer&gt; path,
+                       List&lt;List&lt;Integer&gt;&gt; result) {
+        if (left == 0) {
+            result.add(new ArrayList&lt;&gt;(path));
+            return;
+        }
+        for (int i = start; i &lt; c.length; i++) {
+            if (i &gt; start &amp;&amp; c[i] == c[i - 1]) continue; // dup
+            if (c[i] &gt; left) break;        // rest are bigger
+            path.add(c[i]);
+            // i + 1: each number is used at most once
+            build(c, left - c[i], i + 1, path, result);
+            path.remove(path.size() - 1);
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n · 2ⁿ) · <b>Space</b> O(n) besides the output — each number is either in or out of a path.</p>
+<h4>Dry run</h4>
+<p>Sorted [1,1,2,5,6,7,10], 8. [1] → [1,1] → [1,1,6] save. [1,2] → [1,2,5] save. [1,7] save. Back at the top, the second 1 is skipped. [2] → [2,6] save. [5], [6], [7] find nothing; 10 &gt; 8 breaks.</p>
+<h4>Watch out</h4>
+<p>The skip check goes before the break and uses <code>i &gt; start</code>. Do not use a Set of lists to remove duplicates afterwards: it works but wastes a lot of time.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/generate-parentheses/">22. Generate Parentheses</a> — choose "(" if open &lt; n, ")" if close &lt; open.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Generate all valid strings of n pairs of brackets, e.g. n = 3 → "((()))", "(()())", "(())()", "()(())", "()()()". Key insight: build the string one character at a time and only make <b>legal</b> choices. You may add "(" while you have used fewer than n, and ")" only while it closes something (<code>close &lt; open</code>). Every string that reaches length 2n is then valid. Pattern: <b>backtracking with rules</b>.</p>
+<h4>Brute force first</h4>
+<p>Generate all 2²ⁿ strings of brackets and keep the valid ones: O(2²ⁿ · n).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>build(open = 0, close = 0, sb = "")</code>.</li><li>If the length is 2n, save the string.</li><li>If <code>open &lt; n</code>: append "(", recurse with open + 1, delete it.</li><li>If <code>close &lt; open</code>: append ")", recurse with close + 1, delete it.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;String&gt; generateParenthesis(int n) {
+        List&lt;String&gt; result = new ArrayList&lt;&gt;();
+        build(n, 0, 0, new StringBuilder(), result);
+        return result;
+    }
+
+    private void build(int n, int open, int close,
+                       StringBuilder sb, List&lt;String&gt; result) {
+        if (sb.length() == 2 * n) {
+            result.add(sb.toString());
+            return;
+        }
+        if (open &lt; n) {                    // can still open
+            sb.append('(');
+            build(n, open + 1, close, sb, result);
+            sb.deleteCharAt(sb.length() - 1);
+        }
+        if (close &lt; open) {                // something to close
+            sb.append(')');
+            build(n, open, close + 1, sb, result);
+            sb.deleteCharAt(sb.length() - 1);
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(4ⁿ / √n) · <b>Space</b> O(n) besides the output — that is the Catalan number of valid strings, each of length 2n.</p>
+<h4>Dry run</h4>
+<p>n = 2. "" → "(" → "((" → "(()" → "(())" save. Back to "(" → "()" → "()(" → "()()" save. Answer ["(())", "()()"].</p>
+<h4>Watch out</h4>
+<p>The rule for ")" is <code>close &lt; open</code>, not <code>close &lt; n</code>; the second allows ")(" style strings. Remember to delete the last character after each recursive call when sharing one StringBuilder.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/word-search/">79. Word Search</a> — mark the cell, explore 4 neighbours, unmark.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Is <code>word</code> spelled in the grid by a path of neighbouring cells (up, down, left, right), using each cell at most once? Key insight: try every cell as the start. From a cell matching the current letter, mark it as "in use", try the 4 neighbours for the next letter, then <b>unmark</b> it so other paths can use it. Pattern: <b>grid backtracking</b> (DFS that undoes its marks).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>For each cell, if <code>match(word, i = 0, r, c)</code> is true, return true.</li><li>In <code>match</code>: if i == word length, everything matched: true.</li><li>If off-grid or the cell is not <code>word[i]</code>: false.</li><li>Save the letter, set the cell to '#', and try the 4 neighbours with i + 1.</li><li>Put the letter back and return whether any neighbour succeeded.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean exist(char[][] board, String word) {
+        for (int r = 0; r &lt; board.length; r++) {
+            for (int c = 0; c &lt; board[0].length; c++) {
+                if (match(board, word, 0, r, c)) return true;
+            }
+        }
+        return false;
+    }
+
+    // can word[i..] be spelled starting at (r, c)?
+    private boolean match(char[][] b, String word, int i,
+                          int r, int c) {
+        if (i == word.length()) return true; // all matched
+        if (r &lt; 0 || c &lt; 0 || r &gt;= b.length || c &gt;= b[0].length
+                || b[r][c] != word.charAt(i)) {
+            return false;
+        }
+        char saved = b[r][c];
+        b[r][c] = '#';                     // mark: in use
+        boolean found = match(b, word, i + 1, r + 1, c)
+                     || match(b, word, i + 1, r - 1, c)
+                     || match(b, word, i + 1, r, c + 1)
+                     || match(b, word, i + 1, r, c - 1);
+        b[r][c] = saved;                   // unmark
+        return found;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m·n · 3ᴸ) · <b>Space</b> O(L) — L = word length; after the first step each cell has at most 3 new directions; recursion is L deep.</p>
+<h4>Dry run</h4>
+<p>Board ABCE / SFCS / ADEE, word "SEE". S at (1,3) → E at (2,3) → E at (2,2) → i = 3 → true. For "ABCB", the path A-B-C reaches C at (0,2), but the only B next to it is (0,1), which is marked '#', so it fails.</p>
+<h4>Watch out</h4>
+<p>Forgetting to restore the cell breaks later searches from other starting cells. Check the length case (<code>i == word.length()</code>) <b>before</b> the bounds check, or a word that ends on the border fails.</p>
+</div></details>
+</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/palindrome-partitioning/">131. Palindrome Partitioning</a> — choose the next palindrome piece.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Cut a string into pieces so that every piece is a palindrome (reads the same both ways), and return every such cutting, e.g. "aab" → ["a","a","b"], ["aa","b"]. Key insight: at each step, choose the <b>next piece</b>: try every end position, and go deeper only if <code>s[start..end]</code> is a palindrome. When <code>start</code> reaches the end of the string, the path is a full answer. Pattern: <b>backtracking over cut positions</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>build(start = 0, path = [])</code>.</li><li>If <code>start == s.length()</code>, save a copy of the path.</li><li>For end from <code>start</code> to the last index: if <code>s[start..end]</code> is a palindrome, add it, recurse with <code>end + 1</code>, remove it.</li><li><code>isPal</code> checks with two pointers moving inward.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;List&lt;String&gt;&gt; partition(String s) {
+        List&lt;List&lt;String&gt;&gt; result = new ArrayList&lt;&gt;();
+        build(s, 0, new ArrayList&lt;&gt;(), result);
+        return result;
+    }
+
+    private void build(String s, int start, List&lt;String&gt; path,
+                       List&lt;List&lt;String&gt;&gt; result) {
+        if (start == s.length()) {         // whole string cut
+            result.add(new ArrayList&lt;&gt;(path));
+            return;
+        }
+        // try every next piece s[start..end]
+        for (int end = start; end &lt; s.length(); end++) {
+            if (!isPal(s, start, end)) continue;
+            path.add(s.substring(start, end + 1));
+            build(s, end + 1, path, result);
+            path.remove(path.size() - 1);
+        }
+    }
+
+    private boolean isPal(String s, int lo, int hi) {
+        while (lo &lt; hi) {
+            if (s.charAt(lo++) != s.charAt(hi--)) return false;
+        }
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n · 2ⁿ) · <b>Space</b> O(n) besides the output — there are up to 2ⁿ⁻¹ ways to cut, each checked in O(n).</p>
+<h4>Dry run</h4>
+<p>"aab". start 0: "a" ok → start 1: "a" ok → start 2: "b" ok → save [a,a,b]. Back at start 1: "ab" no. Back at start 0: "aa" ok → start 2: "b" → save [aa,b]. "aab" is not a palindrome.</p>
+<h4>Watch out</h4>
+<code>substring(start, end + 1)</code>: the end index of substring is exclusive. To speed up palindrome checks, precompute a DP table <code>pal[i][j]</code>, which keeps the same big-O but avoids repeated work.
+</div></details>
+</li>
 </ul>
 
 <h2>Test yourself</h2>

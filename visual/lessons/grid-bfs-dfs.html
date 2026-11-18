@@ -185,12 +185,275 @@ void sink(char[][] g, int r, int c) {
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/flood-fill/">733. Flood Fill</a> — the flood without the scan.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/number-of-islands/">200. Number of Islands</a> — exactly animation 1.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/max-area-of-island/">695. Max Area of Island</a> — dfs returns 1 + sum of the four calls.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/shortest-path-in-binary-matrix/">1091. Shortest Path in Binary Matrix</a> — exactly animation 2.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/surrounded-regions/">130. Surrounded Regions</a> — flood from the border first, flip the rest.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/pacific-atlantic-water-flow/">417. Pacific Atlantic Water Flow</a> — two floods uphill from each ocean, intersect.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/flood-fill/">733. Flood Fill</a> — the flood without the scan.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Like the paint-bucket tool: starting at pixel (sr, sc), repaint it and every pixel of the <b>same old colour</b> connected to it up, down, left or right. Key insight: a grid is a graph where each cell's neighbours are its 4 sides. Painting a cell also marks it visited, because a painted cell no longer has the old colour. Pattern: <b>grid DFS / flood fill</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Remember <code>old = image[sr][sc]</code>. If it already equals the new colour, return the image unchanged.</li><li>Call <code>fill(sr, sc)</code>.</li><li>In <code>fill</code>: stop if the cell is off the grid or its colour is not <code>old</code>.</li><li>Otherwise paint it, then call <code>fill</code> on its 4 neighbours.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[][] floodFill(int[][] image, int sr, int sc,
+                             int color) {
+        int old = image[sr][sc];
+        if (old == color) return image; // nothing to change
+        fill(image, sr, sc, old, color);
+        return image;
+    }
+
+    private void fill(int[][] img, int r, int c,
+                      int old, int color) {
+        if (r &lt; 0 || c &lt; 0 || r &gt;= img.length
+                || c &gt;= img[0].length) return; // off the grid
+        if (img[r][c] != old) return;   // other colour or done
+        img[r][c] = color;              // paint = mark visited
+        fill(img, r + 1, c, old, color);
+        fill(img, r - 1, c, old, color);
+        fill(img, r, c + 1, old, color);
+        fill(img, r, c - 1, old, color);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m·n) · <b>Space</b> O(m·n) — each cell is painted at most once; the recursion can be as deep as the region.</p>
+<h4>Dry run</h4>
+<p>[[1,1,1],[1,1,0],[1,0,1]], start (1,1), colour 2. old = 1. Paint (1,1), spread to (0,1), (0,0), (0,2), (1,0), (2,0). (1,2) is 0 and (2,1) is 0, so they stop the fill, and (2,2) is never reached. Result [[2,2,2],[2,2,0],[2,0,1]].</p>
+<h4>Watch out</h4>
+<p>If the new colour equals the old one, the "has old colour" check never fails, and the recursion runs forever (stack overflow). The early return fixes that.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/number-of-islands/">200. Number of Islands</a> — exactly animation 1.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>In a grid of '1' (land) and '0' (water), count islands: groups of land joined up, down, left or right. Key insight: scan every cell; each time you hit land you have not visited, that is a <b>new island</b>, so count it and immediately "sink" the whole island with DFS so it is never counted again. Pattern: <b>scan + flood fill</b> (count connected components).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Loop over every cell.</li><li>When a cell is '1', add 1 to the count and call <code>sink</code> on it.</li><li><code>sink</code> stops on off-grid or non-'1' cells; otherwise it sets the cell to '0' and recurses on the 4 neighbours.</li><li>Return the count after the scan.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int numIslands(char[][] grid) {
+        int islands = 0;
+        for (int r = 0; r &lt; grid.length; r++) {
+            for (int c = 0; c &lt; grid[0].length; c++) {
+                if (grid[r][c] == '1') { // land not seen yet
+                    islands++;
+                    sink(grid, r, c);    // erase this island
+                }
+            }
+        }
+        return islands;
+    }
+
+    private void sink(char[][] g, int r, int c) {
+        if (r &lt; 0 || c &lt; 0 || r &gt;= g.length
+                || c &gt;= g[0].length || g[r][c] != '1') {
+            return;
+        }
+        g[r][c] = '0';                   // mark visited
+        sink(g, r + 1, c);
+        sink(g, r - 1, c);
+        sink(g, r, c + 1);
+        sink(g, r, c - 1);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m·n) · <b>Space</b> O(m·n) — every cell is visited a constant number of times; worst-case recursion depth is the whole grid.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>11000
+11000
+00100
+00011</code></pre><p>(0,0) is land → count 1, sink the 2×2 block. (2,2) → count 2, sink it. (3,3) → count 3, sink (3,3) and (3,4). Answer 3.</p>
+<h4>Watch out</h4>
+<p>Diagonal cells do not count as touching; use only 4 directions. If you must not change the input, use a separate <code>boolean[][] seen</code> instead of writing '0'. BFS or Union-Find also work.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/max-area-of-island/">695. Max Area of Island</a> — dfs returns 1 + sum of the four calls.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Same grid of 1s and 0s, but now return the size of the <b>biggest</b> island. Key insight: let the DFS return a number. The area of an island from a cell = 1 (this cell) + the areas found from its 4 neighbours, and water or visited cells give 0. Pattern: <b>flood fill that returns a count</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>For every cell, call <code>area(r, c)</code> and keep the maximum.</li><li>In <code>area</code>: return 0 if off-grid or not land.</li><li>Set the cell to 0 so it is never counted twice.</li><li>Return 1 + the four recursive calls added together.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maxAreaOfIsland(int[][] grid) {
+        int best = 0;
+        for (int r = 0; r &lt; grid.length; r++) {
+            for (int c = 0; c &lt; grid[0].length; c++) {
+                best = Math.max(best, area(grid, r, c));
+            }
+        }
+        return best;
+    }
+
+    // size of the island touching (r, c); 0 for water
+    private int area(int[][] g, int r, int c) {
+        if (r &lt; 0 || c &lt; 0 || r &gt;= g.length
+                || c &gt;= g[0].length || g[r][c] != 1) {
+            return 0;
+        }
+        g[r][c] = 0;                     // mark visited
+        return 1 + area(g, r + 1, c) + area(g, r - 1, c)
+                 + area(g, r, c + 1) + area(g, r, c - 1);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m·n) · <b>Space</b> O(m·n) — each land cell is counted once; recursion depth up to the island size.</p>
+<h4>Dry run</h4>
+<p>Grid [[1,1],[0,1]]. area(0,0): mark it, 1 + area(1,0)=0 + area(0,1). area(0,1): mark it, 1 + area(1,1)=1 + others 0 = 2. So area(0,0) = 1 + 2 = 3. Other cells now give 0. Max 3.</p>
+<h4>Watch out</h4>
+<p>Mark the cell <b>before</b> recursing into neighbours, or two neighbours can count each other again and again. An all-water grid must return 0, which the starting value <code>best = 0</code> covers.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/shortest-path-in-binary-matrix/">1091. Shortest Path in Binary Matrix</a> — exactly animation 2.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>In an n×n grid of 0 (open) and 1 (blocked), find the shortest path from top-left to bottom-right, moving in <b>8 directions</b> (diagonals too). The length counts cells, so a 1×1 grid answers 1. Key insight: every move costs the same, so <b>BFS</b> finds the shortest path: it explores all cells 1 step away, then 2 steps, and so on, so the first time it reaches the end is the shortest.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If the start or the end cell is 1, return −1.</li><li>Queue (0,0), mark it visited (set it to 1), and set <code>length = 1</code>.</li><li>Process the queue one level at a time: everything in it now is <code>length</code> cells from the start.</li><li>For each cell, return <code>length</code> if it is the end; otherwise queue all 8 open, unvisited neighbours and mark them.</li><li>After each level add 1 to <code>length</code>. If the queue empties, return −1.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int shortestPathBinaryMatrix(int[][] grid) {
+        int n = grid.length;
+        if (grid[0][0] == 1 || grid[n - 1][n - 1] == 1) {
+            return -1;                   // start or end blocked
+        }
+        Deque&lt;int[]&gt; queue = new ArrayDeque&lt;&gt;();
+        queue.add(new int[]{0, 0});
+        grid[0][0] = 1;                  // mark visited
+        int length = 1;                  // cells on the path
+        while (!queue.isEmpty()) {
+            // everything in the queue now is `length` away
+            for (int size = queue.size(); size &gt; 0; size--) {
+                int[] cell = queue.poll();
+                int r = cell[0], c = cell[1];
+                if (r == n - 1 &amp;&amp; c == n - 1) return length;
+                for (int dr = -1; dr &lt;= 1; dr++) {
+                    for (int dc = -1; dc &lt;= 1; dc++) {
+                        int nr = r + dr, nc = c + dc;
+                        if (nr &gt;= 0 &amp;&amp; nc &gt;= 0 &amp;&amp; nr &lt; n
+                                &amp;&amp; nc &lt; n &amp;&amp; grid[nr][nc] == 0) {
+                            grid[nr][nc] = 1;
+                            queue.add(new int[]{nr, nc});
+                        }
+                    }
+                }
+            }
+            length++;
+        }
+        return -1;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n²) · <b>Space</b> O(n²) — each cell enters the queue at most once and checks 8 neighbours.</p>
+<h4>Dry run</h4>
+<p>[[0,0,0],[1,1,0],[1,1,0]]. Level 1: (0,0). Level 2: (0,1). Level 3: (0,2), (1,2) (diagonal). Level 4: (2,2) is the end → return 4.</p>
+<h4>Watch out</h4>
+<p>Mark a cell visited when you <b>queue</b> it, not when you pop it, or a cell is queued many times. Do not forget the 4 diagonal moves, or the start-cell-blocked check (a blocked start returns −1 even on a 1×1 grid). DFS does not give shortest paths here.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/surrounded-regions/">130. Surrounded Regions</a> — flood from the border first, flip the rest.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Flip every 'O' region that is fully surrounded by 'X' into 'X'. A region that touches the border can never be surrounded. Key insight: instead of checking each region, <b>start from the border</b>: flood every 'O' that is connected to an edge and mark it safe. Every 'O' left afterwards must be surrounded. Pattern: <b>reverse thinking + flood fill from the border</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>For every cell on the four edges, run <code>mark</code>: it turns connected 'O' cells into a temporary 'S' (safe).</li><li>Scan the whole board.</li><li>Any 'O' still there was not reached from the border, so make it 'X'.</li><li>Any 'S' goes back to 'O'.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public void solve(char[][] board) {
+        int m = board.length, n = board[0].length;
+        // 1. every O joined to the border is safe: mark it S
+        for (int r = 0; r &lt; m; r++) {
+            mark(board, r, 0);
+            mark(board, r, n - 1);
+        }
+        for (int c = 0; c &lt; n; c++) {
+            mark(board, 0, c);
+            mark(board, m - 1, c);
+        }
+        // 2. leftover O is surrounded -&gt; X;  S -&gt; back to O
+        for (int r = 0; r &lt; m; r++) {
+            for (int c = 0; c &lt; n; c++) {
+                if (board[r][c] == 'O') board[r][c] = 'X';
+                else if (board[r][c] == 'S') board[r][c] = 'O';
+            }
+        }
+    }
+
+    private void mark(char[][] b, int r, int c) {
+        if (r &lt; 0 || c &lt; 0 || r &gt;= b.length
+                || c &gt;= b[0].length || b[r][c] != 'O') {
+            return;
+        }
+        b[r][c] = 'S';
+        mark(b, r + 1, c);
+        mark(b, r - 1, c);
+        mark(b, r, c + 1);
+        mark(b, r, c - 1);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m·n) · <b>Space</b> O(m·n) — each cell is marked at most once; recursion depth up to the board size.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>XXXX     XXXX
+XOOX  →  XXXX
+XXOX     XXXX
+XOXX     XOXX</code></pre><p>Only (3,1) is an edge 'O', so it becomes 'S'. The middle group is never reached and turns into 'X'; then (3,1) goes back to 'O'.</p>
+<h4>Watch out</h4>
+<p>Do not flip cells while you are still exploring a region; that is why the temporary 'S' marker exists. Running DFS from every inner 'O' to "check if it escapes" works but is slower and easy to get wrong.</p>
+</div></details>
+</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/pacific-atlantic-water-flow/">417. Pacific Atlantic Water Flow</a> — two floods uphill from each ocean, intersect.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Rain flows from a cell to a neighbour with height ≤ its own. The Pacific touches the top and left edges, the Atlantic the bottom and right. Find cells whose water can reach <b>both</b> oceans. Key insight: run it backwards. From each ocean's edge, walk <b>uphill</b> (to neighbours with height ≥ the current one). Every cell you reach can drain into that ocean. Do it for both oceans and keep the cells in both sets. Pattern: <b>multi-start flood fill from the borders</b>.</p>
+<h4>Brute force first</h4>
+<p>From every cell, run a DFS downhill and check whether it reaches both oceans: O((m·n)²), far too slow for 200×200.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make two boolean grids, <code>pac</code> and <code>atl</code>.</li><li>Run <code>climb</code> into <code>pac</code> from every top-row and left-column cell, and into <code>atl</code> from every bottom-row and right-column cell.</li><li><code>climb</code> marks the cell, then moves to each in-grid neighbour that is not marked and is at least as high.</li><li>Collect every cell where both grids are true.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private static final int[][] DIRS =
+            {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+
+    public List&lt;List&lt;Integer&gt;&gt; pacificAtlantic(
+            int[][] heights) {
+        int m = heights.length, n = heights[0].length;
+        boolean[][] pac = new boolean[m][n];
+        boolean[][] atl = new boolean[m][n];
+        for (int r = 0; r &lt; m; r++) {
+            climb(heights, pac, r, 0);       // left edge
+            climb(heights, atl, r, n - 1);   // right edge
+        }
+        for (int c = 0; c &lt; n; c++) {
+            climb(heights, pac, 0, c);       // top edge
+            climb(heights, atl, m - 1, c);   // bottom edge
+        }
+        List&lt;List&lt;Integer&gt;&gt; result = new ArrayList&lt;&gt;();
+        for (int r = 0; r &lt; m; r++) {
+            for (int c = 0; c &lt; n; c++) {
+                if (pac[r][c] &amp;&amp; atl[r][c]) {
+                    result.add(List.of(r, c));
+                }
+            }
+        }
+        return result;
+    }
+
+    // from an ocean cell, walk to equal-or-higher cells
+    private void climb(int[][] h, boolean[][] ok,
+                       int r, int c) {
+        if (ok[r][c]) return;
+        ok[r][c] = true;
+        for (int[] d : DIRS) {
+            int nr = r + d[0], nc = c + d[1];
+            if (nr &gt;= 0 &amp;&amp; nc &gt;= 0 &amp;&amp; nr &lt; h.length
+                    &amp;&amp; nc &lt; h[0].length
+                    &amp;&amp; h[nr][nc] &gt;= h[r][c]) {
+                climb(h, ok, nr, nc);
+            }
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m·n) · <b>Space</b> O(m·n) — each flood visits every cell at most once.</p>
+<h4>Dry run</h4>
+<p>Grid [[1,2],[2,1]]. Pacific starts at (0,0), (0,1), (1,0), so everything except (1,1) is in pac; from (0,0)=1 it climbs to (0,1)=2 and (1,0)=2, but (1,1)=1 is lower than both and never reached. Atlantic starts at (1,1), (0,1), (1,0), all but (0,0). Both: (0,1), (1,0).</p>
+<h4>Watch out</h4>
+<p>The direction flips: walking back from the ocean you go to neighbours that are <b>higher or equal</b> (<code>&gt;=</code>), not lower. Equal heights let water flow, so <code>&gt;</code> drops correct cells.</p>
+</div></details>
+</li>
 </ul>
 
 <h2>Test yourself</h2>

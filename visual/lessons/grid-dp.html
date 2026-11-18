@@ -190,13 +190,225 @@
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/unique-paths/">62. Unique Paths</a> — the first animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/unique-paths-ii/">63. Unique Paths II</a> — obstacles are 0.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/minimum-path-sum/">64. Minimum Path Sum</a> — the second animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/triangle/">120. Triangle</a> — fill from the bottom row up.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximal-square/">221. Maximal Square</a> — the third animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/count-square-submatrices-with-all-ones/">1277. Count Square Submatrices</a> — same table, answer = sum of dp.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/dungeon-game/">174. Dungeon Game</a> — fill from the bottom-right backwards.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/unique-paths/">62. Unique Paths</a> — the first animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>A robot moves only right or down on an m&times;n grid; count the paths from the top-left to the bottom-right. Any cell is entered from above or from the left, so <code>paths(r,c) = paths(r-1,c) + paths(r,c-1)</code>. First row and column have exactly 1 path. Pattern: <b>grid DP</b>, keeping one row.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make a row array of n ones (the top row).</li><li>For every next row, for c = 1..n&minus;1: <code>row[c] += row[c-1]</code>. Before the add, row[c] still holds "from above".</li><li>Return <code>row[n-1]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int uniquePaths(int m, int n) {
+        // row[c] = paths to cell (r, c) in the current row
+        int[] row = new int[n];
+        Arrays.fill(row, 1);           // top row: one path
+        for (int r = 1; r &lt; m; r++) {
+            for (int c = 1; c &lt; n; c++) {
+                // from above (old row[c]) + from left
+                row[c] = row[c] + row[c - 1];
+            }
+        }
+        return row[n - 1];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m &middot; n) &middot; <b>Space</b> O(n) &mdash; one pass over the grid, one row kept.</p>
+<h4>Dry run</h4>
+<p>m = 3, n = 3: [1,1,1] &rarr; [1,2,3] &rarr; [1,3,6]. Answer 6.</p>
+<h4>Watch out</h4>
+<p>The maths answer C(m+n&minus;2, m&minus;1) works too, but intermediate products overflow an int unless you divide as you go.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/unique-paths-ii/">63. Unique Paths II</a> — obstacles are 0.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Unique Paths, but some cells are rocks (value 1) that no path may enter. Same rule, except a rock cell has 0 paths. Pattern: <b>grid DP with blocked cells</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>row[0] = 1</code> for the start, everything else 0.</li><li>Go through each grid row and each column c.</li><li>If the cell is a rock, set <code>row[c] = 0</code>.</li><li>Else if c &gt; 0, <code>row[c] += row[c-1]</code> (above + left).</li><li>Return <code>row[n-1]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int uniquePathsWithObstacles(int[][] grid) {
+        int n = grid[0].length;
+        int[] row = new int[n]; // paths into each column
+        row[0] = 1;                    // the start cell
+        for (int[] cells : grid) {
+            for (int c = 0; c &lt; n; c++) {
+                if (cells[c] == 1) {
+                    row[c] = 0;        // rock: no path in
+                } else if (c &gt; 0) {
+                    row[c] += row[c - 1]; // above + left
+                }
+            }
+        }
+        return row[n - 1];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m &middot; n) &middot; <b>Space</b> O(n) &mdash; one row of counts.</p>
+<h4>Dry run</h4>
+<p>[[0,0,0],[0,1,0],[0,0,0]]: row 0 [1,1,1]; row 1 [1,0,1]; row 2 [1,1,2]. Answer 2.</p>
+<h4>Watch out</h4>
+<p>A rock on the start or the end cell gives 0. Do not pre-fill the first row with 1s: a rock in it blocks every cell to its right.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/minimum-path-sum/">64. Minimum Path Sum</a> — the second animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the cheapest top-left to bottom-right path moving only right or down, where each cell adds its number. The cheapest way into a cell comes from the cheaper of the cell above and the cell to the left. <code>dp[r][c] = grid[r][c] + min(up, left)</code>. Pattern: <b>grid DP, min path</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Walk cells row by row.</li><li>Start cell: its own value.</li><li>First row: only from the left. First column: only from above.</li><li>Others: the smaller of up and left, plus the cell.</li><li>Return the bottom-right value.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int minPathSum(int[][] grid) {
+        int m = grid.length, n = grid[0].length;
+        // dp[r][c] = cheapest sum to reach (r, c)
+        int[][] dp = new int[m][n];
+        for (int r = 0; r &lt; m; r++) {
+            for (int c = 0; c &lt; n; c++) {
+                int before;              // best way in
+                if (r == 0 &amp;&amp; c == 0) before = 0;  // start
+                else if (r == 0) before = dp[r][c - 1];
+                else if (c == 0) before = dp[r - 1][c];
+                else before = Math.min(dp[r - 1][c],
+                                       dp[r][c - 1]);
+                dp[r][c] = before + grid[r][c];
+            }
+        }
+        return dp[m - 1][n - 1];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m &middot; n) &middot; <b>Space</b> O(m &middot; n) &mdash; one cell each (can be cut to one row, or done in place in grid).</p>
+<h4>Dry run</h4>
+<p>[[1,3,1],[1,5,1],[4,2,1]]: row 0 [1,4,5]; row 1 [2,7,6]; row 2 [6,8,7]. Answer 7 (1&rarr;3&rarr;1&rarr;1&rarr;1).</p>
+<h4>Watch out</h4>
+<p>Greedy "step to the cheaper neighbour" fails; you must compare whole path sums.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/triangle/">120. Triangle</a> — fill from the bottom row up.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the smallest top-to-bottom sum in a number triangle, stepping to the same index or index + 1 in the next row. Working from the bottom up is cleanest: each cell's best = its value + the smaller of the two cells below it. The top then holds the answer. Pattern: <b>grid DP filled bottom-up</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Array <code>best</code> of size n + 1, all 0 (a fake row under the bottom).</li><li>For r from the last row up to 0, for c = 0..r: <code>best[c] = tri[r][c] + min(best[c], best[c+1])</code>.</li><li>Return <code>best[0]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int minimumTotal(List&lt;List&lt;Integer&gt;&gt; triangle) {
+        int n = triangle.size();
+        // best[c] = cheapest path from (r, c) to the bottom
+        int[] best = new int[n + 1]; // 0s under the bottom
+        for (int r = n - 1; r &gt;= 0; r--) {
+            for (int c = 0; c &lt;= r; c++) {
+                // go down-left (c) or down-right (c + 1)
+                best[c] = triangle.get(r).get(c)
+                        + Math.min(best[c], best[c + 1]);
+            }
+        }
+        return best[0];                // the top
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n<sup>2</sup>) &middot; <b>Space</b> O(n) &mdash; every cell once, one row kept.</p>
+<h4>Dry run</h4>
+<p>[[2],[3,4],[6,5,7],[4,1,8,3]]: bottom [4,1,8,3]; row 2 [7,6,10]; row 1 [9,10]; row 0 [11]. Answer 11.</p>
+<h4>Watch out</h4>
+<p>Going left to right in a row is safe bottom-up, because <code>best[c+1]</code> is still from the row below when you read it. Top-down needs extra edge handling.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximal-square/">221. Maximal Square</a> — the third animation.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Largest square of all 1s in a 0/1 matrix; return its area. <code>dp[r][c]</code> = side of the biggest all-1 square whose bottom-right corner is this cell. A square of side k here needs squares of side k&minus;1 above, left and up-left, so <code>dp = 1 + min(up, left, diag)</code>. Pattern: <b>grid DP</b>.</p>
+<h4>Brute force first</h4>
+<p>From every cell, grow a square while the next row and column are all 1s: O((mn)<sup>2</sup>) worst case.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Table one bigger in each direction, all 0 (padding).</li><li>For each '1' cell: <code>dp[r][c] = 1 + min(dp[r-1][c], dp[r][c-1], dp[r-1][c-1])</code>.</li><li>'0' cells stay 0.</li><li>Track the biggest side; return side &times; side.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maximalSquare(char[][] matrix) {
+        int m = matrix.length, n = matrix[0].length;
+        // dp[r][c] = side of the biggest all-1 square whose
+        // bottom-right corner is (r-1, c-1); row/col 0 pad
+        int[][] dp = new int[m + 1][n + 1];
+        int best = 0;
+        for (int r = 1; r &lt;= m; r++) {
+            for (int c = 1; c &lt;= n; c++) {
+                if (matrix[r - 1][c - 1] == '1') {
+                    // limited by up, left and up-left
+                    int up = dp[r - 1][c];
+                    int left = dp[r][c - 1];
+                    int diag = dp[r - 1][c - 1];
+                    dp[r][c] = 1 + Math.min(diag,
+                                   Math.min(up, left));
+                    best = Math.max(best, dp[r][c]);
+                }
+            }
+        }
+        return best * best;            // area, not side
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m &middot; n) &middot; <b>Space</b> O(m &middot; n) &mdash; one cell each (one row is enough if needed).</p>
+<h4>Dry run</h4>
+<p>Rows 10100 / 10111 / 11111 / 10010: at (2,3), up 1, left 1, diag 1 &rarr; 2; also (2,4) &rarr; 2. Best side 2 &rarr; area 4.</p>
+<h4>Watch out</h4>
+<p>The matrix holds <code>char</code> '1' and '0', not ints. Return the area, not the side.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/count-square-submatrices-with-all-ones/">1277. Count Square Submatrices</a> — same table, answer = sum of dp.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Count every all-1 square of every size. Use the Maximal Square table: if <code>dp[r][c] = k</code>, this cell is the bottom-right corner of squares of side 1, 2, &hellip;, k, which is k squares. So the answer is the sum of the table. Pattern: <b>grid DP + sum</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Same padded table and same rule as problem 221.</li><li>For each 1 cell, <code>dp = 1 + min(up, left, diag)</code>.</li><li>Add dp to the total.</li><li>Return the total.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int countSquares(int[][] matrix) {
+        int m = matrix.length, n = matrix[0].length;
+        int[][] dp = new int[m + 1][n + 1];  // padded
+        int total = 0;
+        for (int r = 1; r &lt;= m; r++) {
+            for (int c = 1; c &lt;= n; c++) {
+                if (matrix[r - 1][c - 1] == 1) {
+                    int up = dp[r - 1][c];
+                    int left = dp[r][c - 1];
+                    int diag = dp[r - 1][c - 1];
+                    dp[r][c] = 1 + Math.min(diag,
+                                   Math.min(up, left));
+                    // a corner with side k ends k squares:
+                    // sizes 1, 2, ..., k
+                    total += dp[r][c];
+                }
+            }
+        }
+        return total;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m &middot; n) &middot; <b>Space</b> O(m &middot; n) &mdash; one cell each.</p>
+<h4>Dry run</h4>
+<p>[[1,1],[1,1]]: dp 1, 1, 1, then the corner 1 + min(1,1,1) = 2. Sum 1+1+1+2 = 5 (four 1&times;1 and one 2&times;2).</p>
+<h4>Watch out</h4>
+<p>Here the matrix holds ints 0/1, unlike 221's chars.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/dungeon-game/">174. Dungeon Game</a> — fill from the bottom-right backwards.<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>A knight goes from the top-left to the princess at the bottom-right moving right or down; cells add or remove health, and health must stay &ge; 1 at all times. Find the least starting health. Going forward fails because you would need to track two things (current health and lowest point). Going <b>backwards</b> works: <code>need[r][c]</code> = least health on entering this cell, which is <code>max(1, min(need below, need right) - cell)</code>. Pattern: <b>grid DP filled from the bottom-right</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Table one bigger, filled with a huge value (walls).</li><li>The two fake cells next to the princess get 1 (leave her cell with at least 1 health).</li><li>Fill from the bottom-right to the top-left: next = cheaper of down and right.</li><li><code>need = max(1, next - dungeon[r][c])</code>.</li><li>Return <code>need[0][0]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int calculateMinimumHP(int[][] dungeon) {
+        int m = dungeon.length, n = dungeon[0].length;
+        // need[r][c] = least health when ENTERING (r, c)
+        // so you can still reach the princess alive
+        int[][] need = new int[m + 1][n + 1];
+        for (int[] row : need)
+            Arrays.fill(row, Integer.MAX_VALUE); // walls
+        need[m][n - 1] = 1;   // fake cells next to the
+        need[m - 1][n] = 1;   // princess: arrive with 1 HP
+        for (int r = m - 1; r &gt;= 0; r--) {
+            for (int c = n - 1; c &gt;= 0; c--) {
+                // cheaper of going down or right next
+                int next = Math.min(need[r + 1][c],
+                                    need[r][c + 1]);
+                // health never allowed below 1
+                need[r][c] = Math.max(1,
+                        next - dungeon[r][c]);
+            }
+        }
+        return need[0][0];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m &middot; n) &middot; <b>Space</b> O(m &middot; n) &mdash; one cell each.</p>
+<h4>Dry run</h4>
+<p>[[-2,-3,3],[-5,-10,1],[10,30,-5]]: princess cell need max(1, 1+5) = 6; (1,2): max(1, 6&minus;1) = 5; (0,2): 2; (0,1): max(1, 2+3) = 5; (1,0) works out to 6, so (0,0): max(1, min(6, 5) + 2) = 7.</p>
+<h4>Watch out</h4>
+<p>The <code>max(1, &hellip;)</code> matters: a big health potion cannot make the needed health 0 or negative. Using MAX_VALUE as walls is safe because it is only compared, never added to.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

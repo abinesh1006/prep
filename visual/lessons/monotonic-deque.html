@@ -166,12 +166,224 @@
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/sliding-window-maximum/">239. Sliding Window Maximum</a> — animation 1.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-continuous-subarray-with-absolute-diff-less-than-or-equal-to-limit/">1438. Longest Subarray with Abs Diff ≤ Limit</a> — two deques: one max, one min.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/jump-game-vi/">1696. Jump Game VI</a> — DP, best of the last k values from a deque.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/constrained-subsequence-sum/">1425. Constrained Subsequence Sum</a> — same DP + deque idea.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/shortest-subarray-with-sum-at-least-k/">862. Shortest Subarray with Sum at Least K</a> — animation 2.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/max-value-of-equation/">1499. Max Value of Equation</a> — deque of best <code>y − x</code> within distance k.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/sliding-window-maximum/">239. Sliding Window Maximum</a> — animation 1.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>For every window of k numbers, report its largest value. Keep a <b>deque</b> (a list you can add to or remove from at both ends) of indices whose values go down from front to back. A new number knocks out every smaller number at the back, because those can never be the max while it is in the window. The front is always the current max. Pattern: <b>monotonic deque</b>.</p>
+<h4>Brute force first</h4>
+<p>Scan each window for its max: O(n · k), too slow when k is large.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>For each i: if the front index is ≤ i − k, it has left the window, so pop it from the front.</li><li>While the back value is ≤ <code>nums[i]</code>, pop it from the back.</li><li>Push i at the back.</li><li>Once i ≥ k − 1, the answer for this window is <code>nums[front]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] maxSlidingWindow(int[] nums, int k) {
+        int n = nums.length;
+        int[] res = new int[n - k + 1];
+        // indices; their values decrease from front to back
+        Deque&lt;Integer&gt; dq = new ArrayDeque&lt;&gt;();
+        for (int i = 0; i &lt; n; i++) {
+            // front index fell out of the window
+            if (!dq.isEmpty() &amp;&amp; dq.peekFirst() &lt;= i - k)
+                dq.pollFirst();
+            // smaller values can never be a max again
+            while (!dq.isEmpty() &amp;&amp; nums[dq.peekLast()] &lt;= nums[i])
+                dq.pollLast();
+            dq.offerLast(i);
+            if (i &gt;= k - 1) res[i - k + 1] = nums[dq.peekFirst()];
+        }
+        return res;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(k) — each index is pushed once and popped at most once.</p>
+<h4>Dry run</h4>
+<pre class="code"><code>nums = 1 3 -1 -3 5 3 6 7, k = 3   (deque shows values)
+i=2  [3,-1]      max 3
+i=3  [3,-1,-3]   max 3
+i=4  [5]         max 5   (5 knocks out all)
+i=5  [5,3]       max 5
+i=6  [6]         max 6
+i=7  [7]         max 7</code></pre>
+<h4>Watch out</h4>
+<p>Store <b>indices</b>, not values. You need the index to know when the front has left the window.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-continuous-subarray-with-absolute-diff-less-than-or-equal-to-limit/">1438. Longest Subarray with Abs Diff ≤ Limit</a> — two deques: one max, one min.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the longest block where max − min ≤ limit. Use a sliding window (left, right). To know the window's max and min at all times, keep two monotonic deques: one decreasing (front = max) and one increasing (front = min). When max − min is too big, move left forward. Pattern: <b>sliding window + two monotonic deques</b>.</p>
+<h4>Brute force first</h4>
+<p>Check every subarray and track its max and min: O(n²).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Add <code>nums[right]</code> to both deques, first popping the back of maxQ while it is smaller and the back of minQ while it is bigger.</li><li>While <code>maxQ.front − minQ.front &gt; limit</code>: the value at left is leaving. If it equals a deque's front, pop that front. Then do left++.</li><li>Update <code>best = max(best, right − left + 1)</code>.</li><li>Return best.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int longestSubarray(int[] nums, int limit) {
+        Deque&lt;Integer&gt; maxQ = new ArrayDeque&lt;&gt;(); // decreasing
+        Deque&lt;Integer&gt; minQ = new ArrayDeque&lt;&gt;(); // increasing
+        int left = 0, best = 0;
+        for (int right = 0; right &lt; nums.length; right++) {
+            int x = nums[right];
+            while (!maxQ.isEmpty() &amp;&amp; maxQ.peekLast() &lt; x)
+                maxQ.pollLast();
+            maxQ.offerLast(x);
+            while (!minQ.isEmpty() &amp;&amp; minQ.peekLast() &gt; x)
+                minQ.pollLast();
+            minQ.offerLast(x);
+            // shrink until max - min fits the limit
+            while (maxQ.peekFirst() - minQ.peekFirst() &gt; limit) {
+                int out = nums[left++];
+                if (maxQ.peekFirst() == out) maxQ.pollFirst();
+                if (minQ.peekFirst() == out) minQ.pollFirst();
+            }
+            best = Math.max(best, right - left + 1);
+        }
+        return best;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — every value enters and leaves each deque once.</p>
+<h4>Dry run</h4>
+<p>[8,2,4,7], limit 4. right=1: max 8, min 2, so the gap 6 is too big; drop 8 and the window is [2]. right=2: [2,4] gap 2, length 2. right=3: [2,4,7] gap 5 is too big; drop 2 and the window is [4,7], gap 3. The best is 2.</p>
+<h4>Watch out</h4>
+<p>The deques keep equal values (pop only strictly smaller or bigger ones). Otherwise, when a duplicate leaves, you could pop a copy that is still inside the window.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/jump-game-vi/">1696. Jump Game VI</a> — DP, best of the last k values from a deque.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>You start on index 0 and jump 1 to k steps forward each time, adding the values you land on. Maximise the total at the last index. <code>dp[i] = nums[i] + max(dp[i-k .. i-1])</code>. The "max of the last k dp values" is a sliding window maximum, so keep a decreasing deque of dp indices. Pattern: <b>DP + monotonic deque</b>.</p>
+<h4>Brute force first</h4>
+<p>For each i, scan the previous k dp values: O(n · k), too slow for n = k = 10⁵.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>dp[0] = nums[0]</code>. Put index 0 in the deque.</li><li>For each i ≥ 1: if the front index is &lt; i − k, it is out of reach, so pop it.</li><li><code>dp[i] = nums[i] + dp[front]</code>.</li><li>Pop from the back while the back dp is ≤ dp[i], then push i.</li><li>Return <code>dp[n−1]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maxResult(int[] nums, int k) {
+        int n = nums.length;
+        int[] dp = new int[n]; // dp[i] = best score landing on i
+        dp[0] = nums[0];
+        Deque&lt;Integer&gt; dq = new ArrayDeque&lt;&gt;(); // dp decreasing
+        dq.offerLast(0);
+        for (int i = 1; i &lt; n; i++) {
+            if (dq.peekFirst() &lt; i - k) dq.pollFirst(); // too far
+            dp[i] = nums[i] + dp[dq.peekFirst()];
+            while (!dq.isEmpty() &amp;&amp; dp[dq.peekLast()] &lt;= dp[i])
+                dq.pollLast();
+            dq.offerLast(i);
+        }
+        return dp[n - 1];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — one push and at most one pop per index.</p>
+<h4>Dry run</h4>
+<p>[1,−1,−2,4,−7,3], k = 2. dp = 1, 0, −1, 4, −3, 7. For example dp[5] = 3 + max(dp[3], dp[4]) = 3 + 4 = 7. The answer is 7.</p>
+<h4>Watch out</h4>
+<p>Here you <b>must</b> land on every chosen index, including negative ones. Do not take <code>max(0, …)</code> as in 1425: you cannot skip to "nothing".</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/constrained-subsequence-sum/">1425. Constrained Subsequence Sum</a> — same DP + deque idea.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Pick a non-empty subsequence with the biggest sum, where two picked neighbours are at most k indices apart. <code>dp[i]</code> = best sum of such a subsequence that ends at i = <code>nums[i] + max(0, best dp in the last k)</code>. The 0 means "start fresh here" when the earlier sums are negative. The best of the last k uses a decreasing deque. Pattern: <b>DP + monotonic deque</b>.</p>
+<h4>Brute force first</h4>
+<p>O(n · k), checking each of the last k dp values for every i.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>For each i, pop the front if it is &lt; i − k.</li><li><code>prev = max(0, dp[front])</code> (0 if the deque is empty), and <code>dp[i] = nums[i] + prev</code>.</li><li>Track the overall best dp value. The answer can end anywhere.</li><li>Keep the deque decreasing: pop the back while its dp ≤ dp[i], then push i.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int constrainedSubsetSum(int[] nums, int k) {
+        int n = nums.length;
+        // dp[i] = best sum of a valid subsequence ending at i
+        int[] dp = new int[n];
+        Deque&lt;Integer&gt; dq = new ArrayDeque&lt;&gt;(); // dp decreasing
+        int best = Integer.MIN_VALUE;
+        for (int i = 0; i &lt; n; i++) {
+            if (!dq.isEmpty() &amp;&amp; dq.peekFirst() &lt; i - k)
+                dq.pollFirst();
+            // take the best earlier sum only if it helps
+            int prev = dq.isEmpty() ? 0
+                    : Math.max(0, dp[dq.peekFirst()]);
+            dp[i] = nums[i] + prev;
+            best = Math.max(best, dp[i]);
+            while (!dq.isEmpty() &amp;&amp; dp[dq.peekLast()] &lt;= dp[i])
+                dq.pollLast();
+            dq.offerLast(i);
+        }
+        return best;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — each index enters and leaves the deque once.</p>
+<h4>Dry run</h4>
+<p>[10,2,−10,5,20], k = 2. dp = 10, 12, 2, 17, 37. dp[4] = 20 + max(dp[2], dp[3]) = 20 + 17 = 37. The best is 37.</p>
+<h4>Watch out</h4>
+<p>Start best at <code>Integer.MIN_VALUE</code>, not 0. If every number is negative (e.g. [−1,−2,−3]), the answer is the largest one, −1.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/shortest-subarray-with-sum-at-least-k/">862. Shortest Subarray with Sum at Least K</a> — animation 2.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the shortest block with sum ≥ k, where numbers can be negative. With prefix sums, block (i, j] has sum <code>pre[j] − pre[i]</code>. For each end j you want the latest start i with <code>pre[i] ≤ pre[j] − k</code>. Keep a deque of start indices with increasing prefix values. Pattern: <b>prefix sums + monotonic deque</b>.</p>
+<h4>Brute force first</h4>
+<p>Try every pair i &lt; j: O(n²). A plain sliding window fails because negative numbers break the rule that "growing the window grows the sum".</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Build <code>pre</code> of length n + 1 with <code>long</code> values.</li><li>For each j from 0 to n: while <code>pre[j] − pre[front] ≥ k</code>, record <code>j − front</code> and pop the front. A later j could only be longer with that start.</li><li>While <code>pre[back] ≥ pre[j]</code>, pop the back. j is a later and smaller start, so it is always at least as good.</li><li>Push j. At the end return best, or −1 if nothing was found.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int shortestSubarray(int[] nums, int k) {
+        int n = nums.length;
+        long[] pre = new long[n + 1]; // pre[i] = sum of first i
+        for (int i = 0; i &lt; n; i++) pre[i + 1] = pre[i] + nums[i];
+        int best = n + 1;
+        Deque&lt;Integer&gt; dq = new ArrayDeque&lt;&gt;(); // pre increasing
+        for (int j = 0; j &lt;= n; j++) {
+            // front start works: record it, it can't do better
+            while (!dq.isEmpty() &amp;&amp; pre[j] - pre[dq.peekFirst()] &gt;= k)
+                best = Math.min(best, j - dq.pollFirst());
+            // a later, smaller-or-equal prefix is a better start
+            while (!dq.isEmpty() &amp;&amp; pre[dq.peekLast()] &gt;= pre[j])
+                dq.pollLast();
+            dq.offerLast(j);
+        }
+        return best == n + 1 ? -1 : best;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — each index is pushed and popped once.</p>
+<h4>Dry run</h4>
+<p>nums [2,−1,2], k = 3, so pre = 0,2,1,3. j=1: deque [0,1]. j=2: pre 1 &lt; 2, so pop 1; deque [0,2]. j=3: pre[3] − pre[0] = 3 ≥ 3, so record length 3. The answer is 3.</p>
+<h4>Watch out</h4>
+<p>Use <code>long</code> for the prefix sums (values up to 10⁵ × 10⁵ can overflow int), and start the loop at j = 0 so that index 0 can act as a start.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/max-value-of-equation/">1499. Max Value of Equation</a> — deque of best <code>y − x</code> within distance k.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>The points are sorted by x. Maximise <code>yi + yj + |xi − xj|</code> where xj − xi ≤ k. With i before j this becomes <code>(yi − xi) + (yj + xj)</code>. So for each j you need the biggest <code>y − x</code> among the earlier points within distance k: a sliding window maximum. Pattern: <b>rewrite the formula + monotonic deque</b>.</p>
+<h4>Brute force first</h4>
+<p>Check every pair within distance k: O(n²) in the worst case.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Keep a deque of (x, y − x) with y − x decreasing.</li><li>For each point (x, y): pop from the front while <code>x − front.x &gt; k</code>.</li><li>If the deque is not empty, try <code>front.key + y + x</code> as an answer.</li><li>Push (x, y − x) after popping back entries whose key ≤ y − x.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findMaxValueOfEquation(int[][] points, int k) {
+        // yi + yj + |xi - xj| = (yi - xi) + (yj + xj), xi &lt; xj
+        // deque of [x, y - x], with y - x decreasing
+        Deque&lt;int[]&gt; dq = new ArrayDeque&lt;&gt;();
+        int best = Integer.MIN_VALUE;
+        for (int[] p : points) {
+            int x = p[0], y = p[1];
+            // drop points more than k to the left
+            while (!dq.isEmpty() &amp;&amp; x - dq.peekFirst()[0] &gt; k)
+                dq.pollFirst();
+            if (!dq.isEmpty())
+                best = Math.max(best, dq.peekFirst()[1] + y + x);
+            int key = y - x;
+            while (!dq.isEmpty() &amp;&amp; dq.peekLast()[1] &lt;= key)
+                dq.pollLast();
+            dq.offerLast(new int[]{x, key});
+        }
+        return best;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — each point enters and leaves once.</p>
+<h4>Dry run</h4>
+<p>[[1,3],[2,0],[5,10],[6,−10]], k = 1. At (2,0) the front is (1, key 2), giving 2 + 0 + 2 = 4. At (5,10) everything is too far. At (6,−10) the front is (5, key 5), giving 5 − 10 + 6 = 1. The best is 4.</p>
+<h4>Watch out</h4>
+<p>Query the deque <b>before</b> pushing the current point, because i and j must be different points.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

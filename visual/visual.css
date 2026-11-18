@@ -71,7 +71,7 @@ details.quiz[open] summary { margin-bottom: .4em; }
 
 /* practice list */
 .practice { list-style: none; padding: 0; }
-.practice li { display: flex; gap: 10px; align-items: baseline; padding: .45em 0; border-bottom: 1px dashed var(--line); max-width: none; }
+.practice > li { display: flex; gap: 10px; align-items: baseline; padding: .45em 0; border-bottom: 1px dashed var(--line); max-width: none; }
 .lvl { font-size: .75rem; font-weight: 700; padding: 1px 8px; border-radius: 99px; white-space: nowrap; }
 .lvl.e { background: var(--done-soft); color: var(--done); } .lvl.m { background: var(--active-soft); color: #9a6a00; } .lvl.h { background: var(--bad-soft); color: var(--bad); }
 
@@ -163,3 +163,16 @@ details.quiz[open] summary { margin-bottom: .4em; }
   .viz-code { font-size: 12.5px; }
   body { font-size: 17px; }
 }
+
+/* hidden worked solutions under practice problems */
+.practice > li { flex-wrap: wrap; }
+.practice li > details.sol { flex-basis: 100%; margin: .5em 0 .3em; }
+details.sol > summary { cursor: pointer; display: inline-block; font-size: .88rem; font-weight: 700; color: var(--brand);
+  border: 1px solid var(--brand); border-radius: 99px; padding: 2px 12px; list-style: none; }
+details.sol > summary::-webkit-details-marker { display: none; }
+details.sol[open] > summary { background: var(--brand); color: #fff; }
+details.sol .sol-body { margin-top: .7em; padding: 14px 16px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }
+details.sol .sol-body h4 { margin: 1em 0 .3em; font-size: .95rem; color: var(--ink-2); text-transform: uppercase; letter-spacing: .05em; }
+details.sol .sol-body h4:first-child { margin-top: 0; }
+details.sol .sol-body p, details.sol .sol-body li { font-size: .97rem; }
+details.sol .cx { font-size: .92rem; color: var(--ink-2); }

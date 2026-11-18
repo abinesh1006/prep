@@ -260,12 +260,312 @@ void add(int i, int delta) {         // a[i] += delta
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/range-sum-query-mutable/">307. Range Sum Query - Mutable</a> — write both trees for it.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/range-sum-query-2d-mutable/">308. Range Sum Query 2D - Mutable</a> — a 2D Fenwick (premium).</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/count-of-smaller-numbers-after-self/">315. Count of Smaller Numbers After Self</a> — scan from the right, Fenwick over values.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/reverse-pairs/">493. Reverse Pairs</a> — Fenwick with compressed values.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/count-of-range-sum/">327. Count of Range Sum</a> — prefix sums + Fenwick.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/my-calendar-iii/">732. My Calendar III</a> — segment tree with range add + max.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/range-sum-query-mutable/">307. Range Sum Query - Mutable</a> — write both trees for it.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>You need two operations that both stay fast: change one number, and get the sum of a range. A plain prefix-sum array makes updates O(n). A <b>Fenwick tree</b> (also called a binary indexed tree) stores partial sums in "boxes". Box i covers the last <code>i &amp; -i</code> positions up to i, where <code>i &amp; -i</code> is the lowest set bit of i. Both operations touch only O(log n) boxes. A segment tree also solves this (point update, range sum), with more code but the same O(log n).</p>
+<h4>Brute force first</h4>
+<p>Keep the array and sum the range in a loop: O(1) update but O(n) query.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Keep <code>nums</code> (current values) and <code>tree</code> (size n + 1, 1-based).</li><li>update(i, val): <code>delta = val − nums[i]</code>. Then, starting at j = i + 1, add delta to tree[j] and do <code>j += j &amp; -j</code> until j &gt; n.</li><li>prefix(count): add up tree[j] for j = count, doing <code>j -= j &amp; -j</code> until j reaches 0.</li><li>sumRange(l, r) = <code>prefix(r+1) − prefix(l)</code>.</li><li>Build by calling update for each starting value.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class NumArray {
+    private final int n;
+    private final int[] nums; // current values
+    private final int[] tree; // Fenwick tree, 1-based
+
+    public NumArray(int[] nums) {
+        n = nums.length;
+        this.nums = new int[n];
+        tree = new int[n + 1];
+        for (int i = 0; i &lt; n; i++) update(i, nums[i]);
+    }
+
+    public void update(int index, int val) {
+        int delta = val - nums[index];
+        nums[index] = val;
+        // walk up: add delta to every box that covers index
+        for (int i = index + 1; i &lt;= n; i += i &amp; -i)
+            tree[i] += delta;
+    }
+
+    // sum of nums[0 .. count-1]
+    private int prefix(int count) {
+        int s = 0;
+        for (int i = count; i &gt; 0; i -= i &amp; -i) s += tree[i];
+        return s;
+    }
+
+    public int sumRange(int left, int right) {
+        return prefix(right + 1) - prefix(left);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(log n) per update and query (build O(n log n)) · <b>Space</b> O(n) — each loop moves one bit per step.</p>
+<h4>Dry run</h4>
+<p>[1,3,5]. tree[1] = 1, tree[2] = 1 + 3 = 4, tree[3] = 5. sumRange(0,2) = prefix(3) = tree[3] + tree[2] = 9. update(1, 2) gives delta −1, so tree[2] = 3. The sum is now 8.</p>
+<h4>Watch out</h4>
+<p>Fenwick indices start at <b>1</b>. Index 0 never changes in <code>i += i &amp; -i</code>, so the loop would never end. Store the old value so that you can turn "set" into "add delta".</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/range-sum-query-2d-mutable/">308. Range Sum Query 2D - Mutable</a> — a 2D Fenwick (premium).
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>The same as 307 but on a grid: update one cell, and get the sum of a rectangle. A <b>2D Fenwick tree</b> nests the 1D loops, an outer loop over rows and an inner loop over columns. A rectangle sum then comes from four prefix rectangles by inclusion-exclusion (add the big one, subtract two strips, add back the corner subtracted twice).</p>
+<h4>Brute force first</h4>
+<p>A plain grid gives O(1) updates but O(m · n) per rectangle. Row prefix sums give O(n) per update and O(m) per rectangle. Neither is good when both operations are frequent.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Keep <code>vals</code> and <code>tree[rows+1][cols+1]</code>.</li><li>update: delta = new − old. For i from row+1 up by <code>i &amp; -i</code>, and j from col+1 up by <code>j &amp; -j</code>, do tree[i][j] += delta.</li><li>prefix(r, c): the same nested loops going down, adding tree[i][j]. This is the sum of rows [0, r) and columns [0, c).</li><li>sumRegion = P(r2+1, c2+1) − P(r1, c2+1) − P(r2+1, c1) + P(r1, c1).</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class NumMatrix {
+    private final int rows, cols;
+    private final int[][] vals; // current values
+    private final int[][] tree; // 2D Fenwick, 1-based
+
+    public NumMatrix(int[][] matrix) {
+        rows = matrix.length;
+        cols = matrix[0].length;
+        vals = new int[rows][cols];
+        tree = new int[rows + 1][cols + 1];
+        for (int r = 0; r &lt; rows; r++)
+            for (int c = 0; c &lt; cols; c++)
+                update(r, c, matrix[r][c]);
+    }
+
+    public void update(int row, int col, int val) {
+        int delta = val - vals[row][col];
+        vals[row][col] = val;
+        for (int i = row + 1; i &lt;= rows; i += i &amp; -i)
+            for (int j = col + 1; j &lt;= cols; j += j &amp; -j)
+                tree[i][j] += delta;
+    }
+
+    // sum of the rectangle rows [0, r), cols [0, c)
+    private int prefix(int r, int c) {
+        int s = 0;
+        for (int i = r; i &gt; 0; i -= i &amp; -i)
+            for (int j = c; j &gt; 0; j -= j &amp; -j)
+                s += tree[i][j];
+        return s;
+    }
+
+    public int sumRegion(int row1, int col1,
+                         int row2, int col2) {
+        // inclusion-exclusion on four prefix rectangles
+        return prefix(row2 + 1, col2 + 1)
+             - prefix(row1, col2 + 1)
+             - prefix(row2 + 1, col1)
+             + prefix(row1, col1);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(log m · log n) per operation · <b>Space</b> O(m · n) — nested log loops.</p>
+<h4>Dry run</h4>
+<p>In the example, region (2,1)–(4,3) sums to 8. update(3,2,2) changes 0 to 2, so delta = +2 and the region becomes 10.</p>
+<h4>Watch out</h4>
+<p>The +1 shifts on each side are easy to mix up. The four-corner formula takes prefix(row1, …) <b>without</b> +1, because prefix is exclusive.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/count-of-smaller-numbers-after-self/">315. Count of Smaller Numbers After Self</a> — scan from the right, Fenwick over values.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>For each number, count how many numbers to its <b>right</b> are smaller. Walk from right to left and keep a Fenwick tree over the <b>values</b> seen so far (tree[v] = how many times value v was seen). For nums[i], the answer is the prefix count of values below it. Then add nums[i]. Values lie in [−10⁴, 10⁴], so shift them by 10001 to make every index ≥ 1. Pattern: <b>Fenwick over values</b>.</p>
+<h4>Brute force first</h4>
+<p>For each i, scan everything to its right: O(n²). Merge sort counting is the other O(n log n) answer.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make a Fenwick tree of size 20002. index = value + 10001.</li><li>For i from n−1 down to 0: <code>res[i]</code> = prefix sum up to index − 1 (values strictly smaller).</li><li>Then add 1 at index, so that this value counts for the numbers to its left.</li><li>Return res as a list.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;Integer&gt; countSmaller(int[] nums) {
+        final int OFFSET = 10001; // -10^4 becomes index 1
+        int size = 20002;
+        int[] tree = new int[size + 1];
+        Integer[] res = new Integer[nums.length];
+        for (int i = nums.length - 1; i &gt;= 0; i--) {
+            int idx = nums[i] + OFFSET;
+            // how many seen values are &lt;= idx - 1
+            int count = 0;
+            for (int j = idx - 1; j &gt; 0; j -= j &amp; -j)
+                count += tree[j];
+            res[i] = count;
+            // now mark this value as seen
+            for (int j = idx; j &lt;= size; j += j &amp; -j)
+                tree[j]++;
+        }
+        return Arrays.asList(res);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log V) · <b>Space</b> O(V) — V ≈ 20001 possible values, and each step is a log V walk.</p>
+<h4>Dry run</h4>
+<p>[5,2,6,1], from the right. 1: nothing seen, so 0. 6: 1 is smaller, so 1. 2: 1 is smaller, so 1. 5: 2 and 1 are smaller, so 2. Result [2,1,1,0].</p>
+<h4>Watch out</h4>
+<p>Query <code>idx − 1</code>, not idx, or equal values count as "smaller" (try [−1,−1], whose answer is [0,0]).</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/reverse-pairs/">493. Reverse Pairs</a> — Fenwick with compressed values.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Count pairs i &lt; j with <code>nums[i] &gt; 2 · nums[j]</code>. Walk left to right. For each x, count the earlier values bigger than 2x, then add x. Values go up to 2³¹, so <b>compress</b> them: sort the distinct values and use the rank (position) as the Fenwick index. "Earlier values &gt; 2x" = seen − (earlier values ≤ 2x), and a binary search turns 2x into a rank. Pattern: <b>Fenwick with coordinate compression</b>.</p>
+<h4>Brute force first</h4>
+<p>Check all pairs: O(n²). Merge-sort counting is the other standard O(n log n) answer.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Copy the values into a <code>long</code> array, sort it and remove duplicates. That gives m distinct values.</li><li>For each x: <code>pos</code> = number of distinct values ≤ 2x (binary search). notBigger = prefix(pos).</li><li>pairs += seen − notBigger.</li><li>Add 1 at x's rank (number of values ≤ x, which is 1-based), then seen++.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int reversePairs(int[] nums) {
+        int n = nums.length;
+        // sorted distinct values, for compression
+        long[] sorted = new long[n];
+        for (int i = 0; i &lt; n; i++) sorted[i] = nums[i];
+        Arrays.sort(sorted);
+        int m = 0;
+        for (int i = 0; i &lt; n; i++)
+            if (m == 0 || sorted[i] != sorted[m - 1])
+                sorted[m++] = sorted[i];
+        int[] tree = new int[m + 1];
+        int pairs = 0, seen = 0;
+        for (int x : nums) {
+            // count earlier values &gt; 2x = seen - (values &lt;= 2x)
+            int pos = upperBound(sorted, m, 2L * x); // # &lt;= 2x
+            int notBigger = 0;
+            for (int j = pos; j &gt; 0; j -= j &amp; -j)
+                notBigger += tree[j];
+            pairs += seen - notBigger;
+            // add x at its compressed index (1-based)
+            int idx = upperBound(sorted, m, x);
+            for (int j = idx; j &lt;= m; j += j &amp; -j) tree[j]++;
+            seen++;
+        }
+        return pairs;
+    }
+
+    // number of values in sorted[0..m) that are &lt;= key
+    private int upperBound(long[] a, int m, long key) {
+        int lo = 0, hi = m;
+        while (lo &lt; hi) {
+            int mid = (lo + hi) &gt;&gt;&gt; 1;
+            if (a[mid] &lt;= key) lo = mid + 1;
+            else hi = mid;
+        }
+        return lo;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log n) · <b>Space</b> O(n) — a sort plus two binary searches and two Fenwick walks per element.</p>
+<h4>Dry run</h4>
+<p>[1,3,2,3,1]. At the last 1, 2x = 2 and the earlier values are 1,3,2,3. The ones bigger than 2 are the two 3s, which adds 2. No other position adds anything, so the total is 2.</p>
+<h4>Watch out</h4>
+<p><code>2 * x</code> overflows int when x is near 2³¹. Use <code>2L * x</code> and a long array.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/count-of-range-sum/">327. Count of Range Sum</a> — prefix sums + Fenwick.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Count the blocks whose sum is in [lower, upper]. With prefix sums, block (i, j] has sum <code>pre[j] − pre[i]</code>. So for each j, count the earlier i with <code>pre[j] − upper ≤ pre[i] ≤ pre[j] − lower</code>. That is a range count over earlier values, done with a Fenwick tree over compressed prefix values. Pattern: <b>prefix sums + Fenwick</b>.</p>
+<h4>Brute force first</h4>
+<p>Try every (i, j): O(n²). Merge sort on the prefix array is the other O(n log n) answer.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Build <code>pre</code> (n + 1 longs, pre[0] = 0).</li><li>Sort and remove duplicates to get the rank table.</li><li>For each p in pre, in order: hi = count of ranks ≤ p − lower, lo = count of ranks ≤ p − upper − 1.</li><li>count += prefix(hi) − prefix(lo), which counts the earlier prefixes inside the window.</li><li>Insert p at its rank.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int countRangeSum(int[] nums, int lower, int upper) {
+        int n = nums.length;
+        long[] pre = new long[n + 1];
+        for (int i = 0; i &lt; n; i++) pre[i + 1] = pre[i] + nums[i];
+        // compress the prefix values
+        long[] sorted = pre.clone();
+        Arrays.sort(sorted);
+        int m = 0;
+        for (int i = 0; i &lt;= n; i++)
+            if (m == 0 || sorted[i] != sorted[m - 1])
+                sorted[m++] = sorted[i];
+        int[] tree = new int[m + 1];
+        int count = 0;
+        for (long p : pre) {
+            // earlier q with p - upper &lt;= q &lt;= p - lower
+            int hi = countLE(sorted, m, p - lower);
+            int lo = countLE(sorted, m, p - upper - 1);
+            count += query(tree, hi) - query(tree, lo);
+            add(tree, countLE(sorted, m, p), m); // insert p
+        }
+        return count;
+    }
+
+    private int query(int[] tree, int i) {
+        int s = 0;
+        for (; i &gt; 0; i -= i &amp; -i) s += tree[i];
+        return s;
+    }
+
+    private void add(int[] tree, int i, int m) {
+        for (; i &lt;= m; i += i &amp; -i) tree[i]++;
+    }
+
+    // number of values in a[0..m) that are &lt;= key
+    private int countLE(long[] a, int m, long key) {
+        int lo = 0, hi = m;
+        while (lo &lt; hi) {
+            int mid = (lo + hi) &gt;&gt;&gt; 1;
+            if (a[mid] &lt;= key) lo = mid + 1;
+            else hi = mid;
+        }
+        return lo;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log n) · <b>Space</b> O(n) — compression plus log-time queries.</p>
+<h4>Dry run</h4>
+<p>[−2,5,−1], range [−2,2]. pre = 0, −2, 3, 2. At −2: −2 − 0 = −2 is in range, so +1. At 3: 3 − 0 = 3 and 3 − (−2) = 5 are both out, so +0. At 2: 2 − 0 = 2 and 2 − 3 = −1 are in, 2 − (−2) = 4 is out, so +2. Total 3.</p>
+<h4>Watch out</h4>
+<p>Insert p <b>after</b> querying, otherwise the empty block (i = j) is counted. Use <code>long</code>, because sums of ±2³¹ overflow int.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/my-calendar-iii/">732. My Calendar III</a> — segment tree with range add + max.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>After each booking [start, end), report the largest number of bookings that overlap at any moment. Think of a timeline where each booking adds +1 to every time in [start, end − 1], and the answer is the max over the timeline. That is <b>range add + global max</b>: a segment tree with <b>lazy propagation</b> (a pending "+x" stored on a node and handed down to its children only when needed). Times go up to 10⁹, so create nodes only when they are first visited (a dynamic segment tree). A sweep with a <code>TreeMap</code> of +1/−1 events is the simpler O(n²) alternative.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Each node stores <code>max</code> (the most overlaps in its range) and <code>lazy</code> (an add not yet pushed down).</li><li>book: add +1 over [start, end−1] starting at the root range [0, 10⁹].</li><li>If a node's range is fully inside, do max++ and lazy++, then stop.</li><li>Otherwise create the children, push the lazy value down, recurse into both halves, and set max = the larger child max.</li><li>Return root.max.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class MyCalendarThree {
+    // a segment tree node, made only when needed
+    private static class Node {
+        int max;  // most overlaps anywhere in this range
+        int lazy; // +lazy still to push to both children
+        Node left, right;
+    }
+
+    private final Node root = new Node();
+
+    public int book(int startTime, int endTime) {
+        // the booking covers times startTime .. endTime-1
+        add(root, 0, 1_000_000_000, startTime, endTime - 1);
+        return root.max;
+    }
+
+    private void add(Node node, int lo, int hi, int l, int r) {
+        if (r &lt; lo || hi &lt; l) return; // no overlap
+        if (l &lt;= lo &amp;&amp; hi &lt;= r) {     // fully covered
+            node.max++;
+            node.lazy++;
+            return;
+        }
+        int mid = lo + (hi - lo) / 2;
+        if (node.left == null) node.left = new Node();
+        if (node.right == null) node.right = new Node();
+        push(node);
+        add(node.left, lo, mid, l, r);
+        add(node.right, mid + 1, hi, l, r);
+        node.max = Math.max(node.left.max, node.right.max);
+    }
+
+    // hand a pending +lazy down to the children
+    private void push(Node node) {
+        if (node.lazy == 0) return;
+        node.left.max += node.lazy;
+        node.left.lazy += node.lazy;
+        node.right.max += node.lazy;
+        node.right.lazy += node.lazy;
+        node.lazy = 0;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(log C) per booking, C = 10⁹ · <b>Space</b> O(n log C) nodes — each booking touches about 4 log C nodes.</p>
+<h4>Dry run</h4>
+<p>book(10,20) gives 1, book(50,60) gives 1, book(10,40) overlaps [10,20) for 2, book(5,15) makes [10,15) 3 deep. The next two bookings never go above 3.</p>
+<h4>Watch out</h4>
+<p>Bookings are half-open, so update <code>end − 1</code>. Without that, [5,10) and [10,40) would wrongly overlap at 10. Push the lazy value before recursing, or the children read stale counts.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>
