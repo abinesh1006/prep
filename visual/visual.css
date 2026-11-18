@@ -1,5 +1,6 @@
 /* DSA Visual — reading-first styles for lesson pages and the animation engine */
 :root {
+  color-scheme: light;
   --bg: #fbfaf7; --paper: #ffffff; --ink: #1c2024; --ink-2: #4a525c; --ink-3: #7a838e; --line: #e3e0d8;
   --brand: #0f766e; --brand-soft: #e6f3f1;
   --cell: #ffffff; --cell-line: #9aa3ad;
@@ -13,26 +14,6 @@
   --plain: #eaf2fb; --plain-line: #3b7dd8;
   --trap: #fdecec; --trap-line: #c9372c;
   --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.05);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #15181c; --paper: #1c2026; --ink: #e8ebee; --ink-2: #b5bcc5; --ink-3: #8a929c; --line: #2d333b;
-    --brand: #4fc1b4; --brand-soft: #173330;
-    --cell: #232830; --cell-line: #5d6672;
-    --active: #e9b23a; --active-soft: #3d3216; --compare: #6ea2ec; --compare-soft: #1d2d45;
-    --done: #55c27f; --done-soft: #183224; --bad: #f07070; --bad-soft: #3d1c1c;
-    --path: #4fc1b4; --visited: #1f3d39; --code-bg: #12151a; --code-on: #3a3216;
-    --remember: #2f2814; --plain: #1a2638; --trap: #351c1c;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #15181c; --paper: #1c2026; --ink: #e8ebee; --ink-2: #b5bcc5; --ink-3: #8a929c; --line: #2d333b;
-  --brand: #4fc1b4; --brand-soft: #173330;
-  --cell: #232830; --cell-line: #5d6672;
-  --active: #e9b23a; --active-soft: #3d3216; --compare: #6ea2ec; --compare-soft: #1d2d45;
-  --done: #55c27f; --done-soft: #183224; --bad: #f07070; --bad-soft: #3d1c1c;
-  --path: #4fc1b4; --visited: #1f3d39; --code-bg: #12151a; --code-on: #3a3216;
-  --remember: #2f2814; --plain: #1a2638; --trap: #351c1c;
 }
 
 * { box-sizing: border-box; }
@@ -131,7 +112,6 @@ details.quiz[open] summary { margin-bottom: .4em; }
 .ln .src { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
 .ln.on { background: var(--code-on); border-left-color: var(--active); }
 .ln .k { color: #b8336a; } .ln .c { color: var(--ink-3); font-style: italic; } .ln .n { color: #2a6fdb; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ln .k, :root:not([data-theme="light"]) pre.code .k { color: #ff7ba8; } }
 
 /* svg shapes */
 .viz svg text { font-family: system-ui, "Segoe UI", sans-serif; fill: var(--ink); }
