@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coin Change</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Dynamic programming</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 43 · Dynamic programming</div>
+<h1>Coin Change</h1>
+<p class="lede">For every amount from 0 up to the target, work out the answer once — using the answers for smaller amounts you already have.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="dp-intro.html">DP intro</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>You have a set of item sizes you may use <b>any number of times</b> (coins, stamps, square numbers, words) and a target total. "<b>Fewest</b> coins to make amount", "<b>number of ways</b> to make amount", "can it be made at all". This is the <i>unbounded knapsack</i> family.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>Coins <code>[1, 2, 5]</code>, amount <b>7</b>. Greedy ("take the biggest coin first") happens to work here, but not always: with coins [1, 3, 4] and amount 6, greedy takes 4+1+1 (3 coins) while 3+3 needs only 2. So we must try every option — cleverly.</p>
+<p>Think about the <b>last coin</b> you put down. If it was a 2, then the rest was the best way to make 7 − 2 = 5. So:</p>
+<p><code>dp[a] = 1 + min(dp[a − 1], dp[a − 2], dp[a − 5])</code> — "fewest coins for amount a".</p>
+<ul>
+  <li>dp[0] = 0: making 0 needs no coins.</li>
+  <li>Fill a = 1, 2, 3 … 7 in order; every cell only looks at smaller amounts, already filled.</li>
+  <li>An amount that cannot be made stays at "infinity" (we use amount + 1), and the answer becomes −1.</li>
+</ul>
+<p><b>Counting ways</b> (Coin Change II) is the same table with <code>+</code> instead of <code>min</code> — but the order of the two loops decides whether you count <b>combinations</b> (1+2 and 2+1 are the same) or <b>orderings</b> (they are different).</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A shop assistant who keeps a cheat sheet: "fewest coins for 1 cent, 2 cents, 3 cents…". To give 7 cents, they look at three lines of the sheet — 6, 5 and 2 cents — add one coin to the best one, and write the 7-cent line down for next time.</p></div>
+
+<h2>Watch it work</h2>
+<h3>1. Fewest coins</h3>
+<p>Coins <code>[1, 2, 5]</code>, amount 7. The labels under the table point at the cells each new cell depends on (amount minus each coin); the green one is the winner.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const coins = [1, 2, 5], amount = 7, INF = amount + 1, r = Viz.recorder();
+  const dp = Array(amount + 1).fill(INF); dp[0] = 0;
+  const vals = () => dp.map(v => v === INF ? '∞' : v);
+  r.step([{ type: 'array', id: 'dp', label: 'dp[a] = fewest coins for amount a', values: vals(), marks: { 0: 'done' } },
+    { type: 'vars', id: 'v', vars: { coins: '[1, 2, 5]', amount } }], [2, 3],
+    'Start: <b>dp[0] = 0</b> (no coins for amount 0). Every other cell is ∞ = "cannot be made yet".');
+  const from = []; // which coin gave the best for each a
+  for (let a = 1; a <= amount; a++) {
+    const cand = {}; const ptr = {}; let best = INF, bestC = -1;
+    for (const c of coins) if (c <= a) {
+      ptr['−' + c] = a - c;
+      cand[`coin ${c}`] = dp[a - c] === INF ? '∞' : `dp[${a - c}]+1 = ${dp[a - c] + 1}`;
+      if (dp[a - c] + 1 < best) { best = dp[a - c] + 1; bestC = c; }
+    }
+    dp[a] = best; from[a] = bestC;
+    const m = {}; for (let j = 0; j < a; j++) m[j] = 'visited';
+    for (const c of coins) if (c <= a) m[a - c] = c === bestC ? 'done' : 'compare';
+    m[a] = 'active';
+    r.step([{ type: 'array', id: 'dp', label: 'dp[a] = fewest coins for amount a', values: vals(), marks: m, pointers: ptr },
+      { type: 'vars', id: 'v', vars: cand }], [5, 6, 7],
+      `Amount ${a}: the last coin could be ${coins.filter(c => c <= a).join(', ')}. Look back at ${coins.filter(c => c <= a).map(c => `dp[${a - c}]`).join(', ')}. Best: last coin <b>${bestC}</b> → dp[${a}] = dp[${a - bestC}] + 1 = <b>${best}</b>.`);
+  }
+  const used = []; for (let a = amount; a > 0; a -= from[a]) used.push(from[a]);
+  const m = {}; let a = amount; for (const c of used) { m[a] = 'done'; a -= c; } m[0] = 'done';
+  r.step([{ type: 'array', id: 'dp', label: 'dp[a] = fewest coins for amount a', values: vals(), marks: m },
+    { type: 'vars', id: 'v', vars: { answer: dp[amount], coins: used.join(' + ') }, marks: { answer: 'done' } }], [9],
+    `Answer: <b>dp[7] = ${dp[amount]}</b> coins. Walking back through the winning coins: 7 → ${used.map((c, i) => amount - used.slice(0, i + 1).reduce((s, x) => s + x, 0)).join(' → ')}, i.e. <b>${used.join(' + ')}</b>.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Coin change minimum coins', code:
+`int coinChange(int[] coins, int amount) {
+    int[] dp = new int[amount + 1];
+    Arrays.fill(dp, amount + 1);  // "infinity"
+    dp[0] = 0;
+    for (int a = 1; a <= amount; a++)
+        for (int c : coins)
+            if (c <= a) dp[a] = Math.min(dp[a], dp[a - c] + 1);
+    // amount + 1 means it could not be made
+    return dp[amount] > amount ? -1 : dp[amount];
+}
+// time O(amount × coins), memory O(amount)` });
+})();
+</script>
+
+<h3>2. Number of ways — coins in the outer loop</h3>
+<p>Coins <code>[1, 2, 5]</code>, amount 5. <code>dp[a]</code> = number of ways to make a. We process <b>one coin type at a time</b>: after the pass for coin 1, dp counts ways using only 1s; after coin 2, ways using 1s and 2s; and so on.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const coins = [1, 2, 5], amount = 5, r = Viz.recorder();
+  const dp = Array(amount + 1).fill(0); dp[0] = 1;
+  const arr = (m, ptr = {}) => ({ type: 'array', id: 'dp', label: 'dp[a] = number of ways to make a', values: [...dp], marks: m, pointers: ptr });
+  r.step([arr({ 0: 'done' }), { type: 'vars', id: 'v', vars: { coin: '—' } }], [3], '<b>dp[0] = 1</b>: there is exactly one way to make 0 — use no coins. Everything else starts at 0 ways.');
+  for (const c of coins) {
+    for (let a = c; a <= amount; a++) {
+      const before = dp[a];
+      dp[a] += dp[a - c];
+      r.step([arr({ [a - c]: 'compare', [a]: 'active' }, { [`a−${c}`]: a - c, a }), { type: 'vars', id: 'v', vars: { coin: c, [`dp[${a}]`]: `${before} + ${dp[a - c]} = ${dp[a]}` } }], [5, 6],
+        `Coin ${c}, amount ${a}: every way to make ${a - c}, plus one ${c}, is a new way to make ${a}. dp[${a}] = ${before} + dp[${a - c}] = <b>${dp[a]}</b>.`);
+    }
+  }
+  r.step([arr({ [amount]: 'done' }), { type: 'vars', id: 'v', vars: { answer: dp[amount] }, marks: { answer: 'done' } }], [7],
+    `Answer: <b>${dp[amount]} ways</b> — 5, 2+2+1, 2+1+1+1, 1+1+1+1+1. Because coin 2 was only added after all the 1s were finished, "1+2" and "2+1" can never both be counted.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Coin change number of ways', code:
+`int change(int amount, int[] coins) {
+    int[] dp = new int[amount + 1]; // ways to make a
+    dp[0] = 1;                      // use no coins
+    for (int c : coins)             // OUTER: coin types
+        for (int a = c; a <= amount; a++)
+            dp[a] += dp[a - c];     // ways ending in c
+    return dp[amount];
+}` });
+})();
+</script>
+
+<h3>3. Why loop order matters — the wrong order counts orderings</h3>
+<p>Swap the loops (amount outside, coins inside) and you count <b>sequences</b>: 1+2 and 2+1 become two different ways. Coins <code>[1, 2]</code>, amount 3: the right answer is 2 (1+1+1, 1+2), but this order gives 3.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const coins = [1, 2], amount = 3, r = Viz.recorder();
+  const dp = Array(amount + 1).fill(0); dp[0] = 1;
+  const seqs = [[[]], [], [], []];
+  const arr = (m, ptr = {}) => ({ type: 'array', id: 'dp', label: 'dp[a] (wrong loop order)', values: [...dp], marks: m, pointers: ptr });
+  const list = a => ({ type: 'stack', id: 'l', label: `what dp[${a}] is counting`, kind: 'set', items: seqs[a].map((s, k) => ({ id: 's' + k, val: s.join('+') || '(none)' })) });
+  r.step([arr({ 0: 'done' }), list(0)], [3], 'Same start: dp[0] = 1. But now the <b>amount</b> is the outer loop and we try every coin for each amount.');
+  for (let a = 1; a <= amount; a++) {
+    for (const c of coins) if (c <= a) {
+      const before = dp[a];
+      dp[a] += dp[a - c];
+      for (const s of seqs[a - c]) seqs[a].push([...s, c]);
+      r.step([arr({ [a - c]: 'compare', [a]: 'active' }, { [`a−${c}`]: a - c, a }), list(a)], [5, 6],
+        `Amount ${a}, coin ${c}: add the ways to make ${a - c}, each followed by a ${c}. dp[${a}] = ${before} + ${dp[a - c]} = <b>${dp[a]}</b>.`);
+    }
+  }
+  r.step([arr({ [amount]: 'compare' }), list(amount)], [5, 6],
+    `Look at what dp[3] counted: ${seqs[amount].map(s => s.join('+')).join(', ')}. The list contains <b>1+2</b> and <b>2+1</b> as two separate entries.`);
+  r.step([arr({ [amount]: 'bad' }), list(amount)], [7],
+    `Result <b>${dp[amount]}</b>, but 1+2 and 2+1 are the <b>same</b> combination. Amount-outer lets a 1 come after a 2 <i>and</i> before it. That is the right loop for "Combination Sum IV" (orders count) — and the wrong one for Coin Change II.`, { wait: 2600 });
+  Viz.mount('#demo3', { frames: r.frames, title: 'Wrong loop order', code:
+`// counts ORDERED sequences (permutations)
+int countOrders(int amount, int[] coins) {
+    int[] dp = new int[amount + 1];
+    dp[0] = 1;
+    for (int a = 1; a <= amount; a++)   // OUTER: amount
+        for (int c : coins) if (c <= a) dp[a] += dp[a - c];
+    return dp[amount];
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"Every way to make amount a ends with some last coin c, and what comes before it is a way to make a − c. Since a − c &lt; a, filling amounts in increasing order means those answers are ready. For counting, putting coins in the outer loop fixes the order in which coin types appear, so each combination is counted exactly once."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// fewest items: min over the last item</span>
+<span class="k">for</span> (<span class="k">int</span> a = <span class="n">1</span>; a &lt;= T; a++) <span class="k">for</span> (<span class="k">int</span> c : coins)
+    <span class="k">if</span> (c &lt;= a) dp[a] = Math.min(dp[a], dp[a - c] + <span class="n">1</span>);
+<span class="c">// count combinations: coins OUTSIDE</span>
+<span class="k">for</span> (<span class="k">int</span> c : coins) <span class="k">for</span> (<span class="k">int</span> a = c; a &lt;= T; a++) dp[a] += dp[a - c];
+<span class="c">// count orderings: amount OUTSIDE</span>
+<span class="k">for</span> (<span class="k">int</span> a = <span class="n">1</span>; a &lt;= T; a++) <span class="k">for</span> (<span class="k">int</span> c : coins) <span class="k">if</span> (c &lt;= a) dp[a] += dp[a - c];</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Last coin → look back by each coin.</b> Min coins: any loop order. Count ways: <b>coins outside = combinations</b>, amount outside = orderings.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Using <code>Integer.MAX_VALUE</code> as infinity and then adding 1 — it overflows to a negative number. Use <code>amount + 1</code>.</li>
+  <li>Forgetting to return −1 when the amount cannot be made (coins [2], amount 3).</li>
+  <li>dp[0] = 0 in the counting version — it must be 1, or every count stays 0.</li>
+  <li>Trying greedy (biggest coin first): fails for coins [1, 3, 4], amount 6.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/coin-change/">322. Coin Change</a> — the first animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/coin-change-ii/">518. Coin Change II</a> — the second animation, coins outside.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/combination-sum-iv/">377. Combination Sum IV</a> — the third animation is correct here: orders count.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/perfect-squares/">279. Perfect Squares</a> — coins are 1, 4, 9, 16…</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/word-break/">139. Word Break</a> — "coins" are dictionary words that end at position i.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/minimum-cost-for-tickets/">983. Minimum Cost For Tickets</a> — last ticket was 1, 7 or 30 days.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Coins [2], amount 3 — what does the table hold at the end?</summary>
+<p>dp = [0, ∞, 1, ∞]. dp[3] is still "infinity" (4), so the answer is −1.</p></details>
+<details class="quiz"><summary>Why does the inner loop in Coin Change II start at <code>a = c</code>?</summary>
+<p>An amount smaller than the coin cannot end with that coin, and a − c would be negative.</p></details>
+<details class="quiz"><summary>Is the loop order important for the min-coins version?</summary>
+<p>No. A minimum does not care about order — both loop orders give the same result. Order only matters when <b>counting</b>.</p></details>
+
+<nav class="pager"><a href="dp-intro.html">← DP intro</a><a href="lis.html">Longest increasing subsequence →</a></nav>
+</main>
+</body>
+</html>

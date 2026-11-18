@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data-Structure Design</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>MAANG extras</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 55 · MAANG extras</div>
+<h1>Data-Structure Design</h1>
+<p class="lede">"Design a class with these methods, each in O(1) (or O(log n))" — solved by gluing two simple structures together so each covers the other's weak spot.</p>
+<p class="meta">Time to learn: about 3 hours · Prerequisites: <a href="arrays-hashing.html">Arrays and hashing</a>, <a href="stack-basics.html">Stack basics</a>, <a href="lru-cache.html">LRU cache</a>, <a href="binary-search.html">Binary search</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>The question starts with "<b>Design</b> a ..." or "<b>Implement</b> the class ..." and lists methods with a required speed: "getMin in <b>O(1)</b>", "insert, delete and getRandom in <b>average O(1)</b>", "get the value <b>at a timestamp</b>", "number of hits in the <b>past 5 minutes</b>", "evict the <b>least frequently</b> used".</p></div>
+
+<h2>The idea in plain words</h2>
+<p>Write down each method and the speed it needs. Then ask: which single structure makes each method fast?</p>
+<ul>
+  <li><b>Hash map</b>: find / insert / delete by key in O(1) — but no order and no "random element".</li>
+  <li><b>Array list</b>: random index in O(1), add/remove at the <b>end</b> in O(1) — but finding a value is O(n).</li>
+  <li><b>Stack / queue / deque</b>: O(1) at the ends; great when old items expire in order (time windows).</li>
+  <li><b>Sorted list + binary search</b>: "the last value at or before time t" in O(log n).</li>
+  <li><b>Doubly linked list</b>: move or remove a known node in O(1) (LRU, LFU).</li>
+</ul>
+<p>When no single structure covers all methods, <b>combine two</b> and keep them in sync in every method. Example: RandomizedSet = array (for random) + map from value to index (for finding). Removing from the middle of an array is slow, so move the <b>last</b> element into the hole and remove the end instead.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A library: books stand on shelves in a row (the array — easy to grab "a random book"), and the catalogue says which shelf slot each book is in (the map — easy to find a specific one). When a book leaves, the librarian moves the last book into the empty slot and fixes one catalogue card, instead of shifting the whole shelf.</p></div>
+
+<h2>Watch it work</h2>
+<h3>1. Min Stack (recap) — a second stack of "minimum so far"</h3>
+<div id="demo1"></div>
+<script>
+(() => {
+  const ops = [['push', 5], ['push', 3], ['push', 7], ['getMin'], ['push', 2], ['getMin'], ['pop'], ['pop'], ['getMin']];
+  const st = [], mins = [];
+  const r = Viz.recorder();
+  const panels = (sm = {}, mm = {}, note = '') => [
+    { type: 'stack', id: 's', label: 'st (values)', items: st.map((v, i) => ({ id: 's' + i, val: v })), marks: sm },
+    { type: 'stack', id: 'm', label: 'mins (minimum of everything at or below this level)', items: mins.map((v, i) => ({ id: 'm' + i, val: v })), marks: mm },
+    { type: 'text', id: 'o', text: note }];
+  r.step(panels({}, {}, 'empty'), [2, 3], 'Two stacks that always have the same height. mins[k] = the smallest value among st[0..k]. So the top of mins is always the current minimum.');
+  for (const [op, x] of ops) {
+    if (op === 'push') {
+      const m = mins.length ? Math.min(x, mins[mins.length - 1]) : x;
+      st.push(x); mins.push(m);
+      const top = st.length - 1;
+      r.step(panels({ [top]: 'active' }, { [top]: 'active' }, `push(${x})`), [5, 6], `push(${x}): put ${x} on st, and on mins put min(${x}, old min) = <b>${m}</b>.`);
+    } else if (op === 'pop') {
+      const top = st.length - 1;
+      r.step(panels({ [top]: 'bad' }, { [top]: 'bad' }, 'pop()'), [8], `pop(): remove ${st[top]} from st <i>and</i> its min ${mins[top]} from mins. The old minimum underneath comes back automatically.`);
+      st.pop(); mins.pop();
+    } else {
+      const top = mins.length - 1;
+      r.step(panels({}, { [top]: 'done' }, `getMin() = ${mins[top]}`), [10], `getMin(): just read the top of mins → <b>${mins[top]}</b>. O(1), no searching.`);
+    }
+  }
+  r.step(panels({}, {}, `final min = ${mins[mins.length - 1]}`), [10], 'Every method is O(1). The price is O(n) extra memory for the second stack.');
+  Viz.mount('#demo1', { frames: r.frames, title: 'Min stack', code:
+`class MinStack {
+    Deque<Integer> st = new ArrayDeque<>();
+    Deque<Integer> mins = new ArrayDeque<>(); // min so far
+    void push(int x) {
+        st.push(x);
+        mins.push(mins.isEmpty() ? x : Math.min(x, mins.peek()));
+    }
+    void pop()   { st.pop(); mins.pop(); }  // always together
+    int top()    { return st.peek(); }
+    int getMin() { return mins.peek(); }
+}` });
+})();
+</script>
+
+<h3>2. Insert Delete GetRandom O(1) — array + map</h3>
+<div id="demo2"></div>
+<script>
+(() => {
+  const list = [], pos = new Map();
+  const r = Viz.recorder();
+  const panels = (lm = {}, mm = {}, note = '') => [
+    { type: 'array', id: 'l', label: 'list (values, any order)', values: list.length ? list.slice() : ['—'], marks: list.length ? lm : { 0: 'dim' } },
+    { type: 'stack', id: 'm', label: 'pos (value → index in list)', kind: 'set', items: [...pos].map(([v, i]) => ({ id: 'p' + v, val: `${v} → ${i}` })), marks: mm },
+    { type: 'text', id: 'o', text: note }];
+  const mIdx = v => [...pos.keys()].indexOf(v);
+  r.step(panels({}, {}, 'empty'), [2, 3], 'The list gives O(1) random picks; the map gives O(1) "where is value x?". Every method must keep both in sync.');
+  for (const x of [10, 20, 30, 40]) {
+    pos.set(x, list.length); list.push(x);
+    r.step(panels({ [list.length - 1]: 'active' }, { [mIdx(x)]: 'active' }, `insert(${x})`), [6, 7], `insert(${x}): append it at the end (index ${list.length - 1}) and record ${x} → ${list.length - 1} in the map. O(1).`);
+  }
+  const x = 20, i = pos.get(x), last = list[list.length - 1];
+  r.step(panels({ [i]: 'bad', [list.length - 1]: 'compare' }, { [mIdx(x)]: 'bad' }, `remove(${x})`), [11, 12], `remove(${x}): the map says it is at index ${i}. Deleting from the middle would shift everything (O(n)). Instead, take the <b>last</b> value, ${last}.`);
+  list[i] = last; pos.set(last, i);
+  r.step(panels({ [i]: 'active', [list.length - 1]: 'dim' }, { [mIdx(last)]: 'active', [mIdx(x)]: 'bad' }, `remove(${x})`), [13], `Move ${last} into the hole at index ${i} and update its map entry: ${last} → ${i}.`);
+  list.pop(); pos.delete(x);
+  r.step(panels({ [i]: 'done' }, {}, `remove(${x}) done`), [14], `Now drop the last slot (O(1) at the end) and delete ${x} from the map. The order changed, but a set does not care about order.`);
+  pos.set(50, list.length); list.push(50);
+  r.step(panels({ [list.length - 1]: 'active' }, { [mIdx(50)]: 'active' }, 'insert(50)'), [6, 7], 'insert(50): append at index 3, record 50 → 3.');
+  const pick = 1;
+  r.step(panels({ [pick]: 'done' }, {}, `getRandom() = ${list[pick]}`), [17], `getRandom(): pick a random index 0..${list.length - 1} (say ${pick}) and return list[${pick}] = <b>${list[pick]}</b>. Every value has the same chance, 1/${list.length}.`);
+  r.step(panels({}, {}, `set = {${list.join(', ')}}`), [17], 'All three methods are O(1) on average. The trick to remember: <b>swap with the last, then pop</b>.');
+  Viz.mount('#demo2', { frames: r.frames, title: 'RandomizedSet', code:
+`class RandomizedSet {
+    List<Integer> list = new ArrayList<>();      // the values
+    Map<Integer, Integer> pos = new HashMap<>(); // value -> index
+    Random rnd = new Random();
+    boolean insert(int x) {
+        if (pos.containsKey(x)) return false;
+        pos.put(x, list.size()); list.add(x);    // at the end
+        return true;
+    }
+    boolean remove(int x) {
+        if (!pos.containsKey(x)) return false;
+        int i = pos.get(x), last = list.get(list.size() - 1);
+        list.set(i, last); pos.put(last, i);     // fill the hole
+        list.remove(list.size() - 1); pos.remove(x); // drop end
+        return true;
+    }
+    int getRandom() { return list.get(rnd.nextInt(list.size())); }
+}` });
+})();
+</script>
+
+<h3>3. Time-Based Key-Value Store — binary search on timestamps</h3>
+<p>Calls <code>set("foo", v, t)</code> arrive with increasing t, so each key's timestamps are already sorted. <code>get("foo", t)</code> = the value with the <b>largest timestamp ≤ t</b>.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const ts = [1, 4, 7, 10, 15], vs = ['a', 'b', 'c', 'd', 'e'];
+  const r = Viz.recorder();
+  const panels = (ptr = {}, tm = {}, v = {}) => [
+    { type: 'array', id: 't', label: 'times["foo"] (sorted)', values: ts, pointers: ptr, marks: tm },
+    { type: 'array', id: 'v', label: 'vals["foo"]', values: vs, marks: tm },
+    { type: 'vars', id: 'x', vars: v }];
+  r.step(panels({}, {}, { sets: 5 }), [4, 5, 6], 'Five set calls stored (1, a), (4, b), (7, c), (10, d), (15, e). Appending keeps both lists sorted by time for free.');
+  for (const t of [8, 0]) {
+    let lo = 0, hi = ts.length - 1, ans = -1;
+    r.step(panels({ lo, hi }, {}, { 'get t': t, ans: '−1' }), [11], `get("foo", ${t}): binary search for the <b>last</b> time ≤ ${t}. lo = 0, hi = 4, ans = −1 (none yet).`);
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const ok = ts[mid] <= t;
+      const tm = {}; for (let k = 0; k < ts.length; k++) if (k < lo || k > hi) tm[k] = 'dim';
+      tm[mid] = ok ? 'done' : 'bad';
+      if (ok) ans = mid;
+      r.step(panels({ lo, mid, hi }, tm, { 'get t': t, ans: ans < 0 ? '−1' : ans }), [13, ok ? 14 : 15],
+        ok ? `times[${mid}] = ${ts[mid]} ≤ ${t}: a valid answer (remember ans = ${mid}), but a later one may also fit → lo = ${mid + 1}.`
+          : `times[${mid}] = ${ts[mid]} &gt; ${t}: too late, everything right of it is too → hi = ${mid - 1}.`);
+      if (ok) lo = mid + 1; else hi = mid - 1;
+    }
+    r.step(panels({}, ans >= 0 ? { [ans]: 'done' } : {}, { 'get t': t, result: ans >= 0 ? `"${vs[ans]}"` : '""' }), [17],
+      ans >= 0 ? `lo passed hi. Last time ≤ ${t} is ${ts[ans]}, so get returns <b>"${vs[ans]}"</b>. O(log n).` : `No timestamp ≤ ${t} exists, so get returns <b>""</b> (empty string).`);
+  }
+  Viz.mount('#demo3', { frames: r.frames, title: 'Time map', code:
+`class TimeMap {
+    Map<String, List<Integer>> times = new HashMap<>();
+    Map<String, List<String>> vals = new HashMap<>();
+    void set(String k, String v, int t) {     // t only grows
+        times.computeIfAbsent(k, x -> new ArrayList<>()).add(t);
+        vals.computeIfAbsent(k, x -> new ArrayList<>()).add(v);
+    }
+    String get(String k, int t) {
+        List<Integer> ts = times.get(k);
+        if (ts == null) return "";
+        int lo = 0, hi = ts.size() - 1, ans = -1; // last ts <= t
+        while (lo <= hi) {
+            int mid = (lo + hi) / 2;
+            if (ts.get(mid) <= t) { ans = mid; lo = mid + 1; }
+            else hi = mid - 1;
+        }
+        return ans == -1 ? "" : vals.get(k).get(ans);
+    }
+}` });
+})();
+</script>
+
+<h3>4. Design Hit Counter — a queue of timestamps</h3>
+<p>Count hits in the past 300 seconds (5 minutes): a hit at time h counts at time t when <code>h &gt; t − 300</code>.</p>
+<div id="demo4"></div>
+<script>
+(() => {
+  const ops = [['hit', 1], ['hit', 2], ['hit', 3], ['hit', 300], ['get', 300], ['get', 301], ['get', 305]];
+  const q = [];
+  const r = Viz.recorder();
+  const panels = (qm = {}, v = {}) => [
+    { type: 'stack', id: 'q', label: 'queue of hit times (oldest at the front)', kind: 'queue', items: q.map(h => ({ id: 'h' + h, val: h })), marks: qm },
+    { type: 'vars', id: 'v', vars: v }];
+  r.step(panels({}, { window: '300 s' }), [2], 'Hits arrive in time order, so the oldest is always at the front. Old hits leave from the front — a queue is exactly right.');
+  for (const [op, t] of ops) {
+    if (op === 'hit') {
+      q.push(t);
+      r.step(panels({ [q.length - 1]: 'active' }, { op: `hit(${t})` }), [3], `hit(${t}): add ${t} at the back. O(1).`);
+    } else {
+      const old = [];
+      while (q.length && q[0] <= t - 300) old.push(q.shift());
+      if (old.length) {
+        q.unshift(...old);
+        r.step(panels(Object.fromEntries(old.map((_, k) => [k, 'bad'])), { op: `getHits(${t})`, cutoff: `≤ ${t - 300} expires` }), [5, 6],
+          `getHits(${t}): hits at time ≤ ${t} − 300 = ${t - 300} are older than 5 minutes: <b>${old.join(', ')}</b>. Remove them from the front.`);
+        q.splice(0, old.length);
+      }
+      r.step(panels(Object.fromEntries(q.map((_, k) => [k, 'done'])), { op: `getHits(${t})`, answer: q.length }), [7],
+        `${old.length ? 'What is left' : `getHits(${t}): nothing is older than ${t - 300}, so everything`} is inside the window → <b>${q.length}</b> hits.`);
+    }
+  }
+  r.step(panels({}, { answers: '4, 3, 1' }), [7], 'Each hit is added once and removed once → O(1) amortised. Follow-up: with millions of hits per second, keep 300 buckets (time % 300) with a count each — fixed memory.');
+  Viz.mount('#demo4', { frames: r.frames, title: 'Hit counter', code:
+`class HitCounter {
+    Deque<Integer> q = new ArrayDeque<>(); // oldest first
+    void hit(int t) { q.offerLast(t); }
+    int getHits(int t) {
+        while (!q.isEmpty() && q.peekFirst() <= t - 300)
+            q.pollFirst();                 // older than 5 min
+        return q.size();
+    }
+}` });
+})();
+</script>
+
+<h2>LFU cache — the idea</h2>
+<p><b>LFU</b> (Least Frequently Used) evicts the key that was used the <b>fewest</b> times; ties go to the least <i>recently</i> used among them. Both <code>get</code> and <code>put</code> must be O(1).</p>
+<ul>
+  <li><code>vals</code>: key → value, and <code>freq</code>: key → how many times it was used.</li>
+  <li><code>buckets</code>: frequency → a <code>LinkedHashSet</code> of keys with that frequency, in the order they were last used (oldest first). This is a small LRU list per frequency.</li>
+  <li><code>minFreq</code>: the smallest frequency that has any keys.</li>
+  <li>On every use of a key with frequency f: move it from bucket f to bucket f + 1. If bucket f became empty and f was <code>minFreq</code>, then <code>minFreq = f + 1</code>.</li>
+  <li>On <code>put</code> of a new key when full: evict the <b>first</b> key of <code>buckets[minFreq]</code>, then insert the new key with frequency 1 and set <code>minFreq = 1</code>.</li>
+</ul>
+<pre class="code"><code><span class="k">void</span> touch(<span class="k">int</span> key) {                 <span class="c">// called by get and put</span>
+    <span class="k">int</span> f = freq.get(key);
+    freq.put(key, f + <span class="n">1</span>);
+    buckets.get(f).remove(key);
+    <span class="k">if</span> (f == minFreq &amp;&amp; buckets.get(f).isEmpty()) minFreq++;
+    buckets.computeIfAbsent(f + <span class="n">1</span>, k -&gt; <span class="k">new</span> LinkedHashSet&lt;&gt;()).add(key);
+}
+<span class="c">// evict: int old = buckets.get(minFreq).iterator().next(); remove it everywhere</span></code></pre>
+
+<h2>Why it works</h2>
+<p>"Each method's speed comes from one structure: the map answers 'where is x', the array answers 'give me a random one', the queue drops expired items from the front, the sorted list answers 'latest before t' by binary search. Every method updates both structures, so they never disagree."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// 1. List each method + required speed</span>
+<span class="c">// 2. Pick one structure per method:</span>
+<span class="c">//    find by key → HashMap      random → ArrayList</span>
+<span class="c">//    expire oldest → Deque      latest before t → sorted list + binary search</span>
+<span class="c">//    move/remove known item → doubly linked list (LinkedHashMap / LinkedHashSet)</span>
+<span class="c">// 3. Glue them; every method updates ALL of them</span>
+<span class="c">// Remove from the middle of an array in O(1):</span>
+list.set(i, last); pos.put(last, i); list.remove(list.size() - <span class="n">1</span>);</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>One structure per method, glued together and always updated together.</b> Array + map for random; queue for time windows; binary search for "at time t"; buckets of LRU lists for LFU.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>RandomizedSet: forgetting to update the moved element's index in the map — or removing x from the map before reading its index. Also the case where x <i>is</i> the last element (the code above still works: it moves x onto itself, then removes it).</li>
+  <li>Min Stack with a single <code>min</code> variable — after popping the minimum you no longer know the next one.</li>
+  <li>Time map: binary searching for "== t" instead of "last ≤ t".</li>
+  <li>Hit counter: using <code>&lt; t − 300</code> instead of <code>&lt;= t − 300</code> — a hit exactly 300 seconds ago is out of the window.</li>
+  <li>LFU: forgetting to reset <code>minFreq = 1</code> when a new key is inserted.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/min-stack/">155. Min Stack</a> — animation 1.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/insert-delete-getrandom-o1/">380. Insert Delete GetRandom O(1)</a> — animation 2.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/time-based-key-value-store/">981. Time Based Key-Value Store</a> — animation 3.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/design-hit-counter/">362. Design Hit Counter</a> — animation 4 (premium).</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/lru-cache/">146. LRU Cache</a> — map + doubly linked list.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/design-twitter/">355. Design Twitter</a> — map of lists + a heap to merge feeds.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/insert-delete-getrandom-o1-duplicates-allowed/">381. GetRandom O(1) — Duplicates Allowed</a> — value → set of indices.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/lfu-cache/">460. LFU Cache</a> — buckets of LRU lists + minFreq.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Why can RandomizedSet not use only a HashSet?</summary>
+<p>A HashSet cannot return a random element in O(1) — there is no index to pick. The array provides the index.</p></details>
+<details class="quiz"><summary>In the time map, why does appending keep the list sorted?</summary>
+<p>The problem guarantees set calls come with increasing timestamps, so every new time is the largest so far.</p></details>
+<details class="quiz"><summary>What does the Min Stack's mins stack hold after push 4, push 6, push 1?</summary>
+<p>[4, 4, 1] — the minimum of everything at or below each level.</p></details>
+<details class="quiz"><summary>In LFU, when does minFreq change?</summary>
+<p>It becomes f + 1 when the last key with frequency f = minFreq is used again, and it resets to 1 whenever a new key is inserted.</p></details>
+
+<nav class="pager"><a href="advanced-graphs.html">← Advanced graphs</a></nav>
+</main>
+</body>
+</html>

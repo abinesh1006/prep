@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>N-Queens</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Backtracking</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 41 · Backtracking</div>
+<h1>N-Queens</h1>
+<p class="lede">Place one queen per row; if a row has no safe square, take back the queen above and move it — place, check, undo.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="backtracking.html">Backtracking</a>, <a href="permutations.html">Permutations</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"Place items on a board so that no two <b>attack / conflict</b>", "fill the grid so every rule holds" (Sudoku), "all valid arrangements under constraints". You fill positions one by one and can tell <b>early</b> that a partial arrangement is already broken.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>A queen in chess attacks everything in her row, her column and both diagonals. The puzzle: put <b>n</b> queens on an n × n board so no two attack each other. For n = 4 there are 2 solutions.</p>
+<p>Two queens can never share a row, so put exactly <b>one queen per row</b>, top to bottom. The only decision per row is: which column?</p>
+<ul>
+  <li>For the current row, try columns 0, 1, 2, 3 in turn.</li>
+  <li>If the square is attacked by a queen already placed, skip it.</li>
+  <li>If it is safe, place the queen (choose) and move on to the next row (explore).</li>
+  <li>If the next rows fail, remove the queen (un-choose) and try the next column.</li>
+  <li>If no column in a row works, this row returns "failed" and the row above moves its queen. That stepping back is the <b>backtrack</b>.</li>
+</ul>
+<p>Checking "is it attacked?" quickly: keep three sets — used columns, used <code>row − col</code> values (one per ↘ diagonal), used <code>row + col</code> values (one per ↙ diagonal). Each check is O(1).</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Seating guests at a wedding, one table per row, where some guests cannot sit in view of each other. You seat table 1, then table 2. When table 3 has no acceptable seat at all, you do not tear up the whole plan — you just go back to table 2 and move that guest to their next possible seat.</p></div>
+
+<h2>Watch it work</h2>
+<p>4-Queens, row by row. Blue <b>Q</b> = queens already placed, yellow = the queen just placed, red <b>×</b> = a square we tried that is attacked.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const n = 4, r = Viz.recorder();
+  const q = []; // q[row] = col
+  const cols = new Set(), diag = new Set(), anti = new Set();
+  let found = false;
+  const attacker = (row, col) => {
+    for (let rr = 0; rr < q.length; rr++) {
+      const c = q[rr];
+      if (c === col) return `in the same column as the queen in row ${rr}`;
+      if (rr - c === row - col) return `on the ↘ diagonal of the queen in row ${rr}`;
+      if (rr + c === row + col) return `on the ↙ diagonal of the queen in row ${rr}`;
+    }
+    return '';
+  };
+  const board = (row, bads, newest, say, line, final = false) => {
+    const cells = [...Array(n)].map(() => Array(n).fill(''));
+    const marks = {};
+    q.forEach((c, rr) => { cells[rr][c] = 'Q'; marks[`${rr},${c}`] = final ? 'done' : rr === newest ? 'active' : 'compare'; });
+    for (const c of bads) { cells[row][c] = '×'; marks[`${row},${c}`] = 'bad'; }
+    r.step([
+      { type: 'grid', id: 'b', label: '4 × 4 board', cells, marks, cell: 56,
+        rowLabels: ['row 0', 'row 1', 'row 2', 'row 3'], colLabels: [0, 1, 2, 3] },
+      { type: 'vars', id: 'v', vars: { row: row < n ? row : 'done', 'queens placed': q.length } }
+    ], line, say);
+  };
+  board(0, [], -1, 'Empty board. We fill it <b>one row at a time</b>, because two queens can never share a row.', [1]);
+  function solve(row) {
+    if (row === n) { found = true; return; }
+    let bads = [], why = [];
+    for (let col = 0; col < n; col++) {
+      if (cols.has(col) || diag.has(row - col) || anti.has(row + col)) {
+        bads.push(col); why.push(`column ${col} is ${attacker(row, col)}`); continue;
+      }
+      q.push(col); cols.add(col); diag.add(row - col); anti.add(row + col);
+      board(row, bads, row, `Row ${row}: ${why.length ? why.join('; ') + '. ' : ''}Column <b>${col}</b> is safe → <b>place</b> a queen and go to row ${row + 1}.`, [4, 6, 7]);
+      bads = []; why = [];
+      solve(row + 1);
+      if (found) return;
+      q.pop(); cols.delete(col); diag.delete(row - col); anti.delete(row + col);
+      board(row, [], -1, `Row ${row + 1} could not be filled, so the queen at row ${row}, column ${col} was wrong. <b>Un-choose</b>: remove it and try column ${col + 1}${col + 1 < n ? '' : ' — but there is none'}.`, [8]);
+    }
+    board(row, bads, -1, bads.length
+      ? `Row ${row}: ${why.join('; ')}. <b>Every remaining square is attacked</b> → dead end. Return to row ${row - 1}.`
+      : `Row ${row} has no columns left to try → dead end. Return to row ${row - 1}.`, [3, 9]);
+  }
+  solve(0);
+  board(n, [], -1, `All 4 rows have a queen and none attack each other: columns <b>[${q}]</b>. (Keep going instead of stopping and you also find the mirror solution [2,0,3,1].)`, [2], true);
+  Viz.mount('#demo1', { frames: r.frames, title: '4-Queens backtracking', code:
+`void solve(int row) {
+    if (row == n) { save(board); return; }  // all rows filled
+    for (int col = 0; col < n; col++) {
+        if (cols.contains(col) || diag.contains(row - col)
+            || anti.contains(row + col)) continue; // attacked
+        place(row, col);   // choose: put Q, add to the 3 sets
+        solve(row + 1);    // explore the next row
+        remove(row, col);  // un-choose: take Q, remove from sets
+    }
+}   // loop ended: no safe column, caller tries its next one` });
+})();
+</script>
+
+<h3>Why <code>row − col</code> and <code>row + col</code> name the diagonals</h3>
+<p>Moving one step along a ↘ diagonal adds 1 to both row and column, so <code>row − col</code> never changes. Moving along a ↙ diagonal adds 1 to the row and subtracts 1 from the column, so <code>row + col</code> never changes. One number per diagonal → a set can remember which diagonals are taken.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const n = 4, r = Viz.recorder();
+  const grid = (f, marks, label, say, line, vars) => r.step([
+    { type: 'grid', id: 'b', label, cell: 56, rowLabels: ['row 0', 'row 1', 'row 2', 'row 3'], colLabels: [0, 1, 2, 3],
+      cells: [...Array(n)].map((_, rr) => [...Array(n)].map((_, c) => f(rr, c))), marks },
+    { type: 'vars', id: 'v', vars }
+  ], line, say);
+  const sel = pred => { const m = {}; for (let rr = 0; rr < n; rr++) for (let c = 0; c < n; c++) if (pred(rr, c)) m[`${rr},${c}`] = 'compare'; return m; };
+  const d = (rr, c) => rr - c, a = (rr, c) => rr + c;
+  grid(d, {}, 'each square shows row − col', 'Write <b>row − col</b> in every square. Look along any ↘ diagonal: the number is the same all the way.', [1], { idea: 'row − col' });
+  for (const k of [0, -1, 2]) grid(d, sel((rr, c) => d(rr, c) === k), 'each square shows row − col',
+    `All squares with row − col = <b>${k}</b> form one ↘ diagonal. So "is this ↘ diagonal taken?" is just <code>diag.contains(${k})</code>.`, [1], { 'row − col': k });
+  grid(a, {}, 'each square shows row + col', 'Now write <b>row + col</b>. Along any ↙ diagonal it stays the same.', [2], { idea: 'row + col' });
+  for (const k of [3, 1]) grid(a, sel((rr, c) => a(rr, c) === k), 'each square shows row + col',
+    `All squares with row + col = <b>${k}</b> form one ↙ diagonal → <code>anti.contains(${k})</code>.`, [2], { 'row + col': k });
+  const Q = [1, 2];
+  const att = (rr, c) => !(rr === Q[0] && c === Q[1]) && (c === Q[1] || d(rr, c) === d(...Q) || a(rr, c) === a(...Q));
+  const m = {}; for (let rr = 0; rr < n; rr++) for (let c = 0; c < n; c++) if (att(rr, c)) m[`${rr},${c}`] = 'bad';
+  m[`${Q[0]},${Q[1]}`] = 'active';
+  const qf = (rr, c) => rr === Q[0] && c === Q[1] ? 'Q' : att(rr, c) ? '×' : '';
+  grid(qf, m, 'queen at row 1, col 2', 'A queen at (1, 2) adds <b>col 2</b>, <b>row − col = −1</b> and <b>row + col = 3</b> to the three sets. Every red square hits at least one of them.', [3, 4, 5], { cols: '{2}', diag: '{-1}', anti: '{3}' });
+  grid(qf, { ...m, '3,0': 'compare' }, 'queen at row 1, col 2', 'Is (3, 0) safe? col 0 is free, 3 − 0 = 3 is free, but 3 + 0 = <b>3</b> is in anti → attacked along the ↙ diagonal.', [5], { 'check (3,0)': 'anti has 3' });
+  const m2 = { ...m }; delete m2['3,1'];
+  grid((rr, c) => rr === 3 && c === 1 ? '?' : qf(rr, c), { ...m, '3,1': 'done' }, 'queen at row 1, col 2',
+    'Is (3, 1) safe? col 1 free, 3 − 1 = 2 free, 3 + 1 = 4 free → <b>safe</b>. Three set lookups, no scanning the board.', [3, 4, 5], { 'check (3,1)': 'safe' });
+  Viz.mount('#demo2', { frames: r.frames, title: 'Diagonal ids', code:
+`// ↘ diagonal id: row - col  (same along the diagonal)
+// ↙ diagonal id: row + col  (same along the diagonal)
+boolean safe(int row, int col) {
+    return !cols.contains(col) && !diag.contains(row - col)
+        && !anti.contains(row + col);
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"One queen per row turns the board into a sequence of column choices. A partial board that already has an attack can never become a solution, so we cut it at once instead of finishing it. The three sets make each check O(1), and un-choosing removes the queen from all three."</p>
+<p>Cost: roughly O(n!) in the worst case — far less in practice thanks to pruning. n ≤ 9 in interviews.</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">void</span> solve(<span class="k">int</span> row) {
+    <span class="k">if</span> (row == n) { save(); <span class="k">return</span>; }
+    <span class="k">for</span> (<span class="k">int</span> c = <span class="n">0</span>; c &lt; n; c++) {
+        <span class="k">if</span> (cols.contains(c) || diag.contains(row - c) || anti.contains(row + c)) <span class="k">continue</span>;
+        cols.add(c); diag.add(row - c); anti.add(row + c); board[row][c] = <span class="n">'Q'</span>;
+        solve(row + <span class="n">1</span>);
+        cols.remove(c); diag.remove(row - c); anti.remove(row + c); board[row][c] = <span class="n">'.'</span>;
+    }
+}</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>One queen per row. Three sets: col, row−col, row+col.</b> Place, recurse, remove from all three.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Mixing up the diagonals: <code>row − col</code> is ↘, <code>row + col</code> is ↙. Using an array instead of a set? Shift row − col by n − 1 so the index is never negative.</li>
+  <li>Removing the queen from the board but forgetting one of the three sets (or the other way round).</li>
+  <li>Checking the whole board for attacks every time — O(n) per check, still correct but slow and long to write.</li>
+  <li>Building the output strings from a board that is later changed — build each row string when you save.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/n-queens/">51. N-Queens</a> — the animation, save every solution.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/n-queens-ii/">52. N-Queens II</a> — count instead of saving.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/valid-sudoku/">36. Valid Sudoku</a> — the same "sets per row / column / box" check, no backtracking.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/sudoku-solver/">37. Sudoku Solver</a> — next empty cell, try 1–9, undo.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/word-search-ii/">212. Word Search II</a> — grid backtracking plus a trie for pruning.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Why do we never need a "used rows" set?</summary>
+<p>The recursion places exactly one queen in each row and moves to the next row, so two queens can never be in the same row.</p></details>
+<details class="quiz"><summary>Squares (0, 3) and (2, 1): same diagonal?</summary>
+<p>0 + 3 = 3 and 2 + 1 = 3 → yes, the same ↙ diagonal.</p></details>
+<details class="quiz"><summary>What happens when a row has no safe square?</summary>
+<p>The loop ends without placing anything and the call returns. The caller (the row above) runs its un-choose line and tries its next column — that is the backtrack.</p></details>
+
+<nav class="pager"><a href="permutations.html">← Permutations</a><a href="dp-intro.html">DP intro →</a></nav>
+</main>
+</body>
+</html>

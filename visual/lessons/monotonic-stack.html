@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monotonic Stack</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Stacks &amp; queues</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 18 · Stacks &amp; queues</div>
+<h1>Monotonic Stack</h1>
+<p class="lede">A stack that is always sorted: when a new number breaks the order, the numbers it pops have just found their "next greater" (or "next smaller") element — in one pass.</p>
+<p class="meta">Time to learn: about 2–3 hours · Prerequisites: <a href="stack-basics.html">Stacks and queues</a>, <a href="big-o.html">Big-O</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"<b>Next greater</b> / next smaller element", "how many days until a <b>warmer</b> day", "previous smaller", "stock span", "nearest taller building", "<b>largest rectangle</b>", "sum of minimums of all subarrays". Any time each element wants the <b>nearest</b> element that beats it.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>Temperatures for 8 days: <code>73 74 75 71 69 72 76 73</code>. For each day: how many days until a warmer one? The slow way looks forward from every day — about n²/2 checks.</p>
+<p>The smart way: walk the days once and keep a <b>stack of days that are still waiting</b> for a warmer day. Because a waiting day would already have been answered by any warmer day after it, the waiting temperatures are always <b>falling</b> from bottom to top. That "always sorted" property is what <b>monotonic</b> means (monotonic = only going one direction).</p>
+<ul>
+  <li>A new day arrives. While it is warmer than the day on top, that top day has <b>found its answer</b>: pop it and write the distance.</li>
+  <li>Then the new day itself starts waiting: push it.</li>
+</ul>
+<p>Each day is pushed once and popped at most once, so the whole thing is <b>O(n)</b> even though there is a loop inside a loop.</p>
+<p>Flip the comparison for "next smaller". Store <b>indices</b>, not values, so you can compute distances and widths.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>People stand in a line looking to the right, waiting to see someone taller. A short person standing behind a taller one is hidden, so the people still waiting always get taller as you go back. When a very tall person arrives, everyone shorter in front of them suddenly sees "the next taller person" and leaves the line — tallest-so-far stays.</p></div>
+
+<h2>Watch it work</h2>
+<p>Daily Temperatures on <code>[73, 74, 75, 71, 69, 72, 76, 73]</code>. The stack holds <b>indices</b> of days still waiting (shown as <code>index:temp</code>). Next Greater Element is the same code with the value instead of the distance.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const t = [73, 74, 75, 71, 69, 72, 76, 73];
+  const ans = Array(t.length).fill(0);
+  const st = [];
+  const r = Viz.recorder();
+  const answered = new Set();
+  const P = (i, tm = {}, sm = {}, am = {}) => [
+    { type: 'array', id: 't', label: 'temps', values: t, pointers: i == null ? {} : { i }, marks: tm },
+    { type: 'stack', id: 's', label: 'stack: days still waiting (temps fall bottom → top)', items: st.map(j => ({ id: 'd' + j, val: `${j}:${t[j]}` })), marks: sm },
+    { type: 'array', id: 'ans', label: 'ans (days to wait)', values: ans.slice(), marks: am }];
+  const base = () => Object.fromEntries([...answered].map(j => [j, 'done']));
+  r.step(P(null), [2, 3], 'ans starts as all 0 (0 means "no warmer day ever"). The stack starts empty.');
+  for (let i = 0; i < t.length; i++) {
+    if (st.length && t[i] > t[st[st.length - 1]]) {
+      while (st.length && t[i] > t[st[st.length - 1]]) {
+        const j = st[st.length - 1];
+        r.step(P(i, { ...base(), [i]: 'active', [j]: 'compare' }, { [st.length - 1]: 'compare' }), [5],
+          `Day ${i} is <b>${t[i]}</b>, warmer than day ${j} (${t[j]}) on top. So day ${i} is the first warmer day after day ${j}.`);
+        st.pop(); ans[j] = i - j; answered.add(j);
+        r.step(P(i, { ...base(), [i]: 'active' }, {}, { [j]: 'active' }), [6, 7],
+          `Pop day ${j}; it waited <b>${i} − ${j} = ${i - j}</b> day${i - j > 1 ? 's' : ''}. ${st.length ? 'Check the new top too — the same warm day may answer several waiting days.' : 'Stack empty, stop popping.'}`);
+      }
+    } else if (st.length) {
+      const j = st[st.length - 1];
+      r.step(P(i, { ...base(), [i]: 'compare', [j]: 'compare' }, { [st.length - 1]: 'compare' }), [5],
+        `Day ${i} is ${t[i]}, <b>not warmer</b> than ${t[j]} on top. Nobody's answer is found; and the days below the top are even warmer, so no need to look at them.`);
+    }
+    st.push(i);
+    r.step(P(i, { ...base(), [i]: 'active' }, { [st.length - 1]: 'active' }), [9],
+      `Push day ${i}: it now waits for its own warmer day. The stack is still falling from bottom to top.`);
+  }
+  r.step(P(null, Object.fromEntries(t.map((_, j) => [j, answered.has(j) ? 'done' : 'dim'])), {}, Object.fromEntries(ans.map((_, j) => [j, 'done']))), [11],
+    `Done. Days left on the stack (${st.join(', ')}) never saw a warmer day, so their answer stays 0. Answer: <b>[${ans.join(', ')}]</b>.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Daily temperatures', code:
+`int[] dailyTemperatures(int[] t) {
+    int[] ans = new int[t.length];          // 0 = never warmer
+    Deque<Integer> st = new ArrayDeque<>(); // waiting day indices
+    for (int i = 0; i < t.length; i++) {
+        while (!st.isEmpty() && t[i] > t[st.peek()]) {
+            int j = st.pop();               // day i answers day j
+            ans[j] = i - j;
+        }
+        st.push(i);                         // day i starts waiting
+    }
+    return ans;
+}` });
+})();
+</script>
+
+<h3>Largest Rectangle in Histogram</h3>
+<p>Bars <code>[2, 1, 5, 6, 2, 3]</code>, each 1 wide. Biggest rectangle? For every bar ask: how far left and right can it stretch before hitting a <b>shorter</b> bar? Keep a stack of indices with <b>rising</b> heights. When a shorter bar arrives, the popped bar's right wall is the current index and its left wall is the new top.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const h = [2, 1, 5, 6, 2, 3];
+  const r = Viz.recorder();
+  const st = [];
+  let best = 0, bestWin = null;
+  const P = (i, marks = {}, win, sm = {}, vars = {}) => [
+    { type: 'array', id: 'h', label: 'heights (bars)', values: h, bars: true, pointers: i == null ? {} : { i: Math.min(i, h.length) }, marks, window: win },
+    { type: 'stack', id: 's', label: 'stack: indices, heights rise bottom → top', items: st.map(j => ({ id: 'b' + j, val: `${j}:${h[j]}` })), marks: sm },
+    { type: 'vars', id: 'v', vars: { best, ...vars }, marks: { best: 'done' } }];
+  r.step(P(null), [2, 3], 'The stack keeps bars whose right wall we do not know yet. Their heights rise from bottom to top.');
+  for (let i = 0; i <= h.length; i++) {
+    const cur = i === h.length ? 0 : h[i];
+    if (i === h.length) r.step(P(i, {}, null, {}, { cur: '0 (end)' }), [5], 'Past the last bar: pretend a bar of height <b>0</b> arrives. It is shorter than everything, so it flushes every bar still on the stack.');
+    while (st.length && cur < h[st[st.length - 1]]) {
+      const j = st.pop();
+      const left = st.length ? st[st.length - 1] : -1;
+      const width = i - left - 1, area = h[j] * width;
+      const better = area > best;
+      if (better) { best = area; bestWin = [left + 1, i - 1]; }
+      r.step(P(i, { [j]: 'active', ...(i < h.length ? { [i]: 'compare' } : {}) }, [left + 1, i - 1], {},
+        { height: h[j], width: `${i} − (${left}) − 1 = ${width}`, area }), [7, 8, 9],
+        `Bar ${i < h.length ? i + ` (${cur})` : '0 at the end'} is shorter than bar ${j} (${h[j]}), so bar ${j} cannot stretch past index ${i - 1}. Left wall: ${left < 0 ? 'nothing (stack empty) → index −1' : `index ${left}, the next shorter bar`}. Rectangle ${h[j]} × ${width} = <b>${area}</b>${better ? ' — new best!' : '.'}`);
+    }
+    if (i < h.length) {
+      st.push(i);
+      r.step(P(i, { [i]: 'active' }, null, { [st.length - 1]: 'active' }), [11],
+        `Push bar ${i} (${h[i]}). The heights on the stack still rise, so no bar has hit a shorter one yet.`);
+    }
+  }
+  r.step(P(null, Object.fromEntries([...Array(bestWin[1] - bestWin[0] + 1).keys()].map(k => [k + bestWin[0], 'done'])), bestWin), [13],
+    `Every bar was pushed and popped once (O(n)). Largest rectangle: <b>${best}</b> (height 5 over bars 2–3).`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Largest rectangle in histogram', code:
+`int largestRectangleArea(int[] h) {
+    Deque<Integer> st = new ArrayDeque<>(); // rising heights
+    int best = 0;
+    for (int i = 0; i <= h.length; i++) {
+        int cur = (i == h.length) ? 0 : h[i]; // 0 flushes all
+        while (!st.isEmpty() && cur < h[st.peek()]) {
+            int height = h[st.pop()];        // can't pass i
+            int left = st.isEmpty() ? -1 : st.peek(); // shorter
+            best = Math.max(best, height * (i - left - 1));
+        }
+        st.push(i);
+    }
+    return best;
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"The stack only holds elements that have not found their next greater element yet, and they are in decreasing order. A new element pops exactly those it beats — it is the <i>first</i> greater element for each of them, because anything earlier would have popped them already. Every index is pushed and popped once, so it is O(n)."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// Next greater element to the right (store indices)</span>
+<span class="k">int</span>[] ans = <span class="k">new</span> <span class="k">int</span>[n]; Arrays.fill(ans, -<span class="n">1</span>);
+Deque&lt;Integer&gt; st = <span class="k">new</span> ArrayDeque&lt;&gt;();
+<span class="k">for</span> (<span class="k">int</span> i = <span class="n">0</span>; i &lt; n; i++) {
+    <span class="k">while</span> (!st.isEmpty() &amp;&amp; a[i] &gt; a[st.peek()])
+        ans[st.pop()] = a[i];        <span class="c">// i answers everyone it beats</span>
+    st.push(i);                      <span class="c">// i waits for its own answer</span>
+}
+<span class="c">// next SMALLER: flip &gt; to &lt;.  previous greater: the top after pushing</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>"Next greater" → decreasing stack, "next smaller" → increasing stack. Pop = that element just found its answer.</b> Store indices, not values.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Storing values instead of indices — then you cannot compute "days until" or rectangle widths.</li>
+  <li>Using <code>if</code> instead of <code>while</code>: one new element can answer many waiting ones.</li>
+  <li>Forgetting the leftovers: elements still on the stack at the end have no answer (0 or −1).</li>
+  <li>Histogram: forgetting the height-0 sentinel at the end, so bars still on the stack are never measured.</li>
+  <li>Width off by one: it is <code>i − left − 1</code>, with <code>left = −1</code> when the stack is empty.</li>
+  <li>Circular arrays (LC 503): loop to <code>2n</code> and use <code>i % n</code>.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/next-greater-element-i/">496. Next Greater Element I</a> — run the stack on nums2, store answers in a map.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/daily-temperatures/">739. Daily Temperatures</a> — the first animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/next-greater-element-ii/">503. Next Greater Element II</a> — circular: go around twice.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/online-stock-span/">901. Online Stock Span</a> — previous greater; store (price, span) pairs.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/remove-k-digits/">402. Remove K Digits</a> — increasing stack, pop bigger digits while k &gt; 0.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sum-of-subarray-minimums/">907. Sum of Subarray Minimums</a> — each element is the min for (left span × right span) subarrays.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/largest-rectangle-in-histogram/">84. Largest Rectangle in Histogram</a> — the second animation.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/maximal-rectangle/">85. Maximal Rectangle</a> — build a histogram per row and reuse 84.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>For "next greater element", are the values on the stack increasing or decreasing from bottom to top?</summary>
+<p>Decreasing. A bigger value would have popped the smaller ones below it.</p></details>
+<details class="quiz"><summary>There is a <code>while</code> inside a <code>for</code>. Why is it still O(n)?</summary>
+<p>Each index is pushed once and popped at most once, so the total work of all the while-loops together is at most n pops.</p></details>
+<details class="quiz"><summary>Next greater element of each item in <code>[2, 7, 3, 5, 4, 6, 8]</code>?</summary>
+<p><code>[7, 8, 5, 6, 6, 8, −1]</code>.</p></details>
+<details class="quiz"><summary>In the histogram, when bar j is popped by index i, why is the new stack top its left wall?</summary>
+<p>The stack rises, so the element under j is the nearest bar to the left that is shorter than j — j can stretch left until just after it.</p></details>
+
+<nav class="pager"><a href="stack-basics.html">← Stacks and queues</a><a href="heap.html">Heaps →</a></nav>
+</main>
+</body>
+</html>

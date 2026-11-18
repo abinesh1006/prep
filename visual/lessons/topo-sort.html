@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Topological Sort</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Graphs</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 35 · Graphs</div>
+<h1>Topological Sort (Kahn's algorithm)</h1>
+<p class="lede">Put tasks in an order where every task comes after the tasks it depends on, by repeatedly taking a task that has no unfinished prerequisites — and if you get stuck, there is a cycle.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="graph-basics.html">Graph basics</a>, <a href="tree-bfs.html">BFS with a queue</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"<b>Prerequisites</b>", "must come before", "depends on", "build order", "task scheduling", "<b>is it possible to finish</b> all courses", "order the letters of an alien alphabet". Directed edges, and the question is about a valid order or a cycle.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>You have 6 courses. Course 1 needs 0, course 3 needs 1 and 2, and so on. Draw an arrow <b>from the prerequisite to the course</b>: 0 → 1 means "do 0 before 1". A valid study plan is called a <b>topological order</b>.</p>
+<p>For every course count its <b>in-degree</b> = how many arrows point into it = how many prerequisites are still not done. A course with in-degree 0 can be taken right now.</p>
+<ul>
+  <li>Put every in-degree-0 course in a queue.</li>
+  <li>Take one out, add it to the plan, and "cross it off" for its followers: every arrow out of it lowers the follower's in-degree by 1.</li>
+  <li>When a follower's in-degree reaches 0, all its prerequisites are done — put it in the queue.</li>
+</ul>
+<p>If the plan ends with all 6 courses, it is possible. If some courses are left over, they all wait on each other in a loop (a <b>cycle</b>: 1 needs 3, 3 needs 2, 2 needs 1) and no order exists. Time O(V + E).</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Getting dressed: socks before shoes, underwear before trousers, trousers before shoes and belt. At any moment you put on something whose "must be on first" items are already on. If shoes needed a belt and a belt needed shoes, you could never get dressed — that is a cycle.</p></div>
+
+<h2>Watch it work</h2>
+<p><b>1. Course Schedule with 6 courses.</b> Arrows go prerequisite → course. The badge on each course is its current in-degree (prerequisites not yet done).</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const nodes = [{ id: 0, x: 150, y: 130 }, { id: 1, x: 280, y: 50 }, { id: 2, x: 280, y: 210 },
+                 { id: 3, x: 410, y: 130 }, { id: 4, x: 540, y: 130 }, { id: 5, x: 410, y: 250 }];
+  const E = [[0, 1], [0, 2], [1, 3], [2, 3], [3, 4], [2, 5]];
+  const n = 6, adj = nodes.map(() => []), indeg = Array(n).fill(0);
+  const edges = E.map(([a, b]) => ({ a, b, dir: true }));
+  const r = Viz.recorder();
+  const order = [], q = [];
+  let known = false;
+  const panels = (marks = {}, em = {}) => {
+    const m = {}; order.forEach(u => m[u] = 'done'); q.forEach(u => m[u] = 'visited'); Object.assign(m, marks);
+    const e = {}; E.forEach(([a, b]) => { if (order.includes(a)) e[`${a}-${b}`] = 'dim'; }); Object.assign(e, em);
+    return [{ type: 'graph', id: 'g', label: 'courses (arrow = must come before)', h: 290, nodes, edges, marks: m, edgeMarks: e,
+        badges: known ? Object.fromEntries(nodes.filter(x => !order.includes(x.id)).map(x => [x.id, 'in ' + indeg[x.id]])) : {} },
+      { type: 'stack', id: 'q', label: 'queue (ready to take)', items: [...q], kind: 'queue' },
+      { type: 'array', id: 'o', label: 'order (the study plan)', values: [...order, ...Array(n - order.length).fill('')], indices: false,
+        marks: Object.fromEntries(order.map((_, i) => [i, 'done'])) }];
+  };
+  r.step(panels(), [2, 3, 4], 'Prerequisites as arrows: 0 → 1 means "take 0 before 1". First we build the adjacency list.');
+  for (const [a, b] of E) { adj[a].push(b); indeg[b]++; }
+  known = true;
+  r.step(panels(), [5, 6, 7], 'Count the arrows pointing <b>into</b> each course: the in-degree badges. Course 3 has 2 prerequisites (1 and 2).');
+  for (let i = 0; i < n; i++) if (!indeg[i]) q.push(i);
+  r.step(panels(Object.fromEntries(q.map(u => [u, 'active']))), [10, 11], `Only course ${q.join(', ')} has in-degree 0 — nothing blocks it. Put it in the queue.`);
+  while (q.length) {
+    const u = q.shift(); order.push(u);
+    r.step(panels({ [u]: 'active' }), [14], `Poll <b>${u}</b> and add it to the plan (${order.length} taken). Now cross it off for the courses that wait on it.`);
+    for (const v of adj[u]) {
+      indeg[v]--;
+      const ready = indeg[v] === 0;
+      if (ready) q.push(v);
+      r.step(panels({ [u]: 'active', [v]: ready ? 'visited' : 'compare' }, { [`${u}-${v}`]: ready ? 'done' : 'active' }), [15, 16, 17],
+        ready ? `Arrow ${u} → ${v}: ${v}'s in-degree drops to <b>0</b>. All its prerequisites are done, so ${v} joins the queue.`
+              : `Arrow ${u} → ${v}: ${v}'s in-degree drops to ${indeg[v]}. It still waits for another course.`);
+    }
+  }
+  r.step(panels(), [19], `Queue empty and all <b>${order.length} of ${n}</b> courses are in the plan: ${order.join(' → ')}. canFinish = <b>true</b>.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Kahn topological sort', code:
+`boolean canFinish(int n, int[][] pre) {
+    List<Integer>[] adj = new List[n];
+    for (int i = 0; i < n; i++)
+        adj[i] = new ArrayList<>();
+    int[] indeg = new int[n];
+    for (int[] p : pre) {        // p[1] before p[0]
+        adj[p[1]].add(p[0]); indeg[p[0]]++;
+    }
+    Queue<Integer> q = new ArrayDeque<>();
+    for (int i = 0; i < n; i++)
+        if (indeg[i] == 0) q.add(i);
+    int taken = 0;
+    while (!q.isEmpty()) {
+        int u = q.poll(); taken++;   // take u
+        for (int v : adj[u])
+            if (--indeg[v] == 0)     // v is free
+                q.add(v);
+    }
+    return taken == n;      // leftovers = cycle
+}` });
+})();
+</script>
+
+<p><b>2. Cycle detection.</b> Courses 1 → 2 → 3 → 1 wait on each other in a loop. Kahn's algorithm simply gets stuck, and the nodes left over are exactly the ones on (or behind) the cycle.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const nodes = [{ id: 0, x: 140, y: 130 }, { id: 1, x: 290, y: 60 }, { id: 2, x: 440, y: 60 },
+                 { id: 3, x: 365, y: 210 }, { id: 4, x: 210, y: 240 }];
+  const E = [[0, 1], [1, 2], [2, 3], [3, 1], [0, 4]];
+  const n = 5, adj = nodes.map(() => []), indeg = Array(n).fill(0);
+  for (const [a, b] of E) { adj[a].push(b); indeg[b]++; }
+  const edges = E.map(([a, b]) => ({ a, b, dir: true }));
+  const r = Viz.recorder();
+  const order = [], q = [];
+  const panels = (marks = {}, em = {}, vars = {}) => {
+    const m = {}; order.forEach(u => m[u] = 'done'); q.forEach(u => m[u] = 'visited'); Object.assign(m, marks);
+    const e = {}; E.forEach(([a, b]) => { if (order.includes(a)) e[`${a}-${b}`] = 'dim'; }); Object.assign(e, em);
+    return [{ type: 'graph', id: 'g', label: 'courses with a loop 1 → 2 → 3 → 1', h: 280, nodes, edges, marks: m, edgeMarks: e,
+        badges: Object.fromEntries(nodes.filter(x => !order.includes(x.id)).map(x => [x.id, 'in ' + indeg[x.id]])) },
+      { type: 'stack', id: 'q', label: 'queue', items: [...q], kind: 'queue' },
+      { type: 'vars', id: 'v', vars: { taken: order.length, n, ...vars } }];
+  };
+  r.step(panels(), [5, 6, 7], 'In-degrees: 1 has two arrows coming in (from 0 and from 3). 2 and 3 have one each.');
+  for (let i = 0; i < n; i++) if (!indeg[i]) q.push(i);
+  r.step(panels({ 0: 'active' }), [10, 11], 'Only course 0 has in-degree 0, so the queue starts as [0].');
+  while (q.length) {
+    const u = q.shift(); order.push(u);
+    r.step(panels({ [u]: 'active' }), [14], `Poll <b>${u}</b>, add it to the plan.`);
+    for (const v of adj[u]) {
+      indeg[v]--;
+      const ready = indeg[v] === 0; if (ready) q.push(v);
+      r.step(panels({ [u]: 'active', [v]: ready ? 'visited' : 'compare' }, { [`${u}-${v}`]: ready ? 'done' : 'active' }), [15, 16, 17],
+        ready ? `Arrow ${u} → ${v}: in-degree of ${v} becomes 0 → queue.`
+              : `Arrow ${u} → ${v}: in-degree of ${v} becomes <b>${indeg[v]}</b>, not 0 — it still waits for course 3, which waits for 2, which waits for 1.`);
+    }
+  }
+  const left = nodes.map(x => x.id).filter(u => !order.includes(u));
+  r.step(panels(Object.fromEntries(left.map(u => [u, 'bad'])), Object.fromEntries([[1, 2], [2, 3], [3, 1]].map(([a, b]) => [`${a}-${b}`, 'bad']))), [13, 19],
+    `The queue is empty but only ${order.length} of ${n} courses were taken. Courses ${left.join(', ')} never reached in-degree 0: they form a <b>cycle</b>.`);
+  r.step(panels(Object.fromEntries(left.map(u => [u, 'bad'])), {}, { answer: 'false' }), [19],
+    '<b>taken (2) != n (5)</b>, so canFinish returns <b>false</b>. No extra cycle-finding code is needed — leftovers are the proof.');
+  Viz.mount('#demo2', { frames: r.frames, title: 'Kahn cycle detection', code:
+`boolean canFinish(int n, int[][] pre) {
+    List<Integer>[] adj = new List[n];
+    for (int i = 0; i < n; i++)
+        adj[i] = new ArrayList<>();
+    int[] indeg = new int[n];
+    for (int[] p : pre) {        // p[1] before p[0]
+        adj[p[1]].add(p[0]); indeg[p[0]]++;
+    }
+    Queue<Integer> q = new ArrayDeque<>();
+    for (int i = 0; i < n; i++)
+        if (indeg[i] == 0) q.add(i);
+    int taken = 0;
+    while (!q.isEmpty()) {
+        int u = q.poll(); taken++;   // take u
+        for (int v : adj[u])
+            if (--indeg[v] == 0)     // v is free
+                q.add(v);
+    }
+    return taken == n;      // leftovers = cycle
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"A node enters the queue only when all its prerequisites have been output, so the output order respects every edge. In a cycle, every node waits on another node of the same cycle, so none of them ever reaches in-degree 0 — fewer than n nodes come out exactly when there is a cycle."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">int</span>[] indeg = <span class="k">new int</span>[n];
+<span class="k">for</span> (edge a -&gt; b) { adj[a].add(b); indeg[b]++; }
+<span class="k">for</span> (<span class="k">int</span> i = <span class="n">0</span>; i &lt; n; i++) <span class="k">if</span> (indeg[i] == <span class="n">0</span>) q.add(i);
+<span class="k">while</span> (!q.isEmpty()) {
+    <span class="k">int</span> u = q.poll(); order.add(u);
+    <span class="k">for</span> (<span class="k">int</span> v : adj[u]) <span class="k">if</span> (--indeg[v] == <span class="n">0</span>) q.add(v);
+}
+<span class="k">return</span> order.size() == n ? order : <span class="c">/* cycle */</span> empty;</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Count arrows in. Start with the zeros. Removing a node frees its followers.</b> Fewer than n out = cycle.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Drawing the arrow the wrong way: LC 207 gives <code>[course, prereq]</code>, so the edge is <code>prereq → course</code>.</li>
+  <li>Forgetting courses that appear in no pair — they have in-degree 0 and must start in the queue too.</li>
+  <li>Returning the order without checking its length — with a cycle it is incomplete.</li>
+  <li>Using a plain visited set for cycle detection in a directed DFS — you need three states (unvisited, in progress, done).</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/course-schedule/">207. Course Schedule</a> — exactly the animations: compare taken with n.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/course-schedule-ii/">210. Course Schedule II</a> — return the order itself.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-eventual-safe-states/">802. Find Eventual Safe States</a> — Kahn on the reversed graph.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-all-possible-recipes-from-given-supplies/">2115. Find All Possible Recipes</a> — ingredients are prerequisites; supplies start in the queue.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/parallel-courses-iii/">2050. Parallel Courses III</a> — Kahn plus "finish time = max of prerequisites + own time".</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/alien-dictionary/">269. Alien Dictionary</a> — compare neighbouring words to get letter edges, then topo sort.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Is a topological order unique?</summary>
+<p>No. Whenever two nodes are in the queue at the same time, either can come first. In the animation, 1 and 2 could swap.</p></details>
+<details class="quiz"><summary>Can an undirected graph be topologically sorted?</summary>
+<p>No — the idea only makes sense with directions. Topological order exists exactly for DAGs (directed acyclic graphs).</p></details>
+<details class="quiz"><summary>What is the time complexity of Kahn's algorithm?</summary>
+<p>O(V + E): every node is enqueued once and every edge decrements an in-degree once.</p></details>
+
+<nav class="pager"><a href="multi-source-bfs.html">← Multi-source BFS</a><a href="union-find.html">Union-Find →</a></nav>
+</main>
+</body>
+</html>

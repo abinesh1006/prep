@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tree Traversals</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Recursion &amp; trees</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 27 · Recursion &amp; trees</div>
+<h1>Tree Traversals</h1>
+<p class="lede">Visiting every node of a tree exactly once — and the only difference between pre-order, in-order and post-order is <i>when</i> you write the node down.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="recursion.html">Recursion</a>, <a href="stack-basics.html">Stack basics</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"Return the nodes in pre-order / in-order / post-order", "print the tree", "copy / serialize the tree", "sorted order of a BST", or any problem that must <b>look at every node</b> — that is every tree problem. Level by level is a different walk: see <a href="tree-bfs.html">Tree BFS</a>.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>First, the words (each one is used in every tree problem):</p>
+<ul>
+  <li><b>Node</b> = one box holding a value plus links to its <b>children</b>. In a <b>binary tree</b> each node has at most two children: <b>left</b> and <b>right</b>.</li>
+  <li><b>Root</b> = the top node (no parent). <b>Leaf</b> = a node with no children. <code>null</code> = an empty spot where a child could be.</li>
+  <li><b>Subtree</b> = a node together with everything below it. The left child is the root of the <b>left subtree</b>.</li>
+  <li><b>Depth</b> of a node = how many steps down from the root (root = 0). <b>Height</b> of the tree = the number of levels (here we count nodes on the longest root-to-leaf path).</li>
+</ul>
+<p>A tree is recursive by nature: a tree is "a root, plus a left tree, plus a right tree". So a walk over it is three jobs: <b>handle me</b>, <b>walk my left subtree</b>, <b>walk my right subtree</b>. The three famous orders just put "me" in a different place:</p>
+<ul>
+  <li><b>Pre-order</b> = <b>me</b>, left, right. ("pre" = me <i>before</i> my children.) Good for copying a tree.</li>
+  <li><b>In-order</b> = left, <b>me</b>, right. (me <i>in between</i>.) In a binary search tree this gives the values sorted.</li>
+  <li><b>Post-order</b> = left, right, <b>me</b>. (me <i>after</i> my children.) Good when a node needs its children's answers first — heights, sizes, deleting a tree.</li>
+</ul>
+<p>Every walk visits each of the n nodes once → <b>O(n) time</b>. The call stack holds one path from the root down → <b>O(h) extra space</b>, where h = height (about log n for a balanced tree, n for a tree that is one long line).</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A family tree and a manager asking for a report. <b>Pre-order</b>: the manager writes their own name, then asks the left team, then the right team. <b>Post-order</b>: the manager waits until both teams have reported, then writes the summary — like adding up the budgets of a company. <b>In-order</b>: read the left team's names, then the manager, then the right team's — like reading a book's index left to right.</p></div>
+
+<h2>Watch it work</h2>
+<h3>0. The words on a real tree</h3>
+<div id="demo0"></div>
+
+<h3>1. Pre-order: me, left, right</h3>
+<p>Same tree for all three orders. <b>Yellow</b> = the call running now, <b>blue</b> = calls paused on the stack, <b>green</b> = already written to the output.</p>
+<div id="demo1"></div>
+<h3>2. In-order: left, me, right</h3>
+<p>Watch the output: it comes out <b>sorted</b>, 1 to 7, because this tree is a binary search tree (smaller values on the left, bigger on the right).</p>
+<div id="demo2"></div>
+<h3>3. Post-order: left, right, me</h3>
+<p>A node is written only after <b>both</b> children are finished, so the root comes out last.</p>
+<div id="demo3"></div>
+<h3>4. In-order without recursion: an explicit stack</h3>
+<p>Interviewers often ask for the loop version. The recursion's call stack becomes our own <code>Deque</code>: slide left as far as possible, saving each node on the stack; then pop one, write it, and go to its right child.</p>
+<div id="demo4"></div>
+<script>
+const TT = {
+  root: 4,
+  nodes: { 4: { val: 4, left: 2, right: 6 }, 2: { val: 2, left: 1, right: 3 }, 6: { val: 6, left: 5, right: 7 },
+    1: { val: 1, left: null, right: null }, 3: { val: 3, left: null, right: null }, 5: { val: 5, left: null, right: null }, 7: { val: 7, left: null, right: null } }
+};
+(() => {
+  const r = Viz.recorder();
+  const t = (marks, extra = {}, edgeMarks = {}) => ({ type: 'tree', id: 't', label: 'a binary tree with 7 nodes', root: 4, nodes: TT.nodes, marks, edgeMarks, ...extra });
+  r.step([t({})], [], 'Here is a binary tree. Every circle is a <b>node</b>; every line joins a parent to a child.');
+  r.step([t({ 4: 'active' }, { pointers: { root: 4 } })], [], 'The top node <b>4</b> is the <b>root</b>. It has no parent. Every walk starts here.');
+  r.step([t({ 4: 'compare', 2: 'active', 6: 'active' }, { badges: { 2: 'left child', 6: 'right child' } })], [], '<b>2</b> is the <b>left child</b> of 4 and <b>6</b> is its <b>right child</b>. 4 is their <b>parent</b>.');
+  r.step([t({ 1: 'done', 3: 'done', 5: 'done', 7: 'done' }, { badges: { 1: 'leaf', 3: 'leaf', 5: 'leaf', 7: 'leaf' } })], [], 'Nodes with no children are <b>leaves</b>: 1, 3, 5, 7. Their left and right links are <code>null</code>.');
+  r.step([t({ 2: 'active', 1: 'active', 3: 'active', 4: 'dim', 6: 'dim', 5: 'dim', 7: 'dim' }, {}, { '2-1': 'active', '2-3': 'active' })], [], 'Node 2 with everything below it (1, 2, 3) is the <b>left subtree</b> of 4. It is itself a complete little tree — that is why recursion fits trees so well.');
+  r.step([t({}, { badges: { 4: 'depth 0', 2: 'depth 1', 6: 'depth 1', 1: 'depth 2', 3: 'depth 2', 5: 'depth 2', 7: 'depth 2' } })], [], '<b>Depth</b> = steps down from the root. This tree has 3 levels, so its <b>height</b> is 3 (counting nodes on the longest root-to-leaf path).');
+  r.step([t({ 4: 'active', 2: 'active', 1: 'active' }, {}, { '4-2': 'path', '2-1': 'path' })], [], 'A <b>root-to-leaf path</b>: 4 → 2 → 1. A recursive walk keeps exactly one such path on the call stack at a time, so its extra space is O(height).');
+  r.step([t({ 4: 'done', 2: 'done', 6: 'done', 1: 'done', 3: 'done', 5: 'done', 7: 'done' })], [], 'Any walk over this tree has <b>n = 7</b> nodes to visit, so it costs O(n) time. The orders below only differ in <b>when</b> each node is written down.');
+  Viz.mount('#demo0', { frames: r.frames, title: 'Tree vocabulary' });
+})();
+
+function traversalDemo(sel, order) {
+  const N = TT.nodes, r = Viz.recorder();
+  const out = [], stack = [];
+  const fn = { pre: 'preorder', in: 'inorder', post: 'postorder' }[order];
+  const L = order === 'pre' ? { me: 3, left: 4, right: 5 } : order === 'in' ? { left: 3, me: 4, right: 5 } : { left: 3, right: 4, me: 5 };
+  const snap = (cur, line, say) => {
+    const marks = {}, edgeMarks = {};
+    for (const v of out) marks[v] = 'done';
+    for (let i = 0; i < stack.length; i++) {
+      if (!out.includes(stack[i])) marks[stack[i]] = 'compare';
+      if (i > 0) edgeMarks[`${stack[i - 1]}-${stack[i]}`] = 'compare';
+    }
+    if (cur != null) marks[cur] = 'active';
+    r.step([
+      { type: 'tree', id: 't', label: `${fn} — order: ${order === 'pre' ? 'me, left, right' : order === 'in' ? 'left, me, right' : 'left, right, me'}`, root: 4, nodes: N, marks, edgeMarks },
+      { type: 'array', id: 'o', label: 'out (the answer list)', values: [...out, ...Array(7 - out.length).fill('')], marks: Object.fromEntries(out.map((_, i) => [i, i === out.length - 1 && cur === out[i] ? 'active' : 'done'])) },
+      { type: 'stack', id: 's', label: 'call stack (top on the right)', items: stack.map(v => ({ id: 'c' + v, val: `${fn}(${v})` })), marks: stack.length ? { [stack.length - 1]: 'active' } : {} }
+    ], line, say);
+  };
+  const leaf = id => N[id].left == null && N[id].right == null;
+  function walk(id) {
+    stack.push(id);
+    if (order === 'pre') {
+      out.push(id);
+      snap(id, [L.me], `Enter <b>${id}</b>. Pre-order writes <b>me first</b>: out gets ${id}.${leaf(id) ? ' Its left and right are null, so those calls return at once.' : ` Next: walk the left subtree of ${id}.`}`);
+    } else {
+      snap(id, [L.left], `Enter <b>${id}</b>. ${order === 'in' ? 'In-order must finish the <b>left</b> side before writing me' : 'Post-order must finish <b>both</b> children before writing me'}${leaf(id) ? ` — but ${id} is a leaf, its children are null, so nothing to wait for.` : `, so ${id} pauses and walks left first.`}`);
+    }
+    if (N[id].left != null) walk(N[id].left);
+    if (order === 'in') {
+      out.push(id);
+      snap(id, [L.me], N[id].left != null ? `Back at <b>${id}</b>: its left subtree is done. Now write <b>me</b>: out gets ${id}. Then walk right.` : `Left is empty, so write <b>${id}</b> now.${leaf(id) ? ' Right is empty too, so this call ends.' : ''}`);
+    } else if (N[id].left != null) {
+      snap(id, [L.right], `Back at <b>${id}</b>: the left subtree is finished. Now walk the <b>right</b> subtree (${N[id].right}).`);
+    }
+    if (N[id].right != null) walk(N[id].right);
+    if (order === 'post') {
+      out.push(id);
+      snap(id, [L.me], N[id].left != null ? `Back at <b>${id}</b>: left <b>and</b> right are both finished. Only now write <b>${id}</b>.` : `Both children of ${id} are null, so write <b>${id}</b> right away.`);
+    }
+    stack.pop();
+  }
+  r.step([
+    { type: 'tree', id: 't', label: `${fn}`, root: 4, nodes: N, marks: {} },
+    { type: 'array', id: 'o', label: 'out (the answer list)', values: Array(7).fill('') },
+    { type: 'stack', id: 's', label: 'call stack (top on the right)', items: [] }
+  ], [1], `Call <b>${fn}(root)</b> with root = 4 and an empty output list.`);
+  walk(4);
+  snap(null, [6], `Finished. ${fn} = <b>[${out.join(', ')}]</b>. Each node was entered once → O(n) time; the stack never held more than 3 calls (the height).`);
+  const code = order === 'pre'
+    ? `void preorder(TreeNode node, List<Integer> out) {
+    if (node == null) return;   // empty spot: nothing to do
+    out.add(node.val);          // ME first
+    preorder(node.left, out);   // then the left subtree
+    preorder(node.right, out);  // then the right subtree
+}`
+    : order === 'in'
+    ? `void inorder(TreeNode node, List<Integer> out) {
+    if (node == null) return;   // empty spot: nothing to do
+    inorder(node.left, out);    // left subtree first
+    out.add(node.val);          // ME in the middle
+    inorder(node.right, out);   // then the right subtree
+}`
+    : `void postorder(TreeNode node, List<Integer> out) {
+    if (node == null) return;   // empty spot: nothing to do
+    postorder(node.left, out);  // left subtree first
+    postorder(node.right, out); // then the right subtree
+    out.add(node.val);          // ME last
+}`;
+  Viz.mount(sel, { frames: r.frames, title: fn + ' traversal', code });
+}
+traversalDemo('#demo1', 'pre');
+traversalDemo('#demo2', 'in');
+traversalDemo('#demo3', 'post');
+
+(() => {
+  const N = TT.nodes, r = Viz.recorder();
+  const out = [], st = [];
+  let cur = 4;
+  const snap = (line, say) => {
+    const marks = {};
+    for (const v of st) marks[v] = 'compare';
+    for (const v of out) marks[v] = 'done';
+    if (cur != null) marks[cur] = marks[cur] === 'done' ? 'done' : 'active';
+    r.step([
+      { type: 'tree', id: 't', label: 'tree', root: 4, nodes: N, marks, pointers: cur != null ? { cur } : {} },
+      { type: 'stack', id: 's', label: 'st (our own stack, top on the right)', items: st.map(v => ({ id: 's' + v, val: v })), marks: st.length ? { [st.length - 1]: 'active' } : {} },
+      { type: 'array', id: 'o', label: 'out', values: [...out, ...Array(7 - out.length).fill('')], marks: Object.fromEntries(out.map((_, i) => [i, 'done'])) },
+      { type: 'vars', id: 'v', vars: { cur: cur == null ? 'null' : cur } }
+    ], line, say);
+  };
+  snap([4], 'Start with <b>cur = root (4)</b> and an empty stack. The stack will remember the nodes we passed on the way down.');
+  while (cur != null || st.length) {
+    while (cur != null) {
+      st.push(cur);
+      const was = cur;
+      cur = N[cur].left;
+      snap([7, 8], `Push <b>${was}</b> (we must come back to it after its left side) and move left → cur = ${cur == null ? '<b>null</b>. Nothing more on the left.' : cur + '.'}`);
+    }
+    cur = st.pop();
+    out.push(cur);
+    snap([10, 11], `cur is null, so pop <b>${cur}</b>: it is the leftmost node not yet written. Write it: out = [${out.join(', ')}].`);
+    const was = cur;
+    cur = N[cur].right;
+    if (cur != null) snap([12], `Now walk the <b>right</b> subtree of ${was}: cur = ${cur}. It gets the same treatment — slide left first.`);
+  }
+  snap([14], `cur is null and the stack is empty → done. In-order = <b>[${out.join(', ')}]</b>. Same answer as the recursive version, same O(n) time, O(h) stack.`);
+  Viz.mount('#demo4', { frames: r.frames, title: 'Iterative inorder', code:
+`List<Integer> inorder(TreeNode root) {
+    List<Integer> out = new ArrayList<>();
+    Deque<TreeNode> st = new ArrayDeque<>();
+    TreeNode cur = root;
+    while (cur != null || !st.isEmpty()) {
+        while (cur != null) {     // slide left, saving nodes
+            st.push(cur);
+            cur = cur.left;
+        }
+        cur = st.pop();           // leftmost unwritten node
+        out.add(cur.val);         // write it
+        cur = cur.right;          // then do its right subtree
+    }
+    return out;
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"A tree is a root plus a left tree plus a right tree, so one recursive function that handles the root and trusts itself on both subtrees visits every node exactly once. The three orders differ only in where the line that handles the root sits. Time O(n), space O(h) for the call stack."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">void</span> dfs(<span class="k">TreeNode</span> node) {
+    <span class="k">if</span> (node == <span class="k">null</span>) <span class="k">return</span>;   <span class="c">// base case: empty spot</span>
+    <span class="c">// PRE-order work here  (me before children)</span>
+    dfs(node.left);
+    <span class="c">// IN-order work here   (me between children)</span>
+    dfs(node.right);
+    <span class="c">// POST-order work here (me after children)</span>
+}</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Pre = me first. In = me in the middle. Post = me last.</b> In-order of a BST is sorted. Post-order when you need the children's answers first.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Forgetting <code>if (node == null) return;</code> → <code>NullPointerException</code> on the first leaf.</li>
+  <li>Creating a new list inside the recursive function — pass one list down (or use a field) so all calls add to the same list.</li>
+  <li>Iterative in-order: writing the loop as <code>while (!st.isEmpty())</code> only — at the start the stack is empty, and after popping the root the right side is forgotten. Use <code>cur != null || !st.isEmpty()</code>.</li>
+  <li>Saying the space is O(log n) for any tree. It is O(h): a tree shaped like a line has h = n.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/binary-tree-preorder-traversal/">144. Binary Tree Preorder Traversal</a> — animation 1; then do it with a stack (push right before left).</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/binary-tree-inorder-traversal/">94. Binary Tree Inorder Traversal</a> — animations 2 and 4.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/binary-tree-postorder-traversal/">145. Binary Tree Postorder Traversal</a> — iterative: reverse of (me, right, left).</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/same-tree/">100. Same Tree</a> — walk both trees at once, compare node by node.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/construct-binary-tree-from-preorder-and-inorder-traversal/">105. Construct Tree from Preorder and Inorder</a> — preorder[0] is the root; find it in inorder to split left and right.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/serialize-and-deserialize-binary-tree/">297. Serialize and Deserialize Binary Tree</a> — pre-order with "#" for null.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Tree: root 1, left child 2, right child 3. Write the pre-, in- and post-order.</summary>
+<p>Pre: 1, 2, 3. In: 2, 1, 3. Post: 2, 3, 1.</p></details>
+<details class="quiz"><summary>Which order would you use to compute the height of every node, and why?</summary>
+<p>Post-order: a node's height is 1 + max(left height, right height), so both children must be finished first.</p></details>
+<details class="quiz"><summary>What is the extra space of a recursive traversal on a tree with 1,000 nodes all in one line?</summary>
+<p>O(n): the height is 1,000, so 1,000 frames sit on the call stack at the deepest point.</p></details>
+<details class="quiz"><summary>In the iterative in-order, why push the node before going left?</summary>
+<p>Because we must come back to write it after its whole left side is done — the stack remembers it, just like a paused recursive call would.</p></details>
+
+<nav class="pager"><a href="recursion.html">← Recursion</a><a href="tree-bfs.html">Tree BFS →</a></nav>
+</main>
+</body>
+</html>

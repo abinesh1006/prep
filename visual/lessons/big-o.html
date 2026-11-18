@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Big-O</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Foundations</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 1 · Foundations</div>
+<h1>Big-O</h1>
+<p class="lede">A short label that says how fast the work grows when the input grows — so you can tell, before writing code, whether an idea is fast enough.</p>
+<p class="meta">Time to learn: about 1.5 hours · Prerequisites: none (start here)</p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>Every problem. Look at the <b>constraints</b> line ("1 ≤ n ≤ 10<sup>5</sup>") before anything else, and the interviewer's follow-up "<b>can you do better?</b>" or "<b>what is the time and space complexity?</b>" — both are Big-O questions.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>Big-O does not measure seconds. It counts <b>steps</b> (one comparison, one addition, one array read) and asks one question: <i>if the input gets 10 times bigger, how many times more steps?</i></p>
+<ul>
+  <li><b>O(1)</b> — constant. Reading <code>nums[5]</code> takes 1 step whether the array has 10 or 10 million numbers.</li>
+  <li><b>O(log n)</b> — halving. Each step throws away half the input. 1,000,000 numbers need only about 20 steps.</li>
+  <li><b>O(n)</b> — one pass. Look at every number once. 10× more numbers → 10× more steps.</li>
+  <li><b>O(n log n)</b> — sorting. A bit more than one pass.</li>
+  <li><b>O(n²)</b> — every pair. A loop inside a loop. 10× more numbers → <b>100×</b> more steps.</li>
+</ul>
+<p>We drop constants and small terms: <code>3n + 7</code> steps is just <b>O(n)</b>, because when n is a million the "×3" and the "+7" never decide whether you pass or fail.</p>
+<p><b>Space complexity</b> is the same idea for memory: how much <i>extra</i> memory (a copy, a map, a stack) you need as n grows.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Finding a name in a phone book. Reading every page from the start is O(n). Opening the middle, deciding "earlier or later", and throwing away half each time is O(log n) — a 1,000-page book needs about 10 openings. Comparing every name with every other name to find two people with the same birthday is O(n²).</p></div>
+
+<h2>Watch it work</h2>
+<p><b>One loop.</b> Add up 6 numbers. Count the steps.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const a = [4, 2, 7, 1, 5, 3];
+  const r = Viz.recorder();
+  const arr = (i, marks) => ({ type: 'array', id: 'a', label: 'nums', values: a, pointers: i == null ? {} : { i }, marks });
+  const done = k => Object.fromEntries([...Array(k).keys()].map(x => [x, 'done']));
+  let total = 0, steps = 0;
+  r.step([arr(null, {}), { type: 'vars', id: 'v', vars: { total, steps } }], [2],
+    'Start with <b>total = 0</b>. We will count one step for every number we touch.');
+  for (let i = 0; i < a.length; i++) {
+    total += a[i]; steps++;
+    r.step([arr(i, { ...done(i), [i]: 'active' }), { type: 'vars', id: 'v', vars: { total, steps }, marks: { steps: 'active' } }], [3, 4],
+      `Add nums[${i}] = ${a[i]}. Total is now ${total}. That was step <b>${steps}</b> — every number costs exactly one step.`);
+  }
+  r.step([arr(null, done(a.length)), { type: 'vars', id: 'v', vars: { total, steps, n: a.length }, marks: { steps: 'done' } }], [6],
+    `6 numbers took <b>6 steps</b>. With 600 numbers it would take 600. Steps grow in a straight line with n: <b>O(n)</b> time, and only one extra variable: <b>O(1)</b> space.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Counting steps of one loop', code:
+`int sum(int[] nums) {
+    int total = 0;
+    for (int i = 0; i < nums.length; i++) {
+        total += nums[i];   // 1 step each
+    }
+    return total;   // n numbers: n steps
+}` });
+})();
+</script>
+
+<p><b>A loop inside a loop.</b> Check if any two of 5 numbers are equal by comparing every pair. The table marks each pair (i, j) we check.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const a = [3, 1, 4, 2, 5], n = a.length;
+  const r = Viz.recorder();
+  const checked = new Set();
+  const grid = cur => {
+    const marks = {};
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      if (j <= i) marks[`${i},${j}`] = 'dim';
+      else if (`${i},${j}` === cur) marks[`${i},${j}`] = 'compare';
+      else if (checked.has(`${i},${j}`)) marks[`${i},${j}`] = 'visited';
+    }
+    const cells = [...Array(n)].map((_, i) => [...Array(n)].map((_, j) => checked.has(`${i},${j}`) || `${i},${j}` === cur ? '✓' : ''));
+    return { type: 'grid', id: 'g', label: 'pairs checked (row i, column j)', cells, marks, rowLabels: a.map((_, i) => 'i=' + i), colLabels: a.map((_, j) => 'j=' + j), cell: 40 };
+  };
+  let checks = 0;
+  r.step([{ type: 'array', id: 'a', label: 'nums', values: a }, grid(null), { type: 'vars', id: 'v', vars: { checks } }], [2],
+    'Every number must be compared with every number after it. Grey cells are pairs we never need (same number, or already checked the other way round).');
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    checks++;
+    const panels = [{ type: 'array', id: 'a', label: 'nums', values: a, pointers: { i, j }, marks: { [i]: 'compare', [j]: 'compare' } }, grid(`${i},${j}`), { type: 'vars', id: 'v', vars: { checks }, marks: { checks: 'active' } }];
+    r.step(panels, [5, 6], `Compare nums[${i}] = ${a[i]} with nums[${j}] = ${a[j]}: not equal. That is check number <b>${checks}</b>.`);
+    checked.add(`${i},${j}`);
+  }
+  r.step([{ type: 'array', id: 'a', label: 'nums', values: a }, grid(null), { type: 'vars', id: 'v', vars: { checks, n, 'n·(n−1)/2': n * (n - 1) / 2 }, marks: { checks: 'bad' } }], [10],
+    `No duplicates. 5 numbers needed <b>${checks} checks</b> = n·(n−1)/2 ≈ n²/2. With 10,000 numbers that is about 50 million. Drop the "/2": <b>O(n²)</b>.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Counting steps of a nested loop', code:
+`boolean hasDuplicate(int[] nums) {
+    int n = nums.length;
+    for (int i = 0; i < n; i++) {
+        // every pair (i, j) with j > i
+        for (int j = i + 1; j < n; j++) {
+            if (nums[i] == nums[j])
+                return true;
+        }
+    }
+    return false;  // ~n*n/2 checks: O(n^2)
+}` });
+})();
+</script>
+
+<p><b>Halving.</b> Each step throws away half of what is left. First on 8 boxes (looking for the number 7), then on 1,024.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const a = [1, 2, 3, 4, 5, 6, 7, 8];
+  const r = Viz.recorder();
+  let lo = 0, hi = 7, steps = 0;
+  const arr = marks => ({ type: 'array', id: 'a', label: 'boxes still in play (looking for 7)', values: a, window: [lo, hi], marks });
+  const dimOut = () => Object.fromEntries(a.map((_, i) => [i, i < lo || i > hi ? 'dim' : '']).filter(e => e[1]));
+  r.step([arr({}), { type: 'vars', id: 'v', vars: { n: hi - lo + 1, steps } }], [2],
+    '8 boxes in play. Each step we look at the middle and keep only the half that can hold 7.');
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    r.step([arr({ ...dimOut(), [mid]: 'compare' }), { type: 'vars', id: 'v', vars: { n: hi - lo + 1, steps } }], [3],
+      `Middle box holds ${a[mid]}. 7 is bigger, so the whole left half (${a[lo]}..${a[mid]}) cannot hold it.`);
+    lo = mid + 1; steps++;
+    r.step([arr(dimOut()), { type: 'vars', id: 'v', vars: { n: hi - lo + 1, steps }, marks: { n: 'active', steps: 'active' } }], [4, 5],
+      `Throw that half away. <b>${hi - lo + 1}</b> box${hi > lo ? 'es' : ''} left after <b>${steps}</b> step${steps > 1 ? 's' : ''}.`);
+  }
+  r.step([arr({ ...dimOut(), [lo]: 'done' }), { type: 'vars', id: 'v', vars: { n: 1, steps }, marks: { steps: 'done' } }], [7],
+    `Found 7 in <b>3 steps</b>, because 8 → 4 → 2 → 1. That is log₂(8) = 3.`);
+  let n = 1024; steps = 0;
+  r.step([{ type: 'text', id: 't', text: 'Now n = 1,024 (too many boxes to draw)' }, { type: 'vars', id: 'v', vars: { n, steps } }], [2],
+    'Same loop with 1,024 boxes. A one-pass loop would need 1,024 steps. Watch how few halving needs.');
+  while (n > 1) {
+    n = Math.floor(n / 2); steps++;
+    r.step([{ type: 'text', id: 't', text: 'Now n = 1,024 (too many boxes to draw)' }, { type: 'vars', id: 'v', vars: { n, steps }, marks: { n: 'active' } }], [4, 5],
+      `Halve: <b>${n}</b> left after ${steps} step${steps > 1 ? 's' : ''}.`);
+  }
+  r.step([{ type: 'text', id: 't', text: '1,024 boxes → 10 steps.  1,000,000 → 20 steps.' }, { type: 'vars', id: 'v', vars: { n, steps }, marks: { steps: 'done' } }], [7],
+    `Only <b>10 steps</b> for 1,024 boxes. Doubling n adds just <b>one</b> step. That is <b>O(log n)</b> — the reason binary search is so fast.`);
+  Viz.mount('#demo3', { frames: r.frames, title: 'Counting halving steps', code:
+`int halvings(int n) {
+    int steps = 0;
+    while (n > 1) {
+        n = n / 2;     // throw away half
+        steps++;
+    }
+    return steps;  // 8->3, 1024->10
+}` });
+})();
+</script>
+
+<p><b>How they grow side by side.</b> The table fills one column per input size n = 1..8; the bars compare the four shapes at the current n, drawn to scale with each other.</p>
+<div id="demo4"></div>
+<script>
+(() => {
+  const N = 8;
+  const fns = [n => 1, n => Math.floor(Math.log2(n)), n => n, n => n * n];
+  const names = ['O(1)', 'O(log n)', 'O(n)', 'O(n²)'];
+  const r = Viz.recorder();
+  const panels = n => {
+    const cells = fns.map(f => [...Array(N)].map((_, c) => c < n ? f(c + 1) : ''));
+    const marks = {};
+    for (let row = 0; row < 4; row++) for (let c = 0; c < n; c++) marks[`${row},${c}`] = c === n - 1 ? (row === 3 ? 'bad' : 'active') : 'visited';
+    return [
+      { type: 'grid', id: 'g', label: 'steps for n = 1 … 8', cells, marks, rowLabels: names, colLabels: [...Array(N)].map((_, c) => c + 1), cell: 44 },
+      { type: 'array', id: 'b', label: `at n = ${n}:  O(1) · O(log n) · O(n) · O(n²)`, values: fns.map(f => f(n)), bars: true, indices: false, cell: 70,
+        marks: { 0: 'done', 1: 'done', 2: 'active', 3: 'bad' } }];
+  };
+  r.step(panels(1), [2], 'At n = 1 every shape is tiny (log₂ 1 = 0, nothing to halve). The differences only show as n grows.');
+  for (let n = 2; n <= N; n++) {
+    const say = {
+      2: 'n = 2: O(n²) already takes 4 steps while O(n) takes 2.',
+      3: 'n = 3: 9 steps for the nested loop. The log n row has barely moved.',
+      4: 'n = 4: doubling n doubled O(n) but <b>quadrupled</b> O(n²) (4 → 16).',
+      5: 'n = 5: the O(n²) bar now dwarfs the others.',
+      6: 'n = 6: 36 vs 6. The gap keeps widening every step.',
+      7: 'n = 7: O(log n) is still only 2. It grows by one each time n doubles.',
+      8: 'n = 8: <b>64</b> steps for O(n²), 8 for O(n), 3 for O(log n), 1 for O(1).' }[n];
+    r.step(panels(n), n === 8 ? [2, 3, 4, 6, 8] : [3, 4], say);
+  }
+  r.step([...panels(8), { type: 'vars', id: 'v', vars: { 'n': '1,000', 'O(1)': 1, 'O(log n)': 10, 'O(n)': '1,000', 'O(n²)': '1,000,000' }, marks: { 'O(n²)': 'bad', 'O(n)': 'active', 'O(log n)': 'done', 'O(1)': 'done' } }], [4],
+    'Now imagine n = 1,000: 1 vs 10 vs 1,000 vs <b>1,000,000</b>. That is why the shape matters far more than the exact step count.');
+  Viz.mount('#demo4', { frames: r.frames, title: 'Growth of O(1), O(log n), O(n), O(n squared)', code:
+`// steps each shape takes for size n
+int o1(int n)  { return 1; }     // O(1)
+int on(int n)  { return n; }     // O(n)
+int on2(int n) { return n * n; } // O(n^2)
+// O(log n): halve until 1 is left
+int ologn(int n) {
+    int s = 0;
+    while (n > 1) { n /= 2; s++; }
+    return s;
+}` });
+})();
+</script>
+
+<p><b>Constraints → which complexity.</b> A computer does roughly 10<sup>8</sup> simple steps per second, and judges usually allow about 1 second. So the size of n tells you which shapes are allowed. Below, the step counts are really computed for each n; green fits, red is too slow.</p>
+<div id="demo5"></div>
+<script>
+(() => {
+  const LIMIT = 1e8;
+  const fmt = x => !isFinite(x) || x > 1e30 ? 'astronomical' : x < 1e6 ? Math.round(x).toLocaleString('en-US') : `${(x / 10 ** Math.floor(Math.log10(x))).toFixed(1)}×10^${Math.floor(Math.log10(x))}`;
+  const shapes = { '2^n': n => 2 ** n, 'n³': n => n ** 3, 'n²': n => n * n, 'n log n': n => n * Math.log2(n), 'log n': n => Math.log2(n) };
+  const pick = n => n <= 20 ? ['O(2^n)', 3] : n <= 500 ? ['O(n³)', 4] : n <= 5000 ? ['O(n²)', 5] : n <= 1e6 ? ['O(n log n)', [6, 7]] : ['O(log n)', 8];
+  const probs = [[20, 'n ≤ 20: list every subset of the items'], [2000, 'n ≤ 2,000: longest palindromic substring'],
+    [1e5, 'n ≤ 100,000: two numbers that add to a target'], [1e9, 'n ≤ 10^9: integer square root of n']];
+  const r = Viz.recorder();
+  r.step([{ type: 'text', id: 't', text: 'Rule of thumb: about 10^8 steps per second' }, { type: 'vars', id: 'v', vars: { limit: '10^8 steps' } }], [1],
+    'Before thinking about any algorithm, read the constraints. The largest n tells you the slowest shape you are allowed.');
+  for (const [n, text] of probs) {
+    const vars = {}, marks = {};
+    for (const [name, f] of Object.entries(shapes)) {
+      const steps = f(n);
+      if (n >= 1e5 && name === '2^n') continue;
+      vars[name] = fmt(steps); marks[name] = steps <= LIMIT ? 'done' : 'bad';
+    }
+    r.step([{ type: 'text', id: 't', text }, { type: 'vars', id: 'v', vars, marks }], [2],
+      `Plug n = ${fmt(n)} into each shape. Red ones need more than 10^8 steps and would time out.`);
+    const [best, line] = pick(n);
+    const why = { 20: '2^20 is about a million — trying every subset is fine.',
+      2000: 'n² is 4 million — comparing every pair (or expanding around each centre) fits easily.',
+      100000: 'n² would be 10^10 — far too slow. You need one pass with a hash map (O(n)) or a sort (O(n log n)).',
+      1000000000: 'Even one pass over 10^9 is too slow. You must halve: binary search, O(log n), about 30 steps.' }[n];
+    r.step([{ type: 'text', id: 't', text }, { type: 'vars', id: 'v', vars: { ...vars, use: best }, marks: { ...marks, use: 'active' } }], [line],
+      `${why} Target: <b>${best}</b> or better.`);
+  }
+  r.step([{ type: 'text', id: 't', text: '10^5 → avoid n².   10^9 → avoid even n.' }, { type: 'vars', id: 'v', vars: { '≤20': '2^n', '≤500': 'n³', '≤5,000': 'n²', '≤10^6': 'n log n', '>10^6': 'log n' } }], [3, 4, 5, 6, 7, 8],
+    'Memorise this ladder. Reading n first tells you which pattern to reach for before you write a line of code.');
+  Viz.mount('#demo5', { frames: r.frames, title: 'Constraints to complexity', code:
+`// ~10^8 simple steps fit in 1 second
+String pick(int n) {
+    if (n <= 20) return "O(2^n)";
+    if (n <= 500) return "O(n^3)";
+    if (n <= 5_000) return "O(n^2)";
+    if (n <= 1_000_000)
+        return "O(n log n)";
+    return "O(log n)";  // up to 10^9
+}` });
+})();
+</script>
+
+<h2>Why it works (the one sentence to say in an interview)</h2>
+<p>"Big-O describes how the number of steps grows with the input, ignoring constants: one pass is O(n), a loop inside a loop is O(n²), and anything that halves the input each step is O(log n). I check the constraints first — with n up to 10<sup>5</sup> an O(n²) idea is about 10<sup>10</sup> steps, so I need O(n log n) or better."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// Read the code, count the shape</span>
+<span class="k">for</span> (...)                 <span class="c">// one loop over n          -> O(n)</span>
+<span class="k">for</span> (...) <span class="k">for</span> (...)       <span class="c">// loop inside loop          -> O(n^2)</span>
+<span class="k">while</span> (n &gt; <span class="n">1</span>) n /= <span class="n">2</span>;    <span class="c">// halve each step           -> O(log n)</span>
+Arrays.sort(a);          <span class="c">// sort                      -> O(n log n)</span>
+map.get(k); a[i];        <span class="c">// hash lookup, index read   -> O(1)</span>
+<span class="c">// loops one after another: add, keep the biggest  (n + n = O(n))</span>
+<span class="c">// loops one inside another: multiply             (n * n = O(n^2))</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Next to each other → add. Inside each other → multiply. Halving → log.</b> 10<sup>5</sup> means "no n²"; 10<sup>9</sup> means "no n".</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Thinking two loops one <i>after</i> the other are O(n²). They are O(n + n) = O(n).</li>
+  <li>Forgetting hidden loops: <code>list.contains(x)</code>, <code>s.substring()</code>, <code>list.remove(0)</code> and string <code>+</code> in a loop are each O(n).</li>
+  <li>Forgetting space: a recursion that goes n levels deep uses O(n) stack memory even with no arrays.</li>
+  <li>Saying "O(2n)" or "O(n + 5)". Drop constants: say O(n).</li>
+  <li>Using two different sizes as one: a grid of r rows and c columns is O(r·c), not O(n²).</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/contains-duplicate/">217. Contains Duplicate</a> — write the O(n²) pair check, then beat it with a set in O(n).</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/running-sum-of-1d-array/">1480. Running Sum of 1d Array</a> — turn an O(n²) "sum each prefix again" into one O(n) pass.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/binary-search/">704. Binary Search</a> — feel O(log n): count how many halvings for n = 10<sup>4</sup>.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/sqrtx/">69. Sqrt(x)</a> — x up to 2<sup>31</sup>: the constraint forces O(log n).</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/two-sum/">1. Two Sum</a> — n ≤ 10<sup>4</sup>: O(n²) passes, but say how a map makes it O(n).</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>A loop over n, and after it (not inside) a second loop over n. What is the time?</summary>
+<p>O(n). n + n = 2n, and we drop the 2. Only nesting multiplies.</p></details>
+<details class="quiz"><summary>n ≤ 10<sup>5</sup>. Is an O(n²) solution OK?</summary>
+<p>No. 10<sup>10</sup> steps is about 100 seconds. Aim for O(n log n) or O(n).</p></details>
+<details class="quiz"><summary>How many times can you halve 1,000,000 before reaching 1?</summary>
+<p>About 20, because 2<sup>20</sup> ≈ 1,000,000. That is O(log n).</p></details>
+<details class="quiz"><summary>You build a HashMap holding every element. What is the extra space?</summary>
+<p>O(n) — the map grows with the input.</p></details>
+
+<nav class="pager"><a href="../index.html">← All lessons</a><a href="arrays-hashing.html">Arrays and hashing →</a></nav>
+</main>
+</body>
+</html>

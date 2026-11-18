@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Union-Find</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Graphs</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 36 · Graphs</div>
+<h1>Union-Find (Disjoint Set Union)</h1>
+<p class="lede">Keep groups as little trees stored in one <code>parent</code> array: <code>find</code> walks up to a group's leader, <code>union</code> hangs one leader under another, and two small tricks make both almost O(1).</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="graph-basics.html">Graph basics</a>, <a href="recursion.html">Recursion</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"<b>Number of connected components</b>", "are x and y in the same group", "merge accounts / friend circles / provinces", "which edge makes a <b>cycle</b> (redundant connection)", edges arriving one at a time, Kruskal's MST.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>Start with 6 people, each in their own group of 1. Every group has a <b>leader</b> (called the root). Each person only remembers one thing: <code>parent[x]</code> = someone above them in their group. A leader is their own parent: <code>parent[x] == x</code>.</p>
+<ul>
+  <li><b>find(x)</b>: follow parents upward until you reach the leader. Two people are in the same group exactly when <code>find</code> gives the same leader.</li>
+  <li><b>union(a, b)</b>: find both leaders. If they are the same, nothing to do (and if a and b were joined by an edge, that edge closes a <b>cycle</b>). Otherwise make one leader the parent of the other — two groups become one, so <code>components</code> goes down by 1.</li>
+</ul>
+<p>Two tricks keep the trees flat: <b>union by rank</b> — hang the shorter tree under the taller one, so heights grow very slowly; <b>path compression</b> — after <code>find(x)</code> walks up, point every node on the way straight at the leader, so the next <code>find</code> is one hop. Together each operation is O(α(n)), which is at most 4 for any realistic n — practically constant.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Clubs at a school. Each student knows who recruited them, and the chain ends at the club president. To check whether two students are in the same club, both ask up the chain until they reach a president. When two clubs merge, the smaller club's president simply starts reporting to the bigger club's president. And after someone asks up the chain once, they write down the president's name directly — next time it is one question.</p></div>
+
+<h2>Watch it work</h2>
+<p><b>1. Parent array and forest in sync.</b> Six nodes, operations <code>union(0,1)</code>, <code>union(2,3)</code>, <code>union(1,3)</code>, <code>union(4,5)</code>, <code>union(5,3)</code>, <code>union(1,2)</code>, then <code>find(5)</code>. Arrows point from a child to its parent.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const n = 6, ids = [0, 1, 2, 3, 4, 5];
+  const parent = ids.slice(), rank = Array(n).fill(0);
+  let components = n;
+  const r = Viz.recorder();
+  const layout = () => {
+    const kids = ids.map(() => []);
+    ids.forEach(i => { if (parent[i] !== i) kids[parent[i]].push(i); });
+    const pos = {}; let slot = 0;
+    const place = (u, d) => {
+      if (!kids[u].length) { pos[u] = [slot++, d]; return pos[u][0]; }
+      const xs = kids[u].map(k => place(k, d + 1));
+      pos[u] = [(Math.min(...xs) + Math.max(...xs)) / 2, d]; return pos[u][0];
+    };
+    ids.filter(i => parent[i] === i).forEach(rt => place(rt, 0));
+    return ids.map(i => ({ id: i, x: 140 + pos[i][0] * 95, y: 45 + pos[i][1] * 80 }));
+  };
+  const panels = (marks = {}, em = {}, line = null) => {
+    const nodes = layout();
+    const edges = ids.filter(i => parent[i] !== i).map(i => ({ a: i, b: parent[i], dir: true }));
+    const roots = Object.fromEntries(ids.filter(i => parent[i] === i).map(i => [i, 'r' + rank[i]]));
+    return [{ type: 'graph', id: 'g', label: 'forest (arrow = child → parent, badge = rank of a leader)', h: 230, nodes, edges, marks, edgeMarks: em, badges: roots },
+      { type: 'array', id: 'p', label: 'parent[]', values: [...parent], marks: Object.fromEntries(Object.entries(marks).map(([k, v]) => [k, v])) },
+      { type: 'vars', id: 'v', vars: { components } }];
+  };
+  const findPath = x => { const p = [x]; while (parent[x] !== x) { x = parent[x]; p.push(x); } return p; };
+  const compress = (path, who) => {
+    const root = path.at(-1);
+    const moved = path.slice(0, -2).filter(u => parent[u] !== root);
+    if (!moved.length) return;
+    moved.forEach(u => parent[u] = root);
+    r.step(panels(Object.fromEntries([...moved.map(u => [u, 'active']), [root, 'done']]), Object.fromEntries(moved.map(u => [`${u}-${root}`, 'active']))), [3],
+      `Path compression: on the way up from ${who}, ${moved.join(', ')} now point <b>straight at leader ${root}</b>. parent[${moved[0]}] = ${root}. The next find is one hop.`);
+  };
+  r.step(panels(), [], 'Start: everyone is their own leader (<code>parent[i] = i</code>, rank 0). <b>components = 6</b>.');
+  const ops = [[0, 1], [2, 3], [1, 3], [4, 5], [5, 3], [1, 2]];
+  for (const [a, b] of ops) {
+    const pa = findPath(a), pb = findPath(b);
+    const ra = pa.at(-1), rb = pb.at(-1);
+    const m = {}; [...pa, ...pb].forEach(u => m[u] = 'compare'); m[ra] = 'active'; m[rb] = 'active';
+    const em = {}; for (const p of [pa, pb]) for (let i = 0; i + 1 < p.length; i++) em[`${p[i]}-${p[i + 1]}`] = 'compare';
+    r.step(panels(m, em), [7], `union(${a}, ${b}): walk up from ${a} → leader <b>${ra}</b>${pa.length > 1 ? ' (path ' + pa.join('→') + ')' : ''}; walk up from ${b} → leader <b>${rb}</b>${pb.length > 1 ? ' (path ' + pb.join('→') + ')' : ''}.`);
+    compress(pa, a); compress(pb, b);
+    if (ra === rb) {
+      r.step(panels({ [a]: 'bad', [b]: 'bad', [ra]: 'bad' }), [8], `Same leader ${ra}: ${a} and ${b} are <b>already in one group</b>. Return false — as an edge, ${a}-${b} would close a cycle.`);
+      continue;
+    }
+    let hi = ra, lo = rb;
+    if (rank[hi] < rank[lo]) [hi, lo] = [lo, hi];
+    parent[lo] = hi;
+    const grew = rank[hi] === rank[lo];
+    if (grew) rank[hi]++;
+    components--;
+    r.step(panels({ [lo]: 'active', [hi]: 'done' }, { [`${lo}-${hi}`]: 'active' }), grew ? [12, 13, 14] : [9, 12, 14],
+      grew ? `Both trees have rank ${rank[hi] - 1}: hang ${lo} under ${hi} (parent[${lo}] = ${hi}) and ${hi}'s rank grows to ${rank[hi]}. components = <b>${components}</b>.`
+           : `Rank ${rank[hi]} vs ${rank[lo]}: hang the <b>shorter</b> tree (${lo}) under the taller one (${hi}), so the height does not grow. components = <b>${components}</b>.`);
+  }
+  const p5 = findPath(5);
+  r.step(panels(Object.fromEntries(p5.map(u => [u, 'compare'])), Object.fromEntries(p5.slice(0, -1).map((u, i) => [`${u}-${p5[i + 1]}`, 'compare']))), [1, 2],
+    `find(5): 5's parent is ${parent[5]}, whose parent is ${p5.at(-1)} — two hops to the leader.`);
+  compress(p5, 5);
+  r.step(panels(Object.fromEntries(ids.map(i => [i, 'done']))), [4],
+    'Every node except 0 now points straight at leader 0. One group, <b>components = 1</b>. Any later find is a single hop.');
+  Viz.mount('#demo1', { frames: r.frames, title: 'Union-Find forest', code:
+`int find(int x) {
+    if (parent[x] != x)
+        parent[x] = find(parent[x]);
+    return parent[x];
+}
+boolean union(int a, int b) {
+    int ra = find(a), rb = find(b);
+    if (ra == rb) return false; // same
+    if (rank[ra] < rank[rb]) {  // swap
+        int t = ra; ra = rb; rb = t;
+    }
+    parent[rb] = ra;      // short under tall
+    if (rank[ra] == rank[rb]) rank[ra]++;
+    components--;         // 2 groups -> 1
+    return true;
+}` });
+})();
+</script>
+
+<p><b>2. Redundant Connection.</b> Edges <code>[1,2], [2,3], [3,4], [1,4], [1,5]</code> — a tree plus one extra edge. Union the edges one by one; the first edge whose ends already share a leader is the one that makes a cycle.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const nodes = [{ id: 1, x: 200, y: 50 }, { id: 2, x: 380, y: 50 }, { id: 3, x: 380, y: 190 }, { id: 4, x: 200, y: 190 }, { id: 5, x: 60, y: 120 }];
+  const E = [[1, 2], [2, 3], [3, 4], [1, 4], [1, 5]];
+  const parent = [0, 1, 2, 3, 4, 5];
+  const find = x => { while (parent[x] !== x) x = parent[x]; return x; };
+  const r = Viz.recorder();
+  const status = {};
+  const panels = (cur, marks = {}, vars = {}) => {
+    const em = {}; E.forEach(([a, b], i) => em[`${a}-${b}`] = status[i] || 'dim'); if (cur != null) em[`${E[cur][0]}-${E[cur][1]}`] = status[cur] || 'compare';
+    return [{ type: 'graph', id: 'g', label: 'the edges in input order', h: 230, nodes, edges: E.map(([a, b]) => ({ a, b })), edgeMarks: em, marks,
+        badges: Object.fromEntries(nodes.map(x => [x.id, 'leader ' + find(x.id)])) },
+      { type: 'grid', id: 'p', label: 'parent[]', rowLabels: ['parent'], colLabels: ['1', '2', '3', '4', '5'], cells: [parent.slice(1)], cell: 44 },
+      { type: 'vars', id: 'v', vars }];
+  };
+  r.step(panels(null), [3, 4, 5], 'Every node starts as its own leader. Dim edges have not been processed yet.');
+  for (let i = 0; i < E.length; i++) {
+    const [a, b] = E[i], ra = find(a), rb = find(b);
+    r.step(panels(i, { [a]: 'compare', [b]: 'compare' }, { edge: `${a}-${b}`, [`find(${a})`]: ra, [`find(${b})`]: rb }), [7, 8],
+      `Edge ${a}-${b}: leader of ${a} is ${ra}, leader of ${b} is ${rb}.`);
+    if (ra === rb) {
+      status[i] = 'bad';
+      r.step(panels(i, { [a]: 'bad', [b]: 'bad' }, { answer: `[${a},${b}]` }), [9],
+        `Same leader! ${a} and ${b} are already connected through earlier edges, so ${a}-${b} closes a <b>cycle</b>. Answer: <b>[${a}, ${b}]</b>.`);
+      break;
+    }
+    parent[ra] = rb; status[i] = 'done';
+    r.step(panels(i, { [a]: 'done', [b]: 'done' }, { edge: `${a}-${b}`, [`parent[${ra}]`]: rb }), [10],
+      `Different leaders: merge the groups with parent[${ra}] = ${rb}. The edge joins two separate groups, so it is safe.`);
+  }
+  Viz.mount('#demo2', { frames: r.frames, title: 'Redundant Connection', code:
+`int[] findRedundant(int[][] edges) {
+    int n = edges.length;
+    parent = new int[n + 1];
+    for (int i = 0; i <= n; i++)
+        parent[i] = i;
+    for (int[] e : edges) {
+        int ra = find(e[0]);
+        int rb = find(e[1]);
+        if (ra == rb) return e; // cycle!
+        parent[ra] = rb;        // merge
+    }
+    return new int[0];
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"Each group is a tree with one root, so 'same group' means 'same root'. Union by rank keeps every tree's height O(log n), and path compression flattens paths as we use them, giving O(α(n)) amortised per operation — effectively constant."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">int</span>[] parent = <span class="k">new int</span>[n], rank = <span class="k">new int</span>[n];  <span class="c">// parent[i] = i</span>
+<span class="k">int</span> find(<span class="k">int</span> x) {
+    <span class="k">return</span> parent[x] == x ? x : (parent[x] = find(parent[x]));
+}
+<span class="k">boolean</span> union(<span class="k">int</span> a, <span class="k">int</span> b) {
+    <span class="k">int</span> ra = find(a), rb = find(b);
+    <span class="k">if</span> (ra == rb) <span class="k">return false</span>;
+    <span class="k">if</span> (rank[ra] &lt; rank[rb]) { <span class="k">int</span> t = ra; ra = rb; rb = t; }
+    parent[rb] = ra;
+    <span class="k">if</span> (rank[ra] == rank[rb]) rank[ra]++;
+    components--; <span class="k">return true</span>;
+}</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Same root = same group.</b> Union says false = this edge makes a cycle. Components = n − successful unions.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Linking <code>parent[a] = b</code> instead of <code>parent[find(a)] = find(b)</code> — you must link the <b>leaders</b>, not the nodes.</li>
+  <li>Comparing <code>parent[a] == parent[b]</code> instead of <code>find(a) == find(b)</code>.</li>
+  <li>Forgetting to initialise <code>parent[i] = i</code> (Java arrays start at 0 = everyone points at node 0).</li>
+  <li>Off-by-one when nodes are numbered 1..n — allocate <code>n + 1</code>.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/number-of-connected-components-in-an-undirected-graph/">323. Number of Connected Components</a> — start at n, subtract every successful union.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/number-of-provinces/">547. Number of Provinces</a> — same thing from a matrix.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/redundant-connection/">684. Redundant Connection</a> — exactly animation 2.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/satisfiability-of-equality-equations/">990. Satisfiability of Equality Equations</a> — union all "==", then check every "!=".</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/accounts-merge/">721. Accounts Merge</a> — union emails, group by leader.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/number-of-islands-ii/">305. Number of Islands II</a> — land arrives one cell at a time; union with land neighbours.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>When is Union-Find better than BFS/DFS for counting components?</summary>
+<p>When edges arrive one at a time and you must answer after each (online), or when you only need "same group?" checks. BFS would have to restart each time.</p></details>
+<details class="quiz"><summary>What does path compression change in the parent array?</summary>
+<p>Every node visited by find gets <code>parent[x] = root</code>, so the tree becomes flatter; the groups themselves do not change.</p></details>
+<details class="quiz"><summary>A graph with n nodes has n − 1 edges and union never returns false. What is it?</summary>
+<p>A tree: connected (n − 1 successful unions leave 1 component) and acyclic (no union failed).</p></details>
+
+<nav class="pager"><a href="topo-sort.html">← Topological sort</a><a href="dijkstra.html">Dijkstra →</a></nav>
+</main>
+</body>
+</html>

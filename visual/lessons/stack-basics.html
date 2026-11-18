@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stacks and Queues</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Stacks &amp; queues</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 17 · Stacks &amp; queues</div>
+<h1>Stacks and Queues</h1>
+<p class="lede">A stack hands back the most recent thing you put in; a queue hands back the oldest. Picking the right one makes "matching", "undo" and "in order of arrival" problems almost write themselves.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="arrays-hashing.html">Arrays and hashing</a>, <a href="big-o.html">Big-O</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>Stack: "valid / balanced brackets", "nested", "undo", "evaluate an expression", "the most recent unmatched ...", "backspace". Queue: "in the order they arrive", "level by level", "first come first served", "recent requests".</p></div>
+
+<h2>The idea in plain words</h2>
+<p>A <b>stack</b> is a pile where you can only touch the top. <code>push</code> puts something on top, <code>pop</code> takes the top off, <code>peek</code> looks at the top without removing it. The last thing in is the first thing out — people call this <b>LIFO</b> (last in, first out).</p>
+<p>A <b>queue</b> is a line. <code>offer</code> adds to the back, <code>poll</code> removes from the front. The first thing in is the first thing out — <b>FIFO</b>.</p>
+<ul>
+  <li>Push 1, 2, 3 onto a stack and pop: you get <b>3</b>.</li>
+  <li>Offer 1, 2, 3 into a queue and poll: you get <b>1</b>.</li>
+  <li>All four operations are O(1) — constant time, no matter how big it gets.</li>
+</ul>
+<p>Why a stack is so useful: many problems have the shape "the newest open thing must be closed first". In <code>{ [ ( ) ] }</code> the <code>(</code> opened last, so it must close first. A stack keeps exactly the "still open" things, newest on top.</p>
+<p>In Java use <code>ArrayDeque</code> for both (never the old <code>Stack</code> class): <code>push / pop / peek</code> for a stack, <code>offer / poll / peek</code> for a queue.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A <b>stack</b> is a pile of plates in a canteen: you put a clean plate on top and the next person takes the top plate. A <b>queue</b> is the line at a shop counter: whoever came first is served first, and new people join at the back.</p></div>
+
+<h2>Watch it work</h2>
+<p>First, the difference in one picture: put 1, 2, 3 into both, then take one out of each.</p>
+<div id="demo0"></div>
+<script>
+(() => {
+  const r = Viz.recorder();
+  const st = [], q = [];
+  const panels = (sm = {}, qm = {}) => [
+    { type: 'stack', id: 's', label: 'stack (plates)', items: st.map(v => ({ id: 's' + v, val: v })), kind: 'stack', marks: sm },
+    { type: 'stack', id: 'q', label: 'queue (shop line)', items: q.map(v => ({ id: 'q' + v, val: v })), kind: 'queue', marks: qm }];
+  r.step(panels(), [1, 2], 'Two empty containers. Both are <b>ArrayDeque</b> in Java; only the methods we call differ.');
+  for (const x of [1, 2, 3]) {
+    st.push(x); q.push(x);
+    r.step(panels({ [st.length - 1]: 'active' }, { [q.length - 1]: 'active' }), [4, 5],
+      `Add <b>${x}</b>. On the stack it lands on the <b>top</b>; in the queue it joins the <b>back</b> of the line.`);
+  }
+  const outS = [], outQ = [];
+  while (st.length) {
+    r.step(panels({ [st.length - 1]: 'compare' }, { 0: 'compare' }), [8, 9],
+      `Take one out of each. The stack can only reach its <b>top</b> (${st[st.length - 1]}). The queue serves its <b>front</b> (${q[0]}).`);
+    outS.push(st.pop()); outQ.push(q.shift());
+  }
+  r.step(panels(), [8, 9], `Out of the stack came <b>${outS.join(', ')}</b> (last in, first out). Out of the queue came <b>${outQ.join(', ')}</b> (first in, first out). That is the whole difference.`);
+  Viz.mount('#demo0', { frames: r.frames, title: 'Stack versus queue', code:
+`Deque<Integer> stack = new ArrayDeque<>();
+Deque<Integer> queue = new ArrayDeque<>();
+for (int x : new int[]{1, 2, 3}) {
+    stack.push(x);   // goes on top of the pile
+    queue.offer(x);  // joins the back of the line
+}
+while (!stack.isEmpty()) {
+    int a = stack.pop();   // 3, 2, 1: last in, first out
+    int b = queue.poll();  // 1, 2, 3: first in, first out
+}` });
+})();
+</script>
+
+<h3>Valid Parentheses</h3>
+<p>Is <code>{[()()]}</code> balanced? Push every opener. On a closer, the top of the stack must be its partner.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const s = '{[()()]}';
+  const pair = { ')': '(', ']': '[', '}': '{' };
+  const r = Viz.recorder();
+  const st = [];
+  let uidc = 0;
+  const arr = (i, marks) => ({ type: 'array', id: 'a', label: 's', values: [...s], pointers: i == null ? {} : { i }, marks });
+  const stk = (m = {}) => ({ type: 'stack', id: 'st', label: 'stack of open brackets', items: st.slice(), marks: m });
+  const doneUpTo = i => Object.fromEntries([...Array(i).keys()].map(k => [k, 'visited']));
+  r.step([arr(null, {}), stk()], [2], 'Empty stack. It will hold the brackets that are <b>opened but not yet closed</b>, newest on top.');
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if ('([{'.includes(c)) {
+      st.push({ id: 'b' + (uidc++), val: c });
+      r.step([arr(i, { ...doneUpTo(i), [i]: 'active' }), stk({ [st.length - 1]: 'active' })], [4],
+        `<b>${c}</b> is an opener. We cannot check it yet — its partner comes later — so it waits on top of the stack.`);
+    } else {
+      const top = st[st.length - 1];
+      r.step([arr(i, { ...doneUpTo(i), [i]: 'compare' }), stk({ [st.length - 1]: 'compare' })], [7, 8],
+        `<b>${c}</b> is a closer. It must close the <b>most recent</b> open bracket, which is the top: <b>${top.val}</b>.`);
+      st.pop();
+      r.step([arr(i, { ...doneUpTo(i), [i]: 'done' }), stk()], [7, 8],
+        `${top.val} and ${c} are partners, so pop. ${st.length ? `The new top <b>${st[st.length - 1].val}</b> is now the one waiting.` : 'The stack is empty again.'}`);
+    }
+  }
+  r.step([arr(null, Object.fromEntries([...s].map((_, k) => [k, 'done']))), stk()], [12],
+    'End of the string and the stack is <b>empty</b>: every opener was closed by its own partner in the right order. Answer: <b>true</b>.');
+  Viz.mount('#demo1', { frames: r.frames, title: 'Valid parentheses', code:
+`boolean isValid(String s) {
+    Deque<Character> st = new ArrayDeque<>();
+    for (char c : s.toCharArray()) {
+        if (c == '(' || c == '[' || c == '{') st.push(c); // wait
+        else {
+            if (st.isEmpty()) return false;  // closer, nothing open
+            char open = st.pop();            // newest open bracket
+            if (!matches(open, c)) return false; // wrong partner
+        }
+    }
+    // leftover openers were never closed
+    return st.isEmpty();
+}` });
+})();
+</script>
+
+<h3>Min Stack</h3>
+<p>Design a stack whose <code>getMin()</code> is O(1). Trick: a second stack remembers "the minimum so far" at every height.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const r = Viz.recorder();
+  const st = [], mins = [];
+  let k = 0;
+  const P = (sm = {}, mm = {}, vars = {}) => [
+    { type: 'stack', id: 's', label: 'st (the real values)', items: st.slice(), marks: sm },
+    { type: 'stack', id: 'm', label: 'mins (min at each height)', items: mins.slice(), marks: mm },
+    { type: 'vars', id: 'v', vars }];
+  r.step(P({}, {}, { op: 'start' }), [2, 3], 'Two stacks that always have the <b>same height</b>. mins[k] = the smallest value among the bottom k+1 values of st.');
+  const ops = [['push', 5], ['push', 3], ['push', 7], ['push', 2], ['getMin'], ['pop'], ['getMin'], ['pop'], ['pop'], ['getMin']];
+  for (const [op, x] of ops) {
+    if (op === 'push') {
+      const m = mins.length ? Math.min(x, mins[mins.length - 1].val) : x;
+      st.push({ id: 's' + k, val: x }); mins.push({ id: 'm' + k, val: m }); k++;
+      r.step(P({ [st.length - 1]: 'active' }, { [mins.length - 1]: 'active' }, { op: `push(${x})` }), [5, 6],
+        mins.length === 1 ? `push(${x}): first value, so the minimum so far is ${x} itself.`
+          : `push(${x}): the new minimum is min(${x}, old min ${mins[mins.length - 2].val}) = <b>${m}</b>. We store it beside ${x}.`);
+    } else if (op === 'pop') {
+      const a = st.pop(), b = mins.pop();
+      r.step(P({}, {}, { op: 'pop()', removed: a.val }), [8],
+        `pop(): remove ${a.val} and its partner min ${b.val} together. The minimum below them was already saved, so nothing has to be recomputed.`);
+    } else {
+      const m = mins[mins.length - 1].val;
+      r.step(P({}, { [mins.length - 1]: 'done' }, { op: 'getMin()', answer: m }), [10],
+        `getMin(): just peek the top of mins → <b>${m}</b>. One look, O(1), no scanning.`);
+    }
+  }
+  r.step(P({}, { [mins.length - 1]: 'done' }, { op: 'done' }), [10], 'Every operation touched only the tops of the stacks, so every operation is <b>O(1)</b>.');
+  Viz.mount('#demo2', { frames: r.frames, title: 'Min stack', code:
+`class MinStack {
+    Deque<Integer> st = new ArrayDeque<>();
+    Deque<Integer> mins = new ArrayDeque<>(); // min so far
+    void push(int x) {
+        st.push(x);
+        mins.push(mins.isEmpty() ? x : Math.min(x, mins.peek()));
+    }
+    void pop() { st.pop(); mins.pop(); }  // shrink together
+    int top() { return st.peek(); }
+    int getMin() { return mins.peek(); }  // O(1)
+}` });
+})();
+</script>
+
+<h3>Evaluate Reverse Polish Notation</h3>
+<p>In RPN the operator comes <i>after</i> its two numbers: <code>3 4 + 2 * 7 -</code> means <code>((3 + 4) * 2) - 7</code>. Numbers wait on a stack; an operator eats the top two.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const t = ['3', '4', '+', '2', '*', '7', '-'];
+  const r = Viz.recorder();
+  const st = [];
+  let k = 0;
+  const P = (i, tm, sm = {}, vars) => [
+    { type: 'array', id: 'a', label: 'tokens', values: t, pointers: i == null ? {} : { i }, marks: tm },
+    { type: 'stack', id: 's', label: 'stack of numbers', items: st.slice(), marks: sm },
+    ...(vars ? [{ type: 'vars', id: 'v', vars }] : [])];
+  const seen = i => Object.fromEntries([...Array(i).keys()].map(j => [j, 'visited']));
+  r.step(P(null, {}, {}), [2], 'Read the tokens left to right. The stack holds numbers that are waiting for an operator.');
+  for (let i = 0; i < t.length; i++) {
+    const tok = t[i];
+    if ('+-*/'.includes(tok)) {
+      r.step(P(i, { ...seen(i), [i]: 'compare' }, { [st.length - 1]: 'compare', [st.length - 2]: 'compare' }), [5],
+        `<b>${tok}</b> is an operator. Its two numbers are the two most recent ones: the top two of the stack.`);
+      const b = st.pop().val, a = st.pop().val;
+      const v = tok === '+' ? a + b : tok === '-' ? a - b : tok === '*' ? a * b : Math.trunc(a / b);
+      st.push({ id: 'n' + (k++), val: v });
+      r.step(P(i, { ...seen(i), [i]: 'done' }, { [st.length - 1]: 'active' }, { a, b, result: `${a} ${tok} ${b} = ${v}` }), [5, 6],
+        `Pop b = ${b} first, then a = ${a} (order matters for − and /). Push <b>${a} ${tok} ${b} = ${v}</b>: it is now a number waiting like any other.`);
+    } else {
+      st.push({ id: 'n' + (k++), val: +tok });
+      r.step(P(i, { ...seen(i), [i]: 'active' }, { [st.length - 1]: 'active' }), [8],
+        `${tok} is a number. Nothing to do with it yet, so push it.`);
+    }
+  }
+  r.step(P(null, Object.fromEntries(t.map((_, j) => [j, 'done'])), { 0: 'done' }), [11],
+    `All tokens used. The one number left is the answer: <b>${st[0].val}</b>.`);
+  Viz.mount('#demo3', { frames: r.frames, title: 'Evaluate RPN', code:
+`int evalRPN(String[] tokens) {
+    Deque<Integer> st = new ArrayDeque<>();
+    for (String t : tokens) {
+        if (t.length() == 1 && "+-*/".contains(t)) { // operator
+            int b = st.pop(), a = st.pop();  // b was pushed last!
+            st.push(apply(a, b, t));         // a + b, a - b, ...
+        } else {
+            st.push(Integer.parseInt(t));    // number: wait
+        }
+    }
+    return st.pop();                         // the final value
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"Brackets close in the reverse order they opened, so the bracket that must close next is always the newest unclosed one — exactly what the top of a stack holds. Each character is pushed and popped at most once, so it is O(n)."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// Stack: deal with the newest unfinished thing first</span>
+Deque&lt;T&gt; st = <span class="k">new</span> ArrayDeque&lt;&gt;();
+<span class="k">for</span> (T x : input) {
+    <span class="k">if</span> (opens(x)) st.push(x);          <span class="c">// wait for a partner</span>
+    <span class="k">else</span> combine(st.pop(), x);         <span class="c">// newest partner</span>
+}
+<span class="c">// Queue: deal with the oldest first</span>
+Deque&lt;T&gt; q = <span class="k">new</span> ArrayDeque&lt;&gt;();
+q.offer(start);
+<span class="k">while</span> (!q.isEmpty()) { T x = q.poll(); <span class="c">/* ... q.offer(next) */</span> }</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Plates → stack → newest first. Shop line → queue → oldest first.</b> "Matching / nested / undo" means stack; "in order / level by level" means queue.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Calling <code>pop()</code> or <code>peek()</code> on an empty stack — check <code>isEmpty()</code> first (a lone <code>)</code> must return false, not crash).</li>
+  <li>Forgetting the final <code>st.isEmpty()</code> check: <code>"(("</code> has no wrong closer but is still invalid.</li>
+  <li>In RPN, popping in the wrong order: the first pop is the <b>right</b> operand. <code>5 2 -</code> is 3, not −3.</li>
+  <li>Using <code>java.util.Stack</code> (old and synchronized) — use <code>ArrayDeque</code>.</li>
+  <li>Min Stack with a single <code>min</code> variable: after popping the minimum you no longer know the next one.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/valid-parentheses/">20. Valid Parentheses</a> — the animation above.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/implement-queue-using-stacks/">232. Implement Queue using Stacks</a> — pour the in-stack into an out-stack only when out is empty.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/backspace-string-compare/">844. Backspace String Compare</a> — <code>#</code> pops the last letter.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/min-stack/">155. Min Stack</a> — a second stack of "min so far".</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/evaluate-reverse-polish-notation/">150. Evaluate Reverse Polish Notation</a> — numbers wait, operators eat two.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/decode-string/">394. Decode String</a> — push (count, text so far) on <code>[</code>, combine on <code>]</code>.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/asteroid-collision/">735. Asteroid Collision</a> — a left-mover fights the right-movers on top of the stack.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/basic-calculator/">224. Basic Calculator</a> — push (result, sign) when you enter a bracket.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>What does the bracket checker return for <code>"([)]"</code>, and at which character does it decide?</summary>
+<p>false, at the <code>)</code>: the top of the stack is <code>[</code>, which is not the partner of <code>)</code>.</p></details>
+<details class="quiz"><summary>Push 4, 8, 1 and pop once on a stack; offer 4, 8, 1 and poll once on a queue. What comes out?</summary>
+<p>The stack gives 1 (newest). The queue gives 4 (oldest).</p></details>
+<details class="quiz"><summary>Why does Min Stack store a minimum for every height instead of one variable?</summary>
+<p>Because after popping the current minimum you would need the minimum of what is left. Saving it per height means it is already there, so getMin stays O(1).</p></details>
+<details class="quiz"><summary>What is <code>2 1 + 3 *</code> in RPN?</summary>
+<p>(2 + 1) * 3 = 9.</p></details>
+
+<nav class="pager"><a href="lru-cache.html">← LRU cache</a><a href="monotonic-stack.html">Monotonic stack →</a></nav>
+</main>
+</body>
+</html>

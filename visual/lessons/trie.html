@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trie</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Heaps &amp; tries</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 22 · Heaps &amp; tries</div>
+<h1>Trie (Prefix Tree)</h1>
+<p class="lede">A tree where every edge is one letter, so all words that start the same way share the same path — checking a word or a prefix costs only its length.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="arrays-hashing.html">Arrays and hashing</a>, <a href="tree-traversals.html">Tree traversals</a> (helpful)</p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"<b>Prefix</b>", "<b>starts with</b>", "autocomplete", "search suggestions", "a dictionary of words and many lookups", "wildcard <code>.</code> matches any letter", "find all words from a list in a grid", "maximum XOR of two numbers" (a trie of bits).</p></div>
+
+<h2>The idea in plain words</h2>
+<p>A hash set can tell you whether "car" is a word, but not quickly whether <i>any</i> word starts with "ca". A <b>trie</b> (say "try", from re<b>trie</b>val) can.</p>
+<p>Start with an empty <b>root</b>. To insert "cat", walk down: from the root follow the edge for <code>c</code> (create it if missing), then <code>a</code>, then <code>t</code>. Mark the last node "<b>end</b> of a word".</p>
+<ul>
+  <li>Insert "car": <code>c</code> and <code>a</code> already exist, so reuse them; only <code>r</code> is new. Shared prefixes are stored once.</li>
+  <li>Search "car": follow c → a → r. If you reach the end of the word and the node is marked end, it is a word.</li>
+  <li>startsWith "ca": follow c → a. If the path exists at all, some word starts with it — no end mark needed.</li>
+</ul>
+<p>Every operation costs <b>O(L)</b> where L is the length of the word — it does not matter whether the dictionary holds 10 words or 10 million.</p>
+<p>Each node is usually <code>Node[] next = new Node[26]</code> (one slot per letter a–z) plus a <code>boolean end</code>.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A paper dictionary's thumb tabs: to find "car" you open the <b>C</b> section, then the <b>CA</b> pages, then <b>CAR</b>. Every word starting with "ca" lives in the same pages, so finding "is there any word beginning with ca?" is just opening that section.</p></div>
+
+<h2>Watch it work</h2>
+<p>Insert <code>cat</code>, <code>car</code>, <code>do</code>, <code>dog</code>. Each circle is a node, labelled with the letter on the edge into it. A node tagged <b>end</b> finishes a word.</p>
+<div id="demo1"></div>
+<script>
+// Shared layout: the trie panel is drawn with the graph panel, x/y computed from the final trie.
+window.TRIE = (() => {
+  const words = ['cat', 'car', 'do', 'dog'];
+  const kids = { '': [] };
+  for (const w of words) for (let i = 1; i <= w.length; i++) {
+    const p = w.slice(0, i);
+    if (!kids[p]) { kids[p] = []; kids[w.slice(0, i - 1)].push(p); }
+  }
+  const pos = {}; let leaf = 0;
+  (function place(p, d) {
+    if (!kids[p].length) pos[p] = { x: leaf++ * 120, y: 22 + d * 66 };
+    else { kids[p].forEach(c => place(c, d + 1)); const xs = kids[p].map(c => pos[c].x); pos[p] = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: 22 + d * 66 }; }
+  })('', 0);
+  const shift = Viz.W / 2 - pos[''].x;
+  for (const p in pos) pos[p].x += shift;
+  const id = p => 'p_' + p;
+  // draw only the prefixes in `have`; marks / badges keyed by prefix
+  const panel = (have, ends, marks = {}, edgeMarks = {}, label = 'trie') => ({
+    type: 'graph', id: 'g', label, h: 22 + 3 * 66 + 34,
+    nodes: [...have].map(p => ({ id: id(p), x: pos[p].x, y: pos[p].y, label: p === '' ? 'root' : p[p.length - 1] })),
+    edges: [...have].filter(p => p !== '').map(p => ({ a: id(p.slice(0, -1)), b: id(p), dir: true })),
+    marks: Object.fromEntries(Object.entries(marks).map(([p, c]) => [id(p), c])),
+    edgeMarks: Object.fromEntries(Object.entries(edgeMarks).map(([p, c]) => [`${id(p.slice(0, -1))}-${id(p)}`, c])),
+    badges: Object.fromEntries([...ends].map(p => [id(p), 'end'])) });
+  return { words, panel };
+})();
+(() => {
+  const { words, panel } = TRIE;
+  const r = Viz.recorder();
+  const have = new Set(['']), ends = new Set();
+  const word = (w, j, m = {}) => ({ type: 'array', id: 'w', label: 'inserting', values: [...w], pointers: j == null ? {} : { ch: j }, marks: m, cell: 44 });
+  r.step([panel(have, ends, { '': 'compare' }), { type: 'text', id: 'x', text: 'words: cat, car, do, dog' }], [3], 'An empty trie is just a <b>root</b> node with no children.');
+  for (const w of words) {
+    const path = {};
+    r.step([panel(have, ends, { '': 'compare' }), word(w, null)], [5], `Insert "<b>${w}</b>": start at the root.`);
+    for (let i = 0; i < w.length; i++) {
+      const p = w.slice(0, i + 1);
+      const fresh = !have.has(p);
+      have.add(p);
+      path[p.slice(0, -1)] = 'visited';
+      const em = Object.fromEntries(Object.keys(path).filter(q => q).map(q => [q, 'visited']));
+      r.step([panel(have, ends, { ...path, [p]: fresh ? 'active' : 'compare' }, { ...em, [p]: fresh ? 'active' : 'compare' }),
+        word(w, i, { ...Object.fromEntries([...Array(i).keys()].map(k => [k, 'done'])), [i]: fresh ? 'active' : 'compare' })], fresh ? [8, 9] : [8, 10],
+        fresh ? `No child for <b>${w[i]}</b> here yet, so create one and step into it.`
+          : `A child for <b>${w[i]}</b> already exists (from an earlier word) — <b>reuse</b> it. Shared prefixes are stored once.`);
+    }
+    ends.add(w);
+    r.step([panel(have, ends, { [w]: 'done' }), word(w, null, Object.fromEntries([...w].map((_, k) => [k, 'done'])))], [12],
+      `Last letter reached: mark this node <b>end</b> — a whole word stops here. ${w === 'do' ? 'Note "do" ends at a node that "dog" will later pass through.' : ''}`);
+  }
+  r.step([panel(have, ends, Object.fromEntries([...ends].map(p => [p, 'done']))), { type: 'text', id: 'x', text: '11 letters stored in 7 letter nodes' }], [12],
+    'Done. 4 words with 11 letters used only 7 letter nodes, because "ca" and "do" are shared. Every insert cost only the length of its word.');
+  Viz.mount('#demo1', { frames: r.frames, title: 'Trie insert', code:
+`class Trie {
+    class Node { Node[] next = new Node[26]; boolean end; }
+    Node root = new Node();
+    void insert(String w) {
+        Node cur = root;
+        for (char ch : w.toCharArray()) {
+            int c = ch - 'a';                  // 'a'->0 ... 'z'->25
+            if (cur.next[c] == null)
+                cur.next[c] = new Node();      // new branch
+            cur = cur.next[c];                 // step down
+        }
+        cur.end = true;                        // a word ends here
+    }
+}` });
+})();
+</script>
+
+<h3>search and startsWith</h3>
+<p>On the same trie: <code>search("car")</code>, <code>search("ca")</code>, <code>startsWith("ca")</code>, <code>search("dot")</code>. Both use one helper, <code>find</code>, that walks the path.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const { words, panel } = TRIE;
+  const have = new Set(['']);
+  for (const w of words) for (let i = 1; i <= w.length; i++) have.add(w.slice(0, i));
+  const ends = new Set(words);
+  const r = Viz.recorder();
+  const word = (op, w, j, m = {}) => ({ type: 'array', id: 'w', label: op, values: [...w], pointers: j == null ? {} : { ch: j }, marks: m, cell: 44 });
+  const queries = [['search', 'car'], ['search', 'ca'], ['startsWith', 'ca'], ['search', 'dot']];
+  const results = {};
+  for (const [op, s] of queries) {
+    const label = `${op}("${s}")`;
+    const path = { '': 'visited' };
+    r.step([panel(have, ends, { '': 'compare' }), word(label, s, null), { type: 'vars', id: 'v', vars: { query: label } }], [op === 'search' ? 1 : 3, 6],
+      `<b>${label}</b>: call find("${s}"), starting at the root.`);
+    let ok = true, i = 0;
+    for (; i < s.length; i++) {
+      const p = s.slice(0, i + 1);
+      if (!have.has(p)) {
+        ok = false;
+        r.step([panel(have, ends, { ...path, [s.slice(0, i)]: 'bad' }), word(label, s, i, { ...Object.fromEntries([...Array(i).keys()].map(k => [k, 'done'])), [i]: 'bad' }), { type: 'vars', id: 'v', vars: { query: label } }], [8, 9],
+          `No child for <b>${s[i]}</b> under "${s.slice(0, i)}". The path breaks, so no stored word begins with "${s}". find returns <b>null</b>.`);
+        break;
+      }
+      path[p] = 'visited';
+      const em = Object.fromEntries(Object.keys(path).filter(q => q).map(q => [q, 'visited']));
+      r.step([panel(have, ends, { ...path, [p]: 'compare' }, { ...em, [p]: 'compare' }), word(label, s, i, { ...Object.fromEntries([...Array(i).keys()].map(k => [k, 'done'])), [i]: 'compare' }), { type: 'vars', id: 'v', vars: { query: label } }], [8],
+        `Child for <b>${s[i]}</b> exists — step down.`);
+    }
+    let res;
+    if (!ok) res = false;
+    else if (op === 'startsWith') res = true;
+    else res = ends.has(s);
+    results[label] = res;
+    const nodeMark = ok ? (res ? 'done' : 'bad') : undefined;
+    r.step([panel(have, ends, ok ? { ...path, [s]: nodeMark } : path), word(label, s, null, Object.fromEntries([...s].map((_, k) => [k, res ? 'done' : 'bad']))), { type: 'vars', id: 'v', vars: { [label]: res }, marks: { [label]: res ? 'done' : 'bad' } }],
+      op === 'search' ? [2] : [4],
+      !ok ? `<b>${label} = false</b>.`
+        : op === 'startsWith' ? `The whole path "${s}" exists, so some word starts with it (cat, car). <b>startsWith = true</b> — no end mark needed.`
+          : res ? `Path found <b>and</b> this node is marked end, so "${s}" is a stored word: <b>true</b>.`
+            : `Path found, but this node is <b>not</b> marked end — "${s}" is only the start of other words. <b>search = false</b>.`);
+  }
+  Viz.mount('#demo2', { frames: r.frames, title: 'Trie search and startsWith', code:
+`boolean search(String w) {       // whole word?
+    Node n = find(w); return n != null && n.end; }
+boolean startsWith(String p) {   // any word with this start?
+    return find(p) != null; }
+Node find(String s) {
+    Node cur = root;
+    for (char ch : s.toCharArray()) {
+        cur = cur.next[ch - 'a'];    // follow the letter
+        if (cur == null) return null; // path breaks
+    }
+    return cur;
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"Every word is a path from the root, one letter per edge, so all words with the same prefix share the same node for that prefix. Insert and search walk at most L edges, so they are O(L) regardless of how many words are stored; the end flag separates a full word from a mere prefix."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">class</span> Node { Node[] next = <span class="k">new</span> Node[<span class="n">26</span>]; <span class="k">boolean</span> end; }
+<span class="k">void</span> insert(String w) {
+    Node cur = root;
+    <span class="k">for</span> (<span class="k">char</span> ch : w.toCharArray()) {
+        <span class="k">int</span> c = ch - <span class="s">'a'</span>;
+        <span class="k">if</span> (cur.next[c] == <span class="k">null</span>) cur.next[c] = <span class="k">new</span> Node();
+        cur = cur.next[c];
+    }
+    cur.end = <span class="k">true</span>;
+}
+<span class="c">// search: walk, then check end.  startsWith: walk, path exists = true</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Edge = letter, path = prefix, end flag = whole word.</b> search needs the flag; startsWith only needs the path.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Forgetting the <code>end</code> flag — then "ca" would be "found" after inserting "cat".</li>
+  <li>Putting the letter <i>in</i> the node and getting confused about the root. The root has no letter; the slot index <code>next[c]</code> <b>is</b> the letter.</li>
+  <li>Using <code>HashMap&lt;Character, Node&gt;</code> when the alphabet is just a–z: an array of 26 is faster and simpler.</li>
+  <li>Word Search II: not removing found words (or pruning dead branches), so the same word is reported twice or it times out.</li>
+  <li>Wildcard <code>.</code>: you must try <b>all</b> 26 children with recursion, not just one.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/longest-common-prefix/">14. Longest Common Prefix</a> — walk while the node has one child and is not an end.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/implement-trie-prefix-tree/">208. Implement Trie (Prefix Tree)</a> — exactly the animations.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/design-add-and-search-words-data-structure/">211. Design Add and Search Words</a> — on <code>.</code> recurse into every child.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/replace-words/">648. Replace Words</a> — stop at the first end node on the path.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/search-suggestions-system/">1268. Search Suggestions System</a> — walk the prefix, then DFS for 3 words.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-xor-of-two-numbers-in-an-array/">421. Maximum XOR of Two Numbers</a> — a trie of bits, go the opposite bit when you can.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/word-search-ii/">212. Word Search II</a> — DFS the grid while walking the trie.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>After inserting "app" and "apple", what do search("appl") and startsWith("appl") return?</summary>
+<p>search = false (the node for "appl" is not marked end). startsWith = true (the path exists).</p></details>
+<details class="quiz"><summary>What is the time to insert or search a word of length L?</summary>
+<p>O(L) — one step per letter, independent of how many words are stored.</p></details>
+<details class="quiz"><summary>Why is a trie better than a HashSet for "how many words start with pre"?</summary>
+<p>A HashSet must check every word. A trie walks 3 letters to the "pre" node; everything below it (or a counter stored there) is the answer.</p></details>
+
+<nav class="pager"><a href="two-heaps.html">← Two heaps</a><a href="intervals.html">Intervals →</a></nav>
+</main>
+</body>
+</html>

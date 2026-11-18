@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arrays and Hashing</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Arrays</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 2 · Arrays</div>
+<h1>Arrays and Hashing</h1>
+<p class="lede">An array finds a slot by its number in one step; a hash map finds a value by its name in one step. Together they turn most "search again and again" solutions from O(n²) into O(n).</p>
+<p class="meta">Time to learn: about 2.5 hours · Prerequisites: <a href="big-o.html">Big-O</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"Have I <b>seen</b> this before?", "<b>count</b> how many times", "find the <b>pair</b> / complement" in an <b>unsorted</b> array, "<b>group</b> things that are the same in some way", "<b>duplicate</b>", "first unique", "in O(n) time". Any time your first idea has an inner loop that <i>searches</i> for something, a hash map can usually replace that loop.</p></div>
+
+<h2>The idea in plain words</h2>
+<p><b>Array:</b> the numbers sit side by side in memory, each taking the same space (an <code>int</code> is 4 bytes). If the array starts at address 1000, then <code>nums[3]</code> is at 1000 + 3 × 4 = 1012. The computer does that one sum and jumps straight there — <b>O(1)</b>, no matter how long the array is.</p>
+<p>The price: inserting at the front means every number must shift one place right — <b>O(n)</b>. And finding a <i>value</i> (not an index) means looking at every cell — also O(n).</p>
+<p><b>Hash map</b> (in Java <code>HashMap</code>; a <code>HashSet</code> is the same thing with keys only): an array of "buckets". To store a key, a <b>hash function</b> turns the key into a number, and that number (mod the bucket count) picks the bucket. To find the key later, compute the same number and look only in that one bucket. On average that is <b>O(1)</b>.</p>
+<p>Two different keys can land in the same bucket — a <b>collision</b>. The bucket then holds a short list and we check each entry. With a good hash function and enough buckets, the lists stay tiny.</p>
+<p>The trade: a hash map spends <b>O(n) extra memory</b> to buy <b>O(1) lookups</b>.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>An array is a row of numbered lockers: "locker 37" — walk straight to it. A hash map is a coat check: you hand over your coat, the attendant puts it on the hook for your ticket's colour-and-number. When you come back, they do not search every hook; your ticket tells them exactly where to look. Two coats on the same hook (a collision) just means a quick glance at two coats instead of one.</p></div>
+
+<h2>Watch it work</h2>
+<p><b>Array in memory.</b> Reading by index is one sum; inserting at the front shifts everything.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const base = 1000;
+  let a = [4, 7, 1, 8, 3, ''];
+  const size = 5;
+  const r = Viz.recorder();
+  const addr = a.map((_, i) => base + i * 4);
+  const P = (marks, extra, vars) => [
+    { type: 'array', id: 'a', label: 'nums (capacity 6, size 5)', values: a, marks, ...extra },
+    { type: 'array', id: 'm', label: 'memory address of each slot', values: addr, marks, indices: false },
+    { type: 'vars', id: 'v', vars }];
+  r.step(P({ 5: 'dim' }, {}, { start: base, 'bytes per int': 4 }), [1],
+    'Five ints sit side by side. Each takes 4 bytes, so the addresses go 1000, 1004, 1008, … with no gaps.');
+  for (const i of [0, 3, 4]) {
+    r.step(P({ 5: 'dim', [i]: 'active' }, { pointers: { i } }, { i, address: `1000 + ${i} × 4 = ${base + i * 4}`, 'nums[i]': a[i] }), [2, 3],
+      `Read nums[${i}]: one multiplication and one addition give address <b>${base + i * 4}</b>. Jump there — <b>O(1)</b>, even with a billion numbers.`);
+  }
+  r.step(P({ 5: 'dim' }, {}, { insert: 9, at: 'index 0' }), [4],
+    'Now insert 9 at the <b>front</b>. Slot 0 is taken, so every number must move one slot right to make room.');
+  let moves = 0;
+  for (let i = size; i > 0; i--) {
+    a[i] = a[i - 1]; moves++;
+    r.step(P({ [i]: 'active', [i - 1]: 'compare' }, { pointers: { i } }, { moves }), [5, 6],
+      `Copy nums[${i - 1}] = ${a[i]} into slot ${i}. We go from the <b>back</b> so we never overwrite a number before it is copied.`);
+  }
+  a[0] = 9;
+  r.step(P({ 0: 'done' }, {}, { moves, 'cost': 'O(n)' }), [7],
+    `9 goes in slot 0. It took <b>${moves} moves</b> for 5 numbers — inserting at the front is <b>O(n)</b>. Reading by index stays O(1).`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Array memory layout', code:
+`int[] nums = {4, 7, 1, 8, 3, 0};
+// address = start + i * 4 bytes
+int x = nums[3];        // O(1) jump
+// insert 9 at the front: shift right
+for (int i = size; i > 0; i--)
+    nums[i] = nums[i - 1];
+nums[0] = 9;            // O(n) in total` });
+})();
+</script>
+
+<p><b>Inside a hash set.</b> 5 buckets. The (toy) hash of a word is the sum of its letter codes; the bucket is that sum mod 5. Watch the collision in bucket 3.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const B = 5, COLS = 3;
+  const buckets = [...Array(B)].map(() => []);
+  const sumOf = w => [...w].reduce((s, c) => s + c.charCodeAt(0), 0);
+  const r = Viz.recorder();
+  const grid = (marks = {}) => ({ type: 'grid', id: 'g', label: 'buckets', cell: 56, rowLabels: buckets.map((_, i) => 'bucket ' + i),
+    cells: buckets.map(b => [...Array(COLS)].map((_, c) => b[c] ?? '')), marks });
+  r.step([grid(), { type: 'vars', id: 'v', vars: { buckets: 5 } }], [2],
+    'An empty hash set: 5 buckets, each can hold a short list of keys.');
+  for (const w of ['cat', 'dog', 'ant', 'owl', 'bee']) {
+    const s = sumOf(w), b = s % B;
+    const rowMarks = Object.fromEntries(buckets[b].map((_, c) => [`${b},${c}`, 'compare']));
+    r.step([grid(rowMarks), { type: 'vars', id: 'v', vars: { key: `"${w}"`, 'letter sum': s, bucket: `${s} % 5 = ${b}` }, marks: { bucket: 'active' } }], [4, 5, 6],
+      `Hash "${w}": ${[...w].map(c => c.charCodeAt(0)).join(' + ')} = ${s}. ${s} mod 5 = <b>${b}</b>, so it goes in bucket ${b}.` +
+      (buckets[b].length ? ` Bucket ${b} already holds "${buckets[b].join('", "')}" — a <b>collision</b>.` : ''));
+    buckets[b].push(w);
+    r.step([grid({ [`${b},${buckets[b].length - 1}`]: 'done' }), { type: 'vars', id: 'v', vars: { key: `"${w}"`, bucket: b } }], [9],
+      buckets[b].length > 1 ? `"${w}" joins the list in bucket ${b}. Both live there; a lookup will just check two entries.` : `"${w}" stored in bucket ${b}. No other bucket was touched.`);
+  }
+  for (const w of ['owl', 'fox']) {
+    const s = sumOf(w), b = s % B;
+    r.step([grid(Object.fromEntries(buckets.flatMap((row, i) => i === b ? [] : row.map((_, c) => [`${i},${c}`, 'dim'])))), { type: 'vars', id: 'v', vars: { 'contains': `"${w}"`, 'letter sum': s, bucket: b }, marks: { bucket: 'active' } }], [12],
+      `Look up "${w}": hash it the same way → bucket <b>${b}</b>. Every other bucket is ignored. That is why lookups are fast.`);
+    let found = false;
+    for (let c = 0; c < buckets[b].length; c++) {
+      const hit = buckets[b][c] === w;
+      r.step([grid({ [`${b},${c}`]: hit ? 'done' : 'bad' }), { type: 'vars', id: 'v', vars: { 'contains': `"${w}"`, checking: `"${buckets[b][c]}"` }, marks: { checking: hit ? 'done' : 'bad' } }], [13],
+        hit ? `"${buckets[b][c]}" equals "${w}" → <b>found</b> after ${c + 1} check${c ? 's' : ''}.` : `"${buckets[b][c]}" is not "${w}" (just a collision neighbour). Check the next entry.`);
+      if (hit) { found = true; break; }
+    }
+    if (!found) r.step([grid({}), { type: 'vars', id: 'v', vars: { 'contains': `"${w}"`, result: false }, marks: { result: 'bad' } }], [14],
+      `Bucket ${b} is exhausted, so "${w}" is <b>not in the set</b>. We did 2 checks, not 5 — and with more buckets it would usually be 0 or 1.`);
+  }
+  Viz.mount('#demo2', { frames: r.frames, title: 'Hash set buckets and collisions', code:
+`// a tiny hash set with 5 buckets
+List<String>[] buckets = new List[5];
+int bucketOf(String key) {
+    int sum = 0;
+    for (var c : key.toCharArray()) sum+=c;
+    return sum % 5;              // 0..4
+}
+void add(String key) {
+    buckets[bucketOf(key)].add(key);
+}
+boolean contains(String key) {
+    for (String k : buckets[bucketOf(key)])
+        if (k.equals(key)) return true;
+    return false;
+}` });
+})();
+</script>
+<p>Java's real <code>HashMap</code> works the same way, with a better hash (<code>key.hashCode()</code>), 16 buckets to start, and it <b>doubles</b> the buckets when they get crowded so lists stay short.</p>
+
+<p><b>Two Sum (unsorted).</b> For each number, ask the map: "have I already seen the number that completes it?"</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const a = [3, 9, 6, 4, 8, 5], target = 13;
+  const r = Viz.recorder();
+  const seen = new Map();
+  const mapP = (mark) => ({ type: 'stack', id: 'm', label: 'seen (value → index)', kind: 'set', items: [...seen].map(([v, i]) => ({ id: 'k' + v, val: `${v}→${i}` })), marks: mark == null ? {} : { [mark]: 'done' } });
+  const arr = (i, marks) => ({ type: 'array', id: 'a', label: 'nums', values: a, pointers: i == null ? {} : { i }, marks });
+  r.step([arr(null, {}), mapP(), { type: 'vars', id: 'v', vars: { target } }], [2, 3],
+    'Walk left to right. Keep a map of every number seen so far and where it was.');
+  for (let i = 0; i < a.length; i++) {
+    const need = target - a[i];
+    if (seen.has(need)) {
+      const j = seen.get(need);
+      r.step([arr(i, { [i]: 'done', [j]: 'done' }), mapP([...seen.keys()].indexOf(need)), { type: 'vars', id: 'v', vars: { target, need: `${target} − ${a[i]} = ${need}` }, marks: { need: 'done' } }], [5, 6, 7, 8],
+        `Need ${need}. The map says ${need} was at index ${j}! One O(1) lookup instead of rescanning. Answer: <b>[${j}, ${i}]</b>.`);
+      break;
+    }
+    r.step([arr(i, { [i]: 'compare' }), mapP(), { type: 'vars', id: 'v', vars: { target, need: `${target} − ${a[i]} = ${need}` }, marks: { need: 'bad' } }], [5, 6],
+      `nums[${i}] = ${a[i]} needs a partner of <b>${need}</b>. Is ${need} in the map? No.`);
+    seen.set(a[i], i);
+    r.step([arr(i, { [i]: 'visited' }), mapP(seen.size - 1), { type: 'vars', id: 'v', vars: { target } }], [9],
+      `Remember ${a[i]} at index ${i}, so a later number that needs ${a[i]} can find it.`);
+  }
+  Viz.mount('#demo3', { frames: r.frames, title: 'Two Sum with a hash map', code:
+`int[] twoSum(int[] nums, int target) {
+    Map<Integer, Integer> seen =
+        new HashMap<>();  // value -> index
+    for (int i = 0; i < nums.length; i++) {
+        int need = target - nums[i];
+        if (seen.containsKey(need))
+            return new int[]{
+                seen.get(need), i};
+        seen.put(nums[i], i);
+    }
+    return new int[]{-1, -1};
+}` });
+})();
+</script>
+
+<p><b>Group Anagrams.</b> Anagrams have the same letters, so sorting the letters gives the same <b>key</b>. Use that key in a map.</p>
+<div id="demo4"></div>
+<script>
+(() => {
+  const words = ['eat', 'tea', 'tan', 'ate', 'nat', 'bat'];
+  const r = Viz.recorder();
+  const groups = new Map();
+  const gPanels = hot => [...groups].map(([k, list]) => ({ type: 'stack', id: 'g' + k, label: `"${k}" →`, kind: 'set', items: list.map(w => ({ id: w, val: w })), marks: hot === k ? { [list.length - 1]: 'done' } : {} }));
+  const arr = (i, marks) => ({ type: 'array', id: 'a', label: 'strs', values: words, pointers: i == null ? {} : { i }, marks });
+  const vis = i => Object.fromEntries([...Array(i)].map((_, x) => [x, 'visited']));
+  r.step([arr(null, {}), { type: 'vars', id: 'v', vars: { groups: 0 } }], [2, 3], 'An empty map: key = sorted letters, value = list of words with those letters.');
+  words.forEach((w, i) => {
+    const key = [...w].sort().join('');
+    const isNew = !groups.has(key);
+    r.step([arr(i, { ...vis(i), [i]: 'active' }), { type: 'vars', id: 'v', vars: { word: `"${w}"`, key: `"${key}"` }, marks: { key: 'active' } }, ...gPanels()], [5, 6, 7],
+      `Sort the letters of "${w}" → "<b>${key}</b>". ${isNew ? 'This key is new.' : `Key "${key}" already exists.`}`);
+    if (isNew) groups.set(key, []);
+    groups.get(key).push(w);
+    r.step([arr(i, { ...vis(i), [i]: 'done' }), { type: 'vars', id: 'v', vars: { word: `"${w}"`, key: `"${key}"` } }, ...gPanels(key)], [8, 9],
+      isNew ? `Start a new group for "${key}" and put "${w}" in it.` : `Add "${w}" to the "${key}" group — it is an anagram of ${groups.get(key).slice(0, -1).map(x => `"${x}"`).join(', ')}.`);
+  });
+  r.step([arr(null, Object.fromEntries(words.map((_, x) => [x, 'done']))), { type: 'vars', id: 'v', vars: { groups: groups.size } }, ...gPanels()], [11],
+    `Done: <b>${groups.size} groups</b>. Each word was handled once (sorting k letters costs k log k), so the total is O(n · k log k).`);
+  Viz.mount('#demo4', { frames: r.frames, title: 'Group anagrams', code:
+`List<List<String>> group(String[] strs) {
+    Map<String, List<String>> groups =
+        new HashMap<>();
+    for (String s : strs) {
+        char[] c = s.toCharArray();
+        Arrays.sort(c);   // "tea" -> "aet"
+        String key = new String(c);
+        groups.computeIfAbsent(key,
+            k -> new ArrayList<>()).add(s);
+    }
+    return List.copyOf(groups.values());
+}` });
+})();
+</script>
+
+<p><b>Longest Consecutive Sequence.</b> Put every number in a set. Only start counting from a number whose left neighbour (x − 1) is missing — that number is the <b>start</b> of a run.</p>
+<div id="demo5"></div>
+<script>
+(() => {
+  const a = [100, 4, 200, 1, 3, 2];
+  const set = new Set(a);
+  const r = Viz.recorder();
+  let best = 0, bestRun = [];
+  const idx = v => a.indexOf(v);
+  const arr = (marks, i) => ({ type: 'array', id: 'a', label: 'nums', values: a, marks, pointers: i == null ? {} : { x: i } });
+  const setP = marks => ({ type: 'stack', id: 's', label: 'set', kind: 'set', items: a.map(v => ({ id: 's' + v, val: v })), marks: marks || {} });
+  const bestMarks = () => Object.fromEntries(bestRun.map(v => [idx(v), 'done']));
+  r.step([arr({}), setP(), { type: 'vars', id: 'v', vars: { best } }], [2, 3],
+    'First put every number in a hash set, so "is 5 here?" costs O(1).');
+  for (const x of a) {
+    const i = idx(x);
+    if (set.has(x - 1)) {
+      r.step([arr({ ...bestMarks(), [i]: 'dim', [idx(x - 1)]: 'compare' }, i), setP({ [idx(x - 1)]: 'compare' }), { type: 'vars', id: 'v', vars: { x, 'x − 1 in set?': 'yes', best } }], [6, 7],
+        `${x} − 1 = ${x - 1} is in the set, so ${x} is <b>not the start</b> of a run. Skip it — the run will be counted from its real start.`);
+      continue;
+    }
+    let len = 1; const run = [x];
+    r.step([arr({ ...bestMarks(), [i]: 'active' }, i), setP({ [i]: 'active' }), { type: 'vars', id: 'v', vars: { x, 'x − 1 in set?': 'no', len, best } }], [8],
+      `${x - 1} is not in the set, so <b>${x} starts a run</b>. Count upward from it.`);
+    while (set.has(x + len)) {
+      run.push(x + len); len++;
+      const m = Object.fromEntries(run.map(v => [idx(v), 'active']));
+      r.step([arr(m, i), setP(m), { type: 'vars', id: 'v', vars: { x, next: x + len - 1, len, best }, marks: { len: 'active' } }], [9],
+        `${x + len - 1} is in the set → the run grows to length <b>${len}</b>.`);
+    }
+    if (len > best) { best = len; bestRun = run; }
+    r.step([arr({ ...bestMarks(), [i]: len === best && bestRun === run ? 'done' : 'visited' }), setP(), { type: 'vars', id: 'v', vars: { x, len, best }, marks: { best: 'done' } }], [9, 10],
+      `${x + len} is missing, so this run ends with length ${len}. Best so far: <b>${best}</b>.`);
+  }
+  r.step([arr(bestMarks()), setP(), { type: 'vars', id: 'v', vars: { best } }], [12],
+    `Answer: <b>${best}</b> (the run ${bestRun.join(', ')}). Each number is counted inside at most one run, so the whole thing is <b>O(n)</b> — no sorting needed.`);
+  Viz.mount('#demo5', { frames: r.frames, title: 'Longest consecutive sequence', code:
+`int longestConsecutive(int[] nums) {
+    Set<Integer> set = new HashSet<>();
+    for (int x : nums) set.add(x);
+    int best = 0;
+    for (int x : set) {
+        // x-1 in set? x is not a start
+        if (set.contains(x - 1)) continue;
+        int len = 1;
+        while (set.contains(x+len)) len++;
+        best = Math.max(best, len);
+    }
+    return best;
+}` });
+})();
+</script>
+
+<h2>Why it works (the one sentence to say in an interview)</h2>
+<p>"An inner loop that <i>searches</i> for a value is O(n); a hash map answers the same question in O(1) on average, so trading O(n) memory for the map turns the O(n²) brute force into a single O(n) pass."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// "Have I seen the thing that completes me?"</span>
+Map&lt;Integer, Integer&gt; seen = <span class="k">new</span> HashMap&lt;&gt;();
+<span class="k">for</span> (<span class="k">int</span> i = <span class="n">0</span>; i &lt; n; i++) {
+    <span class="k">int</span> need = f(nums[i]);           <span class="c">// what would pair with me</span>
+    <span class="k">if</span> (seen.containsKey(need)) ...  <span class="c">// found it in O(1)</span>
+    seen.put(nums[i], i);            <span class="c">// remember me for later</span>
+}
+<span class="c">// Counting: map.merge(x, 1, Integer::sum);</span>
+<span class="c">// Grouping: map.computeIfAbsent(key, k -&gt; new ArrayList&lt;&gt;()).add(x);</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Searching inside a loop? Replace the search with a map.</b> Seen → set. How many → map of counts. Which group → map of key → list. The key is the trick: complement, sorted letters, count signature.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Two Sum: putting the number in the map <b>before</b> checking — then 3 + 3 = 6 "finds" the same element twice. Check first, then put.</li>
+  <li>Using <code>==</code> to compare <code>Integer</code> values from a map. It works for −128..127 only; use <code>.equals()</code> or unbox to <code>int</code>.</li>
+  <li>Calling <code>map.get(k)</code> on a missing key and unboxing <code>null</code> → NullPointerException. Use <code>getOrDefault(k, 0)</code>.</li>
+  <li>Longest Consecutive: counting from every number (not just run starts) — that is O(n²) again.</li>
+  <li>Saying a hash map is O(1) "always". It is O(1) <i>on average</i>; with many collisions it degrades.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/contains-duplicate/">217. Contains Duplicate</a> — a set; return true the moment add() fails.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/valid-anagram/">242. Valid Anagram</a> — count letters in an int[26].</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/two-sum/">1. Two Sum</a> — exactly the animation above.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/group-anagrams/">49. Group Anagrams</a> — sorted letters as the key.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/top-k-frequent-elements/">347. Top K Frequent Elements</a> — count with a map, then bucket by count.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-consecutive-sequence/">128. Longest Consecutive Sequence</a> — only count from run starts.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/valid-sudoku/">36. Valid Sudoku</a> — one set per row, column and box.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Why is reading <code>nums[i]</code> O(1) but finding the value 42 in an array O(n)?</summary>
+<p>The index gives the address directly (start + i × size). A value has no address formula, so you must look at cells one by one.</p></details>
+<details class="quiz"><summary>What is a collision, and does it break the hash map?</summary>
+<p>Two keys landing in the same bucket. It does not break anything: the bucket holds both and a lookup compares with <code>equals()</code>. It only slows things down if a bucket gets long.</p></details>
+<details class="quiz"><summary>Two Sum: why check the map before putting the current number in?</summary>
+<p>Otherwise a number could pair with itself (target 6, number 3 at one index).</p></details>
+<details class="quiz"><summary>What key would you use to group strings that are rotations or shifts of each other ("abc", "bcd")?</summary>
+<p>The differences between neighbouring letters (mod 26), e.g. "1,1". Any key that is equal exactly when the items belong together works.</p></details>
+
+<nav class="pager"><a href="big-o.html">← Big-O</a><a href="two-pointers.html">Two pointers →</a></nav>
+</main>
+</body>
+</html>

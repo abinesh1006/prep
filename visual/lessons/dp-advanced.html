@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Advanced DP</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>MAANG extras</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 53 · MAANG extras</div>
+<h1>Advanced DP</h1>
+<p class="lede">Four DP shapes that show up in hard rounds: a few named states per day, a table filled by interval length, a set of visited nodes stored as bits, and a pair of answers returned from every tree node.</p>
+<p class="meta">Time to learn: about 4 hours · Prerequisites: <a href="dp-intro.html">DP intro</a>, <a href="knapsack.html">Knapsack</a>, <a href="tree-recursion.html">Tree recursion</a>, <a href="bit-tricks.html">Bit tricks</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p><b>State machine</b>: "buy and sell with a <b>cooldown</b> / a <b>fee</b> / at most k transactions" — each day you are in one of a few situations. <b>Interval DP</b>: "burst balloons", "merge stones", "cut a stick", "minimum cost to <b>merge / split a range</b>" — the answer for [l, r] is built from smaller ranges. <b>Bitmask DP</b>: n ≤ 16–20 and "visit <b>all</b> nodes", "assign every worker", "every subset" — store the visited set as bits. <b>Tree DP</b>: "no two adjacent nodes", "best path / cover in a tree" — each node returns a small tuple to its parent.</p></div>
+
+<h2>The idea in plain words</h2>
+<ul>
+  <li><b>State-machine DP</b>: name the situations. For stocks with cooldown: <b>hold</b> (I own a share), <b>sold</b> (I sold today, so tomorrow is a forced rest), <b>rest</b> (no share, free to buy). Each day, every state is the best of the arrows pointing into it. Three numbers per day, O(n) time, O(1) memory.</li>
+  <li><b>Interval DP</b>: <code>dp[l][r]</code> = the best answer for the range between l and r. Fill short ranges first, then longer ones, because a long range is split at some k into two shorter ranges that are already solved. For burst balloons the trick is to pick k as the <b>last</b> balloon to burst in the range — then its neighbours at that moment are exactly l and r.</li>
+  <li><b>Bitmask DP</b>: a set of up to 16 cities fits in one int — bit i is 1 when city i is visited (<code>{0, 1, 3}</code> = 1011₂ = 11). <code>dp[mask][i]</code> = cheapest way to visit exactly the cities in mask and stand at i. 2ⁿ · n states, each tried from n previous cities → O(2ⁿ · n²).</li>
+  <li><b>Tree DP</b>: post-order (children first). Each node returns two numbers — best if I <b>take</b> this node, best if I <b>skip</b> it — and the parent combines them.</li>
+</ul>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>State machine: a traffic light — at any moment it is red, amber or green, and only some changes are allowed. Interval DP: deciding the order to demolish a row of buildings by picking the one that falls last. Bitmask DP: a passport with one stamp slot per country — the set of stamps plus where you are now is all you need to plan the rest of the trip.</p></div>
+
+<h2>Watch it work</h2>
+<h3>1. State machine — Best Time to Buy and Sell Stock with Cooldown</h3>
+<p>Prices <code>[1, 2, 3, 0, 2]</code>. Badges are each state's best profit so far. (Each state also has an arrow to itself — "keep holding" and "keep resting" — not drawn.)</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const prices = [1, 2, 3, 0, 2];
+  const nodes = [{ id: 'rest', x: 110, y: 100, label: 'rest' }, { id: 'hold', x: 340, y: 30, label: 'hold' }, { id: 'sold', x: 570, y: 100, label: 'sold' }];
+  const edges = [{ a: 'rest', b: 'hold', w: 'buy −p', dir: true }, { a: 'hold', b: 'sold', w: 'sell +p', dir: true }, { a: 'sold', b: 'rest', w: 'cooldown', dir: true }];
+  const NEG = -Infinity, show = v => v === NEG ? '−∞' : v;
+  let hold = NEG, sold = NEG, rest = 0;
+  const r = Viz.recorder();
+  const panels = (day, em, nm) => [
+    { type: 'array', id: 'p', label: 'prices', values: prices, pointers: day >= 0 ? { day } : {}, marks: day >= 0 ? { [day]: 'compare' } : {} },
+    { type: 'graph', id: 'g', label: 'states (badge = best profit)', h: 150, nodes, edges, edgeMarks: em, marks: nm, badges: { hold: show(hold), sold: show(sold), rest: show(rest) } }];
+  r.step(panels(-1, {}, { rest: 'active' }), [2, 3, 4], 'Before day 0: we own nothing, so <b>rest = 0</b>. hold and sold are impossible yet (−∞).');
+  prices.forEach((p, d) => {
+    const h = Math.max(hold, rest - p);
+    const buy = rest - p > hold;
+    r.step(panels(d, buy ? { 'rest-hold': 'active' } : {}, { hold: 'active', rest: buy ? 'compare' : '' }), [6],
+      `Day ${d}, price ${p}. hold = max(keep holding ${show(hold)}, buy today ${show(rest)} − ${p} = ${show(rest - p)}) = <b>${h}</b>${buy ? ' — buying is better.' : ' — keep the old share.'}`);
+    const s = hold + p, rr = Math.max(rest, sold);
+    const fromSold = sold > rest;
+    hold = h; const oldSold = sold; sold = s; rest = rr;
+    r.step(panels(d, { 'hold-sold': 'active', ...(fromSold ? { 'sold-rest': 'active' } : {}) }, { sold: 'active', rest: 'active' }), [7, 8, 9],
+      `sold = yesterday's hold + ${p} = <b>${show(s)}</b>. rest = max(rest, yesterday's sold ${show(oldSold)}) = <b>${rr}</b>${fromSold ? ' — the cooldown after selling just ended.' : '.'}`);
+  });
+  r.step(panels(-1, {}, { sold: 'done', rest: 'done' }), [11], `Done. We must end without a share: max(sold ${sold}, rest ${rest}) = <b>${Math.max(sold, rest)}</b> (buy 1, sell 2, cooldown, buy 0, sell 2).`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Stock with cooldown', code:
+`int maxProfit(int[] prices) {
+    int hold = Integer.MIN_VALUE / 2;   // own a share
+    int sold = Integer.MIN_VALUE / 2;   // sold today
+    int rest = 0;                       // no share, may buy
+    for (int p : prices) {
+        int h = Math.max(hold, rest - p); // keep, or buy today
+        int s = hold + p;                 // sell today
+        int r = Math.max(rest, sold);     // wait / cooldown ends
+        hold = h; sold = s; rest = r;     // all use yesterday
+    }
+    return Math.max(sold, rest);
+}` });
+})();
+</script>
+
+<h3>2. Interval DP — Burst Balloons, filled by length</h3>
+<p>Balloons <code>[3, 1, 5, 8]</code>, padded with a 1 at each end: <code>b = [1, 3, 1, 5, 8, 1]</code>. <code>dp[l][r]</code> = most coins from bursting everything strictly between l and r.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const nums = [3, 1, 5, 8], b = [1, ...nums, 1], n = b.length;
+  const dp = [...Array(n)].map(() => Array(n).fill(0));
+  const done = new Set();
+  const r = Viz.recorder();
+  const panels = (extra = {}, l = null, rr = null) => {
+    const marks = {};
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      if (j <= i + 1) marks[`${i},${j}`] = 'dim';
+      else if (done.has(`${i},${j}`)) marks[`${i},${j}`] = 'done';
+    }
+    Object.assign(marks, extra);
+    const cells = dp.map((row, i) => row.map((v, j) => j <= i + 1 ? '' : done.has(`${i},${j}`) ? v : '·'));
+    return [{ type: 'array', id: 'b', label: 'b (padded)', values: b, window: l != null ? [l, rr] : null, pointers: l != null ? { l, r: rr } : {} },
+      { type: 'grid', id: 'dp', label: 'dp[l][r]', cells, rowLabels: [...Array(n).keys()].map(i => 'l=' + i), colLabels: [...Array(n).keys()].map(j => 'r=' + j), marks }];
+  };
+  r.step(panels(), [6], 'Grey cells have nothing strictly between l and r, so they are 0. We fill the rest by <b>length</b> r − l = 2, 3, 4, 5: short ranges first.');
+  for (let len = 2; len < n; len++) for (let l = 0; l + len < n; l++) {
+    const rr = l + len;
+    let best = -1, bk = -1;
+    for (let k = l + 1; k < rr; k++) {
+      const v = dp[l][k] + b[l] * b[k] * b[rr] + dp[k][rr];
+      if (v > best) { best = v; bk = k; }
+    }
+    dp[l][rr] = best; done.add(`${l},${rr}`);
+    const extra = { [`${l},${rr}`]: 'active' };
+    if (dp[l][bk] || bk > l + 1) extra[`${l},${bk}`] = 'compare';
+    if (rr > bk + 1) extra[`${bk},${rr}`] = 'compare';
+    r.step(panels(extra, l, rr), [10, 11, 12],
+      `Length ${len}, range (${l}, ${rr}): best when balloon ${bk} (value ${b[bk]}) is burst <b>last</b>. Its neighbours are then b[${l}] = ${b[l]} and b[${rr}] = ${b[rr]}: ` +
+      `dp[${l}][${bk}] ${dp[l][bk]} + ${b[l]}·${b[bk]}·${b[rr]} + dp[${bk}][${rr}] ${dp[bk][rr]} = <b>${best}</b>.`);
+  }
+  r.step(panels({ [`0,${n - 1}`]: 'path' }), [14], `The top-right cell covers all balloons: dp[0][${n - 1}] = <b>${dp[0][n - 1]}</b> coins. O(n³) time: n² cells × n choices of k.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Burst balloons', code:
+`int maxCoins(int[] nums) {
+    int n = nums.length + 2;
+    int[] b = new int[n];                // pad with 1 at both ends
+    b[0] = b[n - 1] = 1;
+    for (int i = 0; i < nums.length; i++) b[i + 1] = nums[i];
+    int[][] dp = new int[n][n];          // burst all between l, r
+    for (int len = 2; len < n; len++)    // short ranges first
+        for (int l = 0; l + len < n; l++) {
+            int r = l + len;
+            for (int k = l + 1; k < r; k++)   // k = LAST to burst
+                dp[l][r] = Math.max(dp[l][r],
+                    dp[l][k] + b[l] * b[k] * b[r] + dp[k][r]);
+        }
+    return dp[0][n - 1];
+}` });
+})();
+</script>
+
+<h3>3. Bitmask DP — visit every city once (small travelling salesman)</h3>
+<p>4 cities, start and end at city 0. A column is the set of visited cities; a row is the city we stand at. Only sets that include city 0 matter.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const D = [[0, 10, 15, 20], [10, 0, 35, 25], [15, 35, 0, 30], [20, 25, 30, 0]], n = 4, FULL = 15, INF = Infinity;
+  const gnodes = [{ id: 0, x: 120, y: 25 }, { id: 1, x: 380, y: 25 }, { id: 2, x: 60, y: 155 }, { id: 3, x: 440, y: 155 }];
+  const gedges = []; for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) gedges.push({ a: i, b: j, w: D[i][j] });
+  const masks = []; for (let m = 1; m <= FULL; m += 2) masks.push(m);
+  masks.sort((x, y) => (x.toString(2).split('1').length - y.toString(2).split('1').length) || x - y);
+  const setName = m => [...Array(n).keys()].filter(i => m & (1 << i)).join(',');
+  const dp = {}; for (const m of masks) dp[m] = Array(n).fill(INF);
+  const r = Viz.recorder();
+  const filled = new Set();
+  const panels = (extra = {}, em = {}, nm = {}) => {
+    const marks = {};
+    masks.forEach((m, c) => { for (let i = 0; i < n; i++) {
+      if (!(m & (1 << i)) || (i === 0 && m !== 1)) marks[`${i},${c}`] = 'dim';
+      else if (filled.has(`${m},${i}`)) marks[`${i},${c}`] = 'done';
+    } });
+    Object.assign(marks, extra);
+    const cells = [...Array(n).keys()].map(i => masks.map(m => filled.has(`${m},${i}`) ? dp[m][i] : ''));
+    return [{ type: 'graph', id: 'g', label: 'cities (edge = distance)', h: 175, nodes: gnodes, edges: gedges, edgeMarks: em, marks: nm },
+      { type: 'grid', id: 'dp', label: 'dp[set][end city]', cells, rowLabels: ['at 0', 'at 1', 'at 2', 'at 3'], colLabels: masks.map(setName), marks }];
+  };
+  dp[1][0] = 0; filled.add('1,0');
+  r.step(panels({ '0,0': 'active' }, {}, { 0: 'active' }), [5], 'Start: we are at city 0 and have visited only {0} (mask 0001₂ = 1). Cost 0. Columns are visited sets, sorted by size.');
+  masks.forEach((m, c) => {
+    if (m === 1) return;
+    for (let i = 1; i < n; i++) {
+      if (!(m & (1 << i))) continue;
+      const prev = m ^ (1 << i);
+      let best = INF, bj = -1;
+      for (let j = 0; j < n; j++) if ((prev & (1 << j)) && dp[prev][j] + D[j][i] < best) { best = dp[prev][j] + D[j][i]; bj = j; }
+      dp[m][i] = best; filled.add(`${m},${i}`);
+      const pc = masks.indexOf(prev);
+      const opts = [...Array(n).keys()].filter(j => (prev & (1 << j)) && dp[prev][j] < INF).map(j => `from ${j}: ${dp[prev][j]} + ${D[j][i]}`);
+      r.step(panels({ [`${i},${c}`]: 'active', [`${bj},${pc}`]: 'compare' }, { [`${bj}-${i}`]: 'active', [`${i}-${bj}`]: 'active' }, { [i]: 'active', [bj]: 'compare' }), [9, 10, 11, 12, 13],
+        `Visited {${setName(m)}}, standing at ${i}. Before arriving, the set was {${setName(prev)}}. ${opts.join(', ')} → <b>${best}</b> (came from ${bj}).`);
+    }
+  });
+  let best = INF, bi = -1;
+  for (let i = 1; i < n; i++) if (dp[FULL][i] + D[i][0] < best) { best = dp[FULL][i] + D[i][0]; bi = i; }
+  const lastC = masks.indexOf(FULL);
+  r.step(panels({ [`${bi},${lastC}`]: 'path' }, { [`0-${bi}`]: 'path' }, { 0: 'done' }), [15, 16, 17],
+    `All cities visited (column 0,1,2,3). Close the loop back to 0: ${[1, 2, 3].map(i => `${dp[FULL][i]} + ${D[i][0]}`).join(', ')} → best tour = <b>${best}</b> (0 → 1 → 3 → 2 → 0).`);
+  Viz.mount('#demo3', { frames: r.frames, title: 'Bitmask DP', code:
+`int tsp(int[][] d) {                  // only for small n (<= 16)
+    int n = d.length, FULL = (1 << n) - 1, INF = 1_000_000_000;
+    int[][] dp = new int[1 << n][n];    // dp[mask][end city]
+    for (int[] row : dp) Arrays.fill(row, INF);
+    dp[1][0] = 0;                       // at 0, visited {0}
+    for (int mask = 3; mask <= FULL; mask += 2) // contains 0
+        for (int i = 1; i < n; i++) {
+            if ((mask & (1 << i)) == 0) continue; // i not in set
+            int prev = mask ^ (1 << i);   // the set before i
+            for (int j = 0; j < n; j++)   // last city before i
+                if ((prev & (1 << j)) != 0 && dp[prev][j] < INF)
+                    dp[mask][i] = Math.min(dp[mask][i],
+                                           dp[prev][j] + d[j][i]);
+        }
+    int best = INF;                     // go back home to 0
+    for (int i = 1; i < n; i++)
+        best = Math.min(best, dp[FULL][i] + d[i][0]);
+    return best;
+}` });
+})();
+</script>
+
+<h3>4. Tree DP — House Robber III</h3>
+<p>Houses form a tree; you cannot rob a parent and its child on the same night. Every node returns <b>r</b> (best if I rob this house) and <b>s</b> (best if I skip it).</p>
+<div id="demo4"></div>
+<script>
+(() => {
+  const nodes = { a: { val: 3, left: 'b', right: 'c' }, b: { val: 4, left: 'd', right: 'e' }, c: { val: 5, left: null, right: 'f' }, d: { val: 1, left: null, right: null }, e: { val: 3, left: null, right: null }, f: { val: 1, left: null, right: null } };
+  const res = {};
+  const r = Viz.recorder();
+  const panels = (cur, extra = {}) => {
+    const marks = {}; for (const k of Object.keys(res)) marks[k] = 'done';
+    if (cur) marks[cur] = 'active';
+    Object.assign(marks, extra);
+    return [{ type: 'tree', id: 't', label: 'houses (badge: r = rob it, s = skip it)', root: 'a', nodes, marks, badges: Object.fromEntries(Object.entries(res).map(([k, [ro, sk]]) => [k, `r${ro} s${sk}`])) }];
+  };
+  r.step(panels(null), [2], 'Go <b>post-order</b>: a node can decide only after its children report back. Empty children return r = 0, s = 0.');
+  (function dfs(id) {
+    if (!id) return [0, 0];
+    const L = dfs(nodes[id].left), R = dfs(nodes[id].right);
+    const rob = nodes[id].val + L[1] + R[1];
+    const skip = Math.max(...L) + Math.max(...R);
+    res[id] = [rob, skip];
+    const kids = [nodes[id].left, nodes[id].right].filter(Boolean);
+    const extra = Object.fromEntries(kids.map(k => [k, 'compare']));
+    r.step(panels(id, extra), [8, 9, 10],
+      kids.length ? `House ${nodes[id].val}: rob it → ${nodes[id].val} + children's s (${L[1]} + ${R[1]}) = <b>${rob}</b>. Skip it → each child picks its better number: ${Math.max(...L)} + ${Math.max(...R)} = <b>${skip}</b>.`
+        : `Leaf house ${nodes[id].val}: rob it → <b>${rob}</b>, skip it → <b>0</b>.`);
+    return [rob, skip];
+  })('a');
+  const [ro, sk] = res.a;
+  r.step(panels(null, { a: 'path', b: 'path', c: 'path' }), [3], `At the root: rob = ${ro}, skip = ${sk}. Answer = max = <b>${Math.max(ro, sk)}</b> (rob 4 and 5, skip 3). One visit per node → O(n).`);
+  Viz.mount('#demo4', { frames: r.frames, title: 'House Robber III', code:
+`int rob(TreeNode root) {
+    int[] r = dfs(root);
+    return Math.max(r[0], r[1]);
+}
+int[] dfs(TreeNode node) {          // returns {rob, skip}
+    if (node == null) return new int[]{0, 0};
+    int[] L = dfs(node.left), R = dfs(node.right);
+    int rob = node.val + L[1] + R[1];   // children skipped
+    int skip = Math.max(L[0], L[1]) + Math.max(R[0], R[1]);
+    return new int[]{rob, skip};
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"State machine: today's best in each state depends only on yesterday's three numbers, and every allowed move is one arrow." "Interval DP: if k is the last balloon in (l, r), the left part and the right part never touch each other, so they are independent smaller problems." "Bitmask: the future of the tour depends only on which cities are done and where I am, not on the order I visited them." "Tree DP: a node's choice only constrains its direct children, so two numbers per child are enough."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// Interval DP: by length, then left end, then split</span>
+<span class="k">for</span> (len = <span class="n">2</span>; len &lt; n; len++)
+  <span class="k">for</span> (l = <span class="n">0</span>; l + len &lt; n; l++) { r = l + len;
+    <span class="k">for</span> (k = l + <span class="n">1</span>; k &lt; r; k++) dp[l][r] = best(dp[l][k] ⊕ dp[k][r]); }
+<span class="c">// Bitmask: bit i = "i is in the set"</span>
+in = (mask &gt;&gt; i &amp; <span class="n">1</span>) == <span class="n">1</span>;  add = mask | <span class="n">1</span> &lt;&lt; i;  remove = mask ^ <span class="n">1</span> &lt;&lt; i;
+<span class="c">// Tree DP: return a tuple</span>
+<span class="k">int</span>[] dfs(node) { L = dfs(left); R = dfs(right); <span class="k">return</span> combine(L, R); }</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Name the states and draw the arrows. Intervals: fill by length, pick k as the last action. Small n + "all of them" → bitmask. Trees → return {take, skip}.</b></p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Stock DP: updating <code>hold</code> first and then using the <i>new</i> hold for <code>sold</code> — compute all from yesterday's values (use temporaries).</li>
+  <li>Burst Balloons with k as the <i>first</i> balloon to burst — the neighbours then change and the halves are not independent.</li>
+  <li>Interval DP looping <code>l</code> then <code>r</code> from 0 — you read cells that are not filled yet. Loop by length.</li>
+  <li>Bitmask DP for n = 25 — 2²⁵ · 25 is too much. It is for n ≤ ~16–20.</li>
+  <li>House Robber III with memo on node + "can rob" boolean is fine, but the {rob, skip} pair is simpler and needs no map.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-cooldown/">309. Stock with Cooldown</a> — animation 1.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-transaction-fee/">714. Stock with Transaction Fee</a> — two states, pay fee on sell.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/house-robber-iii/">337. House Robber III</a> — animation 4.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/burst-balloons/">312. Burst Balloons</a> — animation 2.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/minimum-cost-to-cut-a-stick/">1547. Minimum Cost to Cut a Stick</a> — same interval shape, k = first cut.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/shortest-path-visiting-all-nodes/">847. Shortest Path Visiting All Nodes</a> — BFS over (node, mask).</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/binary-tree-cameras/">968. Binary Tree Cameras</a> — tree DP with three states.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock-iv/">188. Stock IV</a> — states hold/free for each of k transactions.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>In the cooldown problem, why does rest come from yesterday's sold and not today's?</summary>
+<p>Selling today forces a rest tomorrow, so the sold state turns into rest one day later — that one-day delay is the cooldown.</p></details>
+<details class="quiz"><summary>Why do we pad the balloons with 1 at both ends?</summary>
+<p>A balloon at the edge has a missing neighbour that counts as 1. Padding makes every range (l, r) have real values at l and r.</p></details>
+<details class="quiz"><summary>How many states does the TSP bitmask DP have for n = 15?</summary>
+<p>2¹⁵ × 15 ≈ 491,000 states, each with up to 15 transitions — about 7 million steps, fine.</p></details>
+<details class="quiz"><summary>What does a null child return in House Robber III, and why?</summary>
+<p>{0, 0}: there is no house, so robbing or skipping it gives nothing.</p></details>
+
+<nav class="pager"><a href="segment-tree-fenwick.html">← Segment tree and Fenwick</a><a href="advanced-graphs.html">Advanced graphs →</a></nav>
+</main>
+</body>
+</html>

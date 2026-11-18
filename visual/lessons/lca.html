@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lowest Common Ancestor</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Recursion &amp; trees</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 31 · Recursion &amp; trees</div>
+<h1>Lowest Common Ancestor</h1>
+<p class="lede">The lowest node that has both p and q below it (or is one of them) — the point where the two paths from the root split apart.</p>
+<p class="meta">Time to learn: about 1.5 hours · Prerequisites: <a href="tree-recursion.html">Tree recursion</a>, <a href="bst.html">Binary search trees</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"<b>Lowest common ancestor</b>", "first shared manager of two employees", "<b>distance between two nodes</b>" (= depth(p) + depth(q) − 2 × depth(LCA)), "smallest subtree containing both", "where do the paths to p and q meet".</p></div>
+
+<h2>The idea in plain words</h2>
+<p>An <b>ancestor</b> of a node = its parent, its parent's parent, and so on up to the root (we also count the node itself). A <b>common</b> ancestor of p and q is an ancestor of both — the root always is one. The <b>lowest</b> common ancestor (LCA) is the deepest one: walk down from the root along the path to p and the path to q; the LCA is the last node the two paths share.</p>
+<p><b>In a BST</b> the values tell you where p and q are. At each node: if both are smaller, both are in the left subtree → go left. If both are bigger → go right. Otherwise they are on different sides (or one of them <i>is</i> this node) → this is the <b>split point</b>, the LCA. One path down: O(h).</p>
+<p><b>In a plain binary tree</b> there is no order, so ask each subtree a question by recursion: "did you find p or q down there?" Each call returns the p or q it found (or the LCA if it found both), else null.</p>
+<ul>
+  <li>If the node <b>is</b> p or q → return it (no need to look below).</li>
+  <li>If the left side found something <b>and</b> the right side found something → p and q are on different sides → <b>I am the LCA</b>.</li>
+  <li>Otherwise pass up whatever one side found (or null).</li>
+</ul>
+<p>That visits each node at most once: O(n) time, O(h) stack.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A family tree: the lowest common ancestor of you and your cousin is your shared grandparent — not your great-grandparent (also shared, but higher). In a company, it is the first manager both employees report up to. Ask each department "is either of the two people in your team?" — the manager whose two different teams both say "yes" is the one.</p></div>
+
+<h2>Watch it work</h2>
+<h3>1. LCA in a BST: find the split point</h3>
+<p>Three questions on the same BST: LCA(3, 5), then LCA(2, 9), then LCA(2, 5). <b>Blue</b> = p and q, <b>yellow</b> = where we stand, <b>green</b> = the answer.</p>
+<div id="demo1"></div>
+<h3>2. LCA in a binary tree: what each call returns</h3>
+<p>Find LCA(<b>6</b>, <b>4</b>). The badge under a node shows what its call <b>returned</b> to the parent (∅ = null, "found nothing").</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const T = { 6: { val: 6, left: 2, right: 8 }, 2: { val: 2, left: 0, right: 4 }, 8: { val: 8, left: 7, right: 9 },
+    0: { val: 0, left: null, right: null }, 4: { val: 4, left: 3, right: 5 }, 7: { val: 7, left: null, right: null },
+    9: { val: 9, left: null, right: null }, 3: { val: 3, left: null, right: null }, 5: { val: 5, left: null, right: null } };
+  const r = Viz.recorder();
+  const pathTo = x => { const out = [6]; let n = 6; while (n !== x) { n = x < n ? T[n].left : T[n].right; out.push(n); } return out; };
+  for (const [p, q] of [[3, 5], [2, 9], [2, 5]]) {
+    const marks = { [p]: 'compare', [q]: 'compare' }, edgeMarks = {};
+    const snap = (line, say, ptrs = {}, vars = {}) => r.step([
+      { type: 'tree', id: 't', label: `LCA(${p}, ${q}) in a BST`, root: 6, nodes: T, marks: { ...marks }, edgeMarks: { ...edgeMarks }, pointers: ptrs },
+      { type: 'vars', id: 'v', vars: { p, q, ...vars } }], line, say);
+    snap([2], `Find the LCA of <b>${p}</b> and <b>${q}</b>. Start at the root 6.`);
+    let node = 6, prev = null;
+    while (node != null) {
+      const v = T[node].val;
+      if (p < v && q < v) {
+        marks[node] = marks[node] === 'compare' ? 'compare' : 'visited';
+        snap([4, 5], `At <b>${v}</b>: ${p} and ${q} are <b>both smaller</b>, so both live in the left subtree. Their LCA must be down there too → go left.`, { node }, { node: v });
+        prev = node; node = T[node].left; edgeMarks[`${prev}-${node}`] = 'active';
+      } else if (p > v && q > v) {
+        marks[node] = 'visited';
+        snap([6, 7], `At <b>${v}</b>: ${p} and ${q} are <b>both bigger</b> → both are in the right subtree. Go right.`, { node }, { node: v });
+        prev = node; node = T[node].right; edgeMarks[`${prev}-${node}`] = 'active';
+      } else {
+        marks[node] = 'done';
+        snap([8], v === p || v === q
+          ? `At <b>${v}</b>: it <b>is</b> one of the two nodes, and the other (${v === p ? q : p}) is below it. A node counts as its own ancestor, so the LCA is <b>${v}</b>.`
+          : `At <b>${v}</b>: ${Math.min(p, q)} &lt; ${v} &lt; ${Math.max(p, q)}. They are on <b>different sides</b> — the paths split here. LCA = <b>${v}</b>.`, { node }, { node: v, LCA: v });
+        for (const x of [p, q]) { const ph = pathTo(x); for (let i = 1; i < ph.length; i++) edgeMarks[`${ph[i - 1]}-${ph[i]}`] = 'path'; }
+        snap([8], `The two root paths: 6 → ${pathTo(p).slice(1).join(' → ') || '(root)'} and 6 → ${pathTo(q).slice(1).join(' → ')}. They share everything down to <b>${v}</b> and part ways after it.`, {}, { LCA: v });
+        break;
+      }
+    }
+  }
+  Viz.mount('#demo1', { frames: r.frames, title: 'LCA in a BST', code:
+`TreeNode lcaBST(TreeNode root, int p, int q) {
+    TreeNode node = root;
+    while (node != null) {
+        if (p < node.val && q < node.val)
+            node = node.left;     // both smaller
+        else if (p > node.val && q > node.val)
+            node = node.right;    // both bigger
+        else return node;         // split point
+    }
+    return null;
+}` });
+})();
+
+(() => {
+  const T = { 3: { val: 3, left: 5, right: 1 }, 5: { val: 5, left: 6, right: 2 }, 1: { val: 1, left: 0, right: 8 },
+    6: { val: 6, left: null, right: null }, 2: { val: 2, left: 7, right: 4 }, 0: { val: 0, left: null, right: null },
+    8: { val: 8, left: null, right: null }, 7: { val: 7, left: null, right: null }, 4: { val: 4, left: null, right: null } };
+  const p = 6, q = 4, r = Viz.recorder(), stack = [], badges = {}, ret = {};
+  const snap = (cur, line, say, edgeMarks = {}, final = null) => {
+    const marks = {};
+    for (const v of stack) marks[v] = 'visited';
+    for (const [k, v] of Object.entries(ret)) marks[k] = v == null ? 'dim' : 'visited';
+    marks[p] = 'compare'; marks[q] = 'compare';
+    if (cur != null) marks[cur] = 'active';
+    if (final != null) marks[final] = 'done';
+    r.step([{ type: 'tree', id: 't', label: `LCA(${p}, ${q}) — badge = what the call returned`, root: 3, nodes: T, marks, badges, edgeMarks, pointers: { p, q } },
+      { type: 'stack', id: 's', label: 'call stack', items: stack.map(v => ({ id: 'c' + v, val: `lca(${v})` })), marks: stack.length ? { [stack.length - 1]: 'active' } : {} }], line, say);
+  };
+  const show = v => v == null ? '∅' : v;
+  function lca(id) {
+    if (id == null) return null;
+    stack.push(id);
+    if (id === p || id === q) {
+      badges[id] = '↑ ' + id; ret[id] = id;
+      snap(id, [2, 3], `<b>${id}</b> is ${id === p ? 'p' : 'q'} itself. Return it right away — even if the other one were below, this node would be the answer.`);
+      stack.pop(); return id;
+    }
+    const n = T[id];
+    if (n.left == null && n.right == null) {
+      badges[id] = '↑ ∅'; ret[id] = null;
+      snap(id, [4, 5, 7], `<b>${id}</b> is not p or q, and both its children are null, so neither side found anything. Return <b>null</b>.`);
+      stack.pop(); return null;
+    }
+    snap(id, [4], `<b>${id}</b> is not p or q. Ask the left subtree, then the right: "did you find p or q?"`);
+    const L = lca(n.left);
+    const R = lca(n.right);
+    let res, say;
+    if (L != null && R != null) { res = id; say = `<b>${id}</b>: left found ${L} and right found ${R} — p and q are on <b>different sides</b>, so ${id} is the LCA. Return ${id}.`; }
+    else { res = L != null ? L : R; say = res == null ? `<b>${id}</b>: both sides returned null. Nothing here: return <b>null</b>.` : `<b>${id}</b>: only the ${L != null ? 'left' : 'right'} side found something (${res}). Pass it up unchanged.`; }
+    badges[id] = '↑ ' + show(res); ret[id] = res;
+    snap(id, [L != null && R != null ? 6 : 7], say, {}, L != null && R != null ? id : null);
+    stack.pop(); return res;
+  }
+  snap(null, [1], `p = ${p}, q = ${q}. No order to use, so every call reports what it found below.`);
+  const ans = lca(3);
+  snap(null, [7], `The root got 5 from the left and null from the right, so it passes 5 up: <b>LCA = ${ans}</b>. Paths 5 → 6 and 5 → 2 → 4 meet at 5. Each node visited once: O(n).`,
+    { '5-6': 'path', '5-2': 'path', '2-4': 'path' }, ans);
+  Viz.mount('#demo2', { frames: r.frames, title: 'LCA in a binary tree', code:
+`TreeNode lca(TreeNode node, TreeNode p, TreeNode q) {
+    if (node == null || node == p || node == q)
+        return node;              // found one, or nothing
+    TreeNode l = lca(node.left, p, q);
+    TreeNode r = lca(node.right, p, q);
+    if (l != null && r != null) return node; // split
+    return l != null ? l : r;     // pass up what we found
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"In a BST, if p and q are both smaller than the node they are both on the left, so the LCA is too; when they fall on different sides, this node is the deepest one above both. In a binary tree, each call returns p, q or the LCA if it is in that subtree; the first node that hears 'found' from both sides is the split point. BST version O(h), general version O(n)."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// BST: walk to the split point</span>
+<span class="k">while</span> (<span class="k">true</span>) {
+    <span class="k">if</span> (p &lt; node.val &amp;&amp; q &lt; node.val) node = node.left;
+    <span class="k">else if</span> (p &gt; node.val &amp;&amp; q &gt; node.val) node = node.right;
+    <span class="k">else return</span> node;
+}
+<span class="c">// Binary tree: who found what?</span>
+<span class="k">if</span> (node == <span class="k">null</span> || node == p || node == q) <span class="k">return</span> node;
+l = lca(left); r = lca(right);
+<span class="k">return</span> l != <span class="k">null</span> &amp;&amp; r != <span class="k">null</span> ? node : (l != <span class="k">null</span> ? l : r);</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>BST: both smaller → left, both bigger → right, else here.</b> Binary tree: found on both sides → me; else pass up the side that found something.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Forgetting that a node is its own ancestor: LCA(2, 4) is 2 if 4 is below 2.</li>
+  <li>Using the BST shortcut on a tree that is not a BST — the values say nothing about where nodes are.</li>
+  <li>Comparing values instead of nodes in the general version when values can repeat. Compare references: <code>node == p</code>.</li>
+  <li>If p or q might be missing from the tree, the basic version returns the one it found. Count how many were really found (LC 1644).</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/">235. LCA of a Binary Search Tree</a> — animation 1.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/">236. LCA of a Binary Tree</a> — animation 2.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/lowest-common-ancestor-of-deepest-leaves/">1123. LCA of Deepest Leaves</a> — return (depth, lca) from each side; equal depths → me.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/step-by-step-directions-from-a-binary-tree-node-to-another/">2096. Step-By-Step Directions From a Binary Tree Node to Another</a> — find both root paths, drop the shared prefix.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/all-nodes-distance-k-in-binary-tree/">863. All Nodes Distance K in Binary Tree</a> — add parent links, then BFS from the target.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>In the BST above (root 6), what is LCA(0, 3)?</summary>
+<p>2: at 6 both are smaller → left to 2; at 2, 0 &lt; 2 &lt; 3, so they split at 2.</p></details>
+<details class="quiz"><summary>Why does the general version return as soon as node == p, without searching below?</summary>
+<p>If q is below p, p is the LCA. If q is elsewhere, some higher node will hear "found" from both sides. Either way nothing below p changes the answer.</p></details>
+<details class="quiz"><summary>How do you get the distance between p and q using the LCA?</summary>
+<p>depth(p) + depth(q) − 2 × depth(LCA): go up from p to the LCA, then down to q.</p></details>
+<details class="quiz"><summary>What is the time of each version on a balanced tree with n nodes?</summary>
+<p>BST version O(log n) (one path). General version O(n) (it may need to look at every node).</p></details>
+
+<nav class="pager"><a href="bst.html">← Binary search trees</a><a href="graph-basics.html">Graph basics →</a></nav>
+</main>
+</body>
+</html>

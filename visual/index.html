@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../index.html')}catch(e){location.replace('../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DSA Visual</title>
+<link rel="stylesheet" href="visual.css">
+<style>
+  .hero { padding: 18px 0 6px; }
+  .hero h1 { font-size: 2.5rem; margin-bottom: .2em; }
+  .group-title { display: flex; align-items: baseline; gap: 12px; margin: 2.2em 0 .8em; }
+  .group-title h2 { border: 0; margin: 0; padding: 0; }
+  .group-title span { color: var(--ink-3); font-size: .9rem; }
+  .card .n { color: var(--brand); font-size: .8rem; font-weight: 700; letter-spacing: .06em; }
+  .weeks { display: grid; gap: 10px; margin: 1em 0; }
+  .wk { display: grid; grid-template-columns: 92px 1fr; gap: 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .wk .when { font-weight: 800; color: var(--brand); line-height: 1.3; }
+  .wk .when small { display: block; color: var(--ink-3); font-weight: 500; }
+  .wk p { margin: .2em 0; max-width: none; }
+  .wk .goal { color: var(--ink-2); font-size: .93rem; }
+  .levels { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+  .level { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .level b { font-size: 1.6rem; color: var(--brand); display: block; line-height: 1.2; }
+  .level span { color: var(--ink-2); font-size: .93rem; }
+  @media (max-width: 560px) { .wk { grid-template-columns: 1fr; gap: 4px; } .hero h1 { font-size: 2rem; } }
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="index.html">DSA Visual</a><span class="sp"></span>
+  <a href="#roadmap">Roadmap</a><a href="#lessons">Lessons</a><a href="all-patterns.html">All patterns</a><a href="../index.html">Library</a>
+</div></header>
+<main class="wide">
+<section class="hero" style="max-width:760px">
+  <div class="kicker">Animated, beginner-first</div>
+  <h1>DSA Visual</h1>
+  <p class="lede">Every coding-interview pattern, explained in plain words, then shown as an animation you can play, pause and step through, with the matching Java line lit up. Learn them all in one week, then practise to MAANG level.</p>
+  <p class="meta"><a href="all-patterns.html"><b>Every pattern on one page + pattern-spotting drill →</b></a><br>Read a lesson, watch the animation twice, then solve the practice problems without looking. The book (PDF) has every pattern in depth and the Blind 75 at the end.</p>
+</section>
+
+<section style="max-width:760px">
+<h2 id="honest">Will this let me solve any DSA question?</h2>
+<p><b>Most of them — if you practise, not just read.</b> About 9 in 10 interview questions are one of the 55 patterns here, or two of them combined. Once you can spot the pattern, the code is a template you already know.</p>
+<p>Reading alone will not get you there. Recognising a pattern when it is hidden inside a story ("a robot on a grid", "courses with prerequisites") only comes from solving problems yourself. The goal is <b>about 150–200 solved problems</b>, each re-solved from memory a few days later.</p>
+<div class="box remember"><span class="tag">The honest rule</span>
+<p>Reading teaches you the pattern. Solving teaches you to <b>spot</b> it. Re-solving after 1, 3 and 7 days stops you <b>forgetting</b> it.</p></div>
+<p>What stays hard even after all this: some "Hard" problems need a one-off trick (a clever math fact, an unusual data structure). Nobody solves all of those cold. Interviewers mostly ask Mediums, and for those the patterns are enough.</p>
+</section>
+
+<section id="roadmap" style="max-width:860px">
+<h2>The plan: every pattern in 1 week, then MAANG level</h2>
+<div class="levels">
+  <div class="level"><b>Week 1</b><span><b>Learn every pattern.</b> ~7 hours a day, 6–8 lessons a day, one practice problem per pattern. You will recognise all 47 core patterns and know each template.</span></div>
+  <div class="level"><b>Weeks 2–4</b><span><b>Blind 75</b> (book chapters 17–18 at the end): 3–4 problems a day, every one tagged with its pattern. Mediums start to feel routine.</span></div>
+  <div class="level"><b>Weeks 5–10</b><span><b>MAANG level.</b> Harder problems per pattern, timed: Medium in 20–25 min, Hard in 40. ~250 problems total and weekly mock interviews.</span></div>
+</div>
+<div class="box plain"><span class="tag">Honest expectation</span>
+<p>One week is enough to <b>learn and recognise</b> every pattern. It is not enough to be fast under interview pressure — that comes from the practice weeks. At 3 hours a day after week 1, most people reach the MAANG bar in 2–3 months.</p></div>
+
+<h3>Week 1 — every pattern, day by day</h3>
+<div class="weeks">
+  <div class="wk"><div class="when">Day 1<small>Arrays</small></div><div>
+    <p><a href="lessons/big-o.html">Big-O</a> · <a href="lessons/arrays-hashing.html">Arrays &amp; hashing</a> · <a href="lessons/two-pointers.html">Two pointers</a> · <a href="lessons/sliding-window.html">Sliding window</a> · <a href="lessons/prefix-sum.html">Prefix sum</a> · <a href="lessons/kadane.html">Kadane</a> · <a href="lessons/in-place-tricks.html">In-place tricks</a></p>
+    <p class="goal">Practice: Two Sum, 3Sum, Longest Substring Without Repeating, Subarray Sum Equals K, Maximum Subarray, Sort Colors, Product Except Self.</p></div></div>
+  <div class="wk"><div class="when">Day 2<small>Search, sort, greedy</small></div><div>
+    <p><a href="lessons/binary-search.html">Binary search</a> · <a href="lessons/binary-search-answer.html">Search on the answer</a> · <a href="lessons/rotated-array.html">Rotated array</a> · <a href="lessons/merge-sort.html">Merge sort</a> · <a href="lessons/quick-sort.html">Quick sort</a> · <a href="lessons/intervals.html">Intervals</a> · <a href="lessons/greedy.html">Greedy</a> · <a href="lessons/bit-tricks.html">Bit tricks</a></p>
+    <p class="goal">Practice: Search Insert, Koko Eating Bananas, Search in Rotated Array, Kth Largest, Merge Intervals, Jump Game, Single Number.</p></div></div>
+  <div class="wk"><div class="when">Day 3<small>Lists, stacks, heaps</small></div><div>
+    <p><a href="lessons/linked-list-reverse.html">Reverse list</a> · <a href="lessons/fast-slow-pointers.html">Fast &amp; slow</a> · <a href="lessons/merge-lists.html">Merge lists</a> · <a href="lessons/lru-cache.html">LRU cache</a> · <a href="lessons/stack-basics.html">Stacks</a> · <a href="lessons/monotonic-stack.html">Monotonic stack</a> · <a href="lessons/heap.html">Heap</a> · <a href="lessons/top-k.html">Top K</a> · <a href="lessons/two-heaps.html">Two heaps</a></p>
+    <p class="goal">Practice: Reverse List, Linked List Cycle II, Merge K Lists, LRU Cache, Valid Parentheses, Daily Temperatures, Top K Frequent, Find Median.</p></div></div>
+  <div class="wk"><div class="when">Day 4<small>Recursion &amp; trees</small></div><div>
+    <p><a href="lessons/recursion.html">Recursion</a> · <a href="lessons/tree-traversals.html">Traversals</a> · <a href="lessons/tree-bfs.html">Level order</a> · <a href="lessons/tree-recursion.html">Tree recursion</a> · <a href="lessons/bst.html">BST</a> · <a href="lessons/lca.html">LCA</a> · <a href="lessons/trie.html">Trie</a></p>
+    <p class="goal">Practice: Max Depth, Level Order, Diameter, Validate BST, LCA of Binary Tree, Max Path Sum, Implement Trie.</p></div></div>
+  <div class="wk"><div class="when">Day 5<small>Graphs</small></div><div>
+    <p><a href="lessons/graph-basics.html">Graph basics</a> · <a href="lessons/grid-bfs-dfs.html">Grids</a> · <a href="lessons/multi-source-bfs.html">Multi-source BFS</a> · <a href="lessons/topo-sort.html">Topological sort</a> · <a href="lessons/union-find.html">Union-find</a> · <a href="lessons/dijkstra.html">Dijkstra</a> · <a href="lessons/mst.html">MST</a></p>
+    <p class="goal">Practice: Number of Islands, Rotting Oranges, Course Schedule II, Redundant Connection, Network Delay Time, Min Cost to Connect Points.</p></div></div>
+  <div class="wk"><div class="when">Day 6<small>Backtracking &amp; DP I</small></div><div>
+    <p><a href="lessons/backtracking.html">Backtracking</a> · <a href="lessons/permutations.html">Permutations</a> · <a href="lessons/n-queens.html">N-Queens</a> · <a href="lessons/dp-intro.html">DP intro</a> · <a href="lessons/coin-change.html">Coin change</a> · <a href="lessons/lis.html">LIS</a></p>
+    <p class="goal">Practice: Subsets, Permutations II, Combination Sum, N-Queens, House Robber, Coin Change, LIS.</p></div></div>
+  <div class="wk"><div class="when">Day 7<small>DP II &amp; review</small></div><div>
+    <p><a href="lessons/lcs-edit-distance.html">LCS &amp; edit distance</a> · <a href="lessons/knapsack.html">Knapsack</a> · <a href="lessons/grid-dp.html">Grid DP</a> · <a href="../read/DSA-and-Full-Stack-Interview-Guide.html">Book ch. 16 cheat sheets</a></p>
+    <p class="goal">Practice: LCS, Edit Distance, Partition Equal Subset Sum, Unique Paths. Evening: write every template from memory on paper — any you cannot write, re-watch.</p></div></div>
+</div>
+
+<h3>Weeks 2–10 — up to MAANG level</h3>
+<ol class="steps">
+  <li><b>Weeks 2–4: Blind 75</b> (book chapters 17–18). Try 20 minutes, read the "In plain words" box, try again, then the solution. Re-solve after 1, 3 and 7 days.</li>
+  <li><b>Weeks 5–8: depth per pattern.</b> 4–6 harder problems per pattern (NeetCode 150 / LeetCode company tags for Google, Meta, Amazon). Hards in trees, graphs and DP are what MAANG rounds add.</li>
+  <li><b>Weeks 9–10: interview mode.</b> Random Mediums, 25-minute timer, talk out loud. Two mock interviews a week. System design and full-stack chapters (book 13–15) 30 minutes a day.</li>
+</ol>
+<div class="box remember"><span class="tag">Every day, the same routine</span>
+<p>Re-solve what is due (1 / 3 / 7 days old) → learn or watch one pattern → solve new problems → write the pattern name and its one-line trick in a notebook.</p></div>
+</section>
+
+<section id="lessons">
+<div class="group-title"><h2>Foundations</h2><span>start here</span></div>
+<div class="grid">
+  <a class="card" href="lessons/big-o.html"><span class="n">1</span><b>Big-O</b><span>How to tell if a solution is fast enough, before you code it.</span></a>
+  <a class="card" href="lessons/arrays-hashing.html"><span class="n">2</span><b>Arrays &amp; hashing</b><span>Memory, hash maps, and the O(1) lookup that solves half the easies.</span></a>
+  <a class="card" href="lessons/recursion.html"><span class="n">26</span><b>Recursion</b><span>The call stack, base cases, and trusting the recursion.</span></a>
+</div>
+<div class="group-title"><h2>Arrays &amp; strings</h2></div>
+<div class="grid">
+  <a class="card" href="lessons/two-pointers.html"><span class="n">3</span><b>Two pointers</b><span>Sorted + pair → two fingers moving inward.</span></a>
+  <a class="card" href="lessons/prefix-sum.html"><span class="n">4</span><b>Prefix sum</b><span>Any range sum in O(1); subarray sum equals K.</span></a>
+  <a class="card" href="lessons/kadane.html"><span class="n">5</span><b>Kadane</b><span>Best subarray: keep going or start fresh.</span></a>
+  <a class="card" href="lessons/sliding-window.html"><span class="n">6</span><b>Sliding window</b><span>Longest / shortest substring or subarray with a rule.</span></a>
+  <a class="card" href="lessons/in-place-tricks.html"><span class="n">7</span><b>In-place tricks</b><span>Dutch flag, reversal rotation, product except self.</span></a>
+</div>
+<div class="group-title"><h2>Searching &amp; sorting</h2></div>
+<div class="grid">
+  <a class="card" href="lessons/binary-search.html"><span class="n">8</span><b>Binary search</b><span>Halve the search space every step.</span></a>
+  <a class="card" href="lessons/binary-search-answer.html"><span class="n">9</span><b>Binary search on the answer</b><span>"Minimum speed / capacity such that…"</span></a>
+  <a class="card" href="lessons/rotated-array.html"><span class="n">10</span><b>Rotated sorted array</b><span>One half is always sorted.</span></a>
+  <a class="card" href="lessons/merge-sort.html"><span class="n">11</span><b>Merge sort</b><span>Split, sort halves, merge.</span></a>
+  <a class="card" href="lessons/quick-sort.html"><span class="n">12</span><b>Quick sort &amp; quickselect</b><span>Partition around a pivot; Kth largest in O(n).</span></a>
+</div>
+<div class="group-title"><h2>Linked lists</h2></div>
+<div class="grid">
+  <a class="card" href="lessons/linked-list-reverse.html"><span class="n">13</span><b>Reverse a list</b><span>prev, curr, next — the three-pointer dance.</span></a>
+  <a class="card" href="lessons/fast-slow-pointers.html"><span class="n">14</span><b>Fast &amp; slow pointers</b><span>Middle, cycles, nth from end.</span></a>
+  <a class="card" href="lessons/merge-lists.html"><span class="n">15</span><b>Merge lists</b><span>Dummy head; merge K with a heap.</span></a>
+  <a class="card" href="lessons/lru-cache.html"><span class="n">16</span><b>LRU cache</b><span>Hash map + doubly linked list.</span></a>
+</div>
+<div class="group-title"><h2>Stacks, queues &amp; heaps</h2></div>
+<div class="grid">
+  <a class="card" href="lessons/stack-basics.html"><span class="n">17</span><b>Stacks &amp; queues</b><span>Matching brackets, min stack, RPN.</span></a>
+  <a class="card" href="lessons/monotonic-stack.html"><span class="n">18</span><b>Monotonic stack</b><span>Next greater element, histogram rectangle.</span></a>
+  <a class="card" href="lessons/heap.html"><span class="n">19</span><b>Heap</b><span>A tree stored in an array; sift up and down.</span></a>
+  <a class="card" href="lessons/top-k.html"><span class="n">20</span><b>Top K</b><span>Keep a heap of size K.</span></a>
+  <a class="card" href="lessons/two-heaps.html"><span class="n">21</span><b>Two heaps</b><span>Running median.</span></a>
+  <a class="card" href="lessons/trie.html"><span class="n">22</span><b>Trie</b><span>Prefix tree for words and autocomplete.</span></a>
+</div>
+<div class="group-title"><h2>Greedy, intervals &amp; bits</h2></div>
+<div class="grid">
+  <a class="card" href="lessons/intervals.html"><span class="n">23</span><b>Intervals</b><span>Sort by start, merge; meeting rooms.</span></a>
+  <a class="card" href="lessons/greedy.html"><span class="n">24</span><b>Greedy</b><span>Take the best local choice when it is provably safe.</span></a>
+  <a class="card" href="lessons/bit-tricks.html"><span class="n">25</span><b>Bit tricks</b><span>XOR, n &amp; (n−1), counting bits.</span></a>
+</div>
+<div class="group-title"><h2>Trees</h2></div>
+<div class="grid">
+  <a class="card" href="lessons/tree-traversals.html"><span class="n">27</span><b>Tree traversals</b><span>Pre, in, post order — recursive and with a stack.</span></a>
+  <a class="card" href="lessons/tree-bfs.html"><span class="n">28</span><b>Level order (BFS)</b><span>A queue, one level at a time.</span></a>
+  <a class="card" href="lessons/tree-recursion.html"><span class="n">29</span><b>Tree recursion</b><span>The 3 questions that solve any tree problem.</span></a>
+  <a class="card" href="lessons/bst.html"><span class="n">30</span><b>Binary search tree</b><span>Search, insert, validate, delete.</span></a>
+  <a class="card" href="lessons/lca.html"><span class="n">31</span><b>Lowest common ancestor</b><span>Where two paths split.</span></a>
+</div>
+<div class="group-title"><h2>Graphs</h2></div>
+<div class="grid">
+  <a class="card" href="lessons/graph-basics.html"><span class="n">32</span><b>Graph basics</b><span>Adjacency lists, DFS vs BFS, visited.</span></a>
+  <a class="card" href="lessons/grid-bfs-dfs.html"><span class="n">33</span><b>Grids</b><span>Islands, flood fill, shortest path in a grid.</span></a>
+  <a class="card" href="lessons/multi-source-bfs.html"><span class="n">34</span><b>Multi-source BFS</b><span>Rotting oranges, minute by minute.</span></a>
+  <a class="card" href="lessons/topo-sort.html"><span class="n">35</span><b>Topological sort</b><span>Course schedule; dependency order.</span></a>
+  <a class="card" href="lessons/union-find.html"><span class="n">36</span><b>Union-find</b><span>Who is connected to whom, almost O(1).</span></a>
+  <a class="card" href="lessons/dijkstra.html"><span class="n">37</span><b>Dijkstra</b><span>Shortest path with weights.</span></a>
+  <a class="card" href="lessons/mst.html"><span class="n">38</span><b>Minimum spanning tree</b><span>Kruskal and Prim.</span></a>
+</div>
+<div class="group-title"><h2>Backtracking</h2></div>
+<div class="grid">
+  <a class="card" href="lessons/backtracking.html"><span class="n">39</span><b>Backtracking</b><span>Choose, explore, un-choose. Subsets.</span></a>
+  <a class="card" href="lessons/permutations.html"><span class="n">40</span><b>Permutations</b><span>used[] array, skipping duplicates.</span></a>
+  <a class="card" href="lessons/n-queens.html"><span class="n">41</span><b>N-Queens</b><span>Place, check, undo.</span></a>
+</div>
+<div class="group-title"><h2>Dynamic programming</h2></div>
+<div class="grid">
+  <a class="card" href="lessons/dp-intro.html"><span class="n">42</span><b>DP intro</b><span>Recursion → memo → table → two variables.</span></a>
+  <a class="card" href="lessons/coin-change.html"><span class="n">43</span><b>Coin change</b><span>Fewest coins; number of ways.</span></a>
+  <a class="card" href="lessons/lis.html"><span class="n">44</span><b>Longest increasing subsequence</b><span>O(n²) table and O(n log n) tails.</span></a>
+  <a class="card" href="lessons/lcs-edit-distance.html"><span class="n">45</span><b>LCS &amp; edit distance</b><span>Two strings, one 2D table.</span></a>
+  <a class="card" href="lessons/knapsack.html"><span class="n">46</span><b>Knapsack</b><span>Take it or leave it; loop capacity backwards.</span></a>
+  <a class="card" href="lessons/grid-dp.html"><span class="n">47</span><b>Grid DP</b><span>Unique paths, min path sum, maximal square.</span></a>
+</div>
+<div class="group-title"><h2>MAANG extras</h2><span>after week 1, for top-company rounds</span></div>
+<div class="grid">
+  <a class="card" href="lessons/strings-palindromes.html"><span class="n">48</span><b>Strings &amp; palindromes</b><span>Expand around centre, KMP, rolling hash.</span></a>
+  <a class="card" href="lessons/matrix-traversal.html"><span class="n">49</span><b>Matrix traversal</b><span>Spiral, rotate, staircase search.</span></a>
+  <a class="card" href="lessons/monotonic-deque.html"><span class="n">50</span><b>Monotonic deque</b><span>Sliding window maximum in O(n).</span></a>
+  <a class="card" href="lessons/shortest-paths-advanced.html"><span class="n">51</span><b>More shortest paths</b><span>Bellman-Ford, 0-1 BFS, Floyd–Warshall.</span></a>
+  <a class="card" href="lessons/segment-tree-fenwick.html"><span class="n">52</span><b>Segment &amp; Fenwick trees</b><span>Range queries with updates.</span></a>
+  <a class="card" href="lessons/dp-advanced.html"><span class="n">53</span><b>Advanced DP</b><span>State machines, intervals, bitmasks, trees.</span></a>
+  <a class="card" href="lessons/advanced-graphs.html"><span class="n">54</span><b>Advanced graphs</b><span>Bipartite, bridges, Euler paths, SCC.</span></a>
+  <a class="card" href="lessons/design-patterns-dsa.html"><span class="n">55</span><b>Design a data structure</b><span>O(1) random set, LFU, hit counter.</span></a>
+</div>
+</section>
+</main>
+</body>
+</html>

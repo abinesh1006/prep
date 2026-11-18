@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Intervals</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Greedy &amp; intervals</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 23 · Greedy &amp; intervals</div>
+<h1>Intervals</h1>
+<p class="lede">Sort the intervals first; then one left-to-right sweep is enough to merge them, count overlaps, or find how many rooms you need.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="arrays-hashing.html">Arrays and hashing</a>, <a href="heap.html">Heaps</a> (for meeting rooms)</p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>The input is pairs <code>[start, end]</code>: meetings, bookings, time slots, ranges, balloons. Words like "<b>merge overlapping</b>", "insert an interval", "<b>minimum number of rooms</b>", "can a person attend all meetings", "remove the fewest to stop overlaps".</p></div>
+
+<h2>The idea in plain words</h2>
+<p>Two intervals <code>[a, b]</code> and <code>[c, d]</code> <b>overlap</b> when each one starts before the other ends: <code>a ≤ d</code> and <code>c ≤ b</code>. Checking every pair is O(n²).</p>
+<p>After <b>sorting by start</b>, overlaps can only happen between neighbours in a chain, so a single sweep works:</p>
+<ul>
+  <li>Keep the last merged interval. The next interval either starts <b>after</b> it ends (a gap → start a new merged interval) or starts <b>inside</b> it (overlap → stretch the end).</li>
+  <li>Stretch with <code>max(lastEnd, curEnd)</code>, because a short interval can sit completely inside a long one: <code>[1, 4]</code> and <code>[2, 3]</code> merge to <code>[1, 4]</code>, not <code>[1, 3]</code>.</li>
+</ul>
+<p><b>How many rooms?</b> Sort meetings by start. Keep a <b>min-heap of end times</b> — one entry per room in use, the top is the room that frees up first. A new meeting can reuse that room if it starts at or after the top's end; otherwise it needs a new room. The heap's final size is the answer.</p>
+<p>Another way to count rooms: turn every meeting into two events, <b>+1</b> at its start and <b>−1</b> at its end, sort the events, and track the running total. The largest total is the number of rooms. Both are O(n log n) because of the sort.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Booking a hotel's meeting rooms: you hand out rooms in order of start time. Before opening a new room, you check the room that becomes free soonest — if its meeting is over, the next group walks straight in. Merging intervals is like colouring the busy hours on a calendar: overlapping blocks melt into one long block.</p></div>
+
+<h2>Watch it work</h2>
+<p>Merge <code>[[3,5], [1,4], [6,7], [2,3]]</code>. Each row is one interval drawn on a time line from 1 to 7.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  let iv = [[3, 5], [1, 4], [6, 7], [2, 3]];
+  const T0 = 1, T1 = 7, cols = T1 - T0 + 1;
+  const r = Viz.recorder();
+  const out = [];
+  const G = (rowMarks, sortedYet) => {
+    const cells = [], marks = {};
+    iv.forEach(([s, e], ri) => {
+      cells.push([...Array(cols)].map((_, c) => (c + T0 >= s && c + T0 <= e) ? c + T0 : ''));
+      for (let t = s; t <= e; t++) if (rowMarks[ri]) marks[`${ri},${t - T0}`] = rowMarks[ri];
+    });
+    const mrow = [...Array(cols)].map(() => '');
+    out.forEach(([s, e], k) => { for (let t = s; t <= e; t++) { mrow[t - T0] = t; marks[`${iv.length},${t - T0}`] = k === out.length - 1 && !rowMarks.final ? 'active' : 'done'; } });
+    cells.push(mrow);
+    return { type: 'grid', id: 'g', label: sortedYet ? 'sorted by start (time 1 → 7)' : 'input (time 1 → 7)', cells, cell: 40,
+      rowLabels: [...iv.map(([s, e]) => `${s}–${e}`), 'out'], colLabels: [...Array(cols)].map((_, c) => c + T0), marks };
+  };
+  const res = () => ({ type: 'stack', id: 'o', label: 'merged list', items: out.map(([s, e], k) => ({ id: 'o' + k, val: `[${s},${e}]` })), kind: 'set' });
+  r.step([G({}, false), res()], [1], 'Unsorted, an interval could overlap any other one. Comparing all pairs would be O(n²).');
+  iv = iv.slice().sort((a, b) => a[0] - b[0]);
+  r.step([G({}, true), res()], [2], 'Sort by <b>start</b> time. Now anything that overlaps the current merged block must come right after it.');
+  for (let i = 0; i < iv.length; i++) {
+    const [s, e] = iv[i];
+    const rm = Object.fromEntries([...Array(i).keys()].map(k => [k, 'visited']));
+    if (!out.length) {
+      out.push([s, e]);
+      r.step([G({ ...rm, [i]: 'compare' }, true), res()], [5, 6], `First interval [${s},${e}]: nothing to merge with, so it starts the output.`);
+      continue;
+    }
+    const last = out[out.length - 1];
+    r.step([G({ ...rm, [i]: 'compare' }, true), res()], [5, 6],
+      `Next is [${s},${e}]. Does it start after the last merged block [${last[0]},${last[1]}] ends? ${s} ${s > last[1] ? '&gt;' : '≤'} ${last[1]}.`);
+    if (s > last[1]) {
+      out.push([s, e]);
+      r.step([G({ ...rm, [i]: 'compare' }, true), res()], [6], `${s} &gt; ${last[1]}: there is a <b>gap</b>. [${s},${e}] starts a new block.`);
+    } else {
+      const old = last[1];
+      last[1] = Math.max(last[1], e);
+      r.step([G({ ...rm, [i]: 'compare' }, true), res()], [7],
+        `${s} ≤ ${old}: they <b>overlap</b>. New end = max(${old}, ${e}) = <b>${last[1]}</b>. ${e < old ? `(Using max matters: [${s},${e}] is fully inside, and taking ${e} would shrink the block.)` : 'The block grows.'}`);
+    }
+  }
+  r.step([G({ final: true, ...Object.fromEntries(iv.map((_, k) => [k, 'visited'])) }, true), res()], [9],
+    `One sweep after the sort. Answer: <b>${out.map(([s, e]) => `[${s},${e}]`).join(', ')}</b>. Total O(n log n).`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Merge intervals', code:
+`int[][] merge(int[][] iv) {
+    Arrays.sort(iv, (a, b) -> a[0] - b[0]);  // by start
+    List<int[]> out = new ArrayList<>();
+    for (int[] cur : iv) {
+        int[] last = out.isEmpty() ? null : out.get(out.size() - 1);
+        if (last == null || cur[0] > last[1]) out.add(cur); // gap
+        else last[1] = Math.max(last[1], cur[1]); // overlap
+    }
+    return out.toArray(new int[0][]);
+}` });
+})();
+</script>
+
+<h3>Meeting Rooms II (min-heap of end times)</h3>
+<p>Meetings <code>[1,4), [2,6), [4,7), [5,8)</code> — each ends just before its end time, so a meeting ending at 4 frees the room for one starting at 4. How many rooms are needed?</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const m = [[1, 4], [2, 6], [4, 7], [5, 8]];
+  const T0 = 1, cols = 7;
+  const r = Viz.recorder();
+  const ends = []; // min-heap shown sorted
+  const room = {}; let rooms = 0;
+  const roomOfEnd = {}; // end time -> room number (ends are unique here)
+  const G = (cur, rowMarks = {}) => {
+    const cells = [], marks = {};
+    m.forEach(([s, e], ri) => {
+      cells.push([...Array(cols)].map((_, c) => (c + T0 >= s && c + T0 < e) ? (room[ri] ? 'R' + room[ri] : '?') : ''));
+      for (let t = s; t < e; t++) marks[`${ri},${t - T0}`] = rowMarks[ri] || (room[ri] ? 'visited' : '');
+    });
+    return { type: 'grid', id: 'g', label: 'meetings sorted by start (R1 = room 1, ? = no room yet)', cells, cell: 40,
+      rowLabels: m.map(([s, e]) => `${s}–${e}`), colLabels: [...Array(cols)].map((_, c) => c + T0), marks };
+  };
+  const H = (hm = {}) => ({ type: 'stack', id: 'h', label: 'min-heap: end time of each busy room (top = left)', items: ends.map(e => ({ id: 'e' + roomOfEnd[e], val: `R${roomOfEnd[e]} free at ${e}` })), kind: 'heap', marks: hm });
+  const V = () => ({ type: 'vars', id: 'v', vars: { 'rooms in use': ends.length, 'rooms ever opened': rooms } });
+  r.step([G(), H(), V()], [2, 3], 'Meetings are already sorted by start. The heap holds, for each room in use, the time it becomes free.');
+  m.forEach(([s, e], i) => {
+    if (ends.length) {
+      r.step([G(i, { [i]: 'compare' }), H({ 0: 'compare' }), V()], [5],
+        `Meeting [${s},${e}) wants a room. The room that frees up first is the heap top: R${roomOfEnd[ends[0]]}, free at <b>${ends[0]}</b>. Is ${ends[0]} ≤ ${s}?`);
+    }
+    if (ends.length && ends[0] <= s) {
+      const freed = ends.shift(); const rn = roomOfEnd[freed]; delete roomOfEnd[freed];
+      r.step([G(i, { [i]: 'compare' }), H(), V()], [6], `Yes, ${freed} ≤ ${s}: R${rn}'s meeting is over. Poll it — this meeting takes over <b>R${rn}</b>.`);
+      room[i] = rn;
+    } else {
+      room[i] = ++rooms;
+      if (i > 0) r.step([G(i, { [i]: 'bad' }), H({ 0: 'bad' }), V()], [5], `No: ${ends[0]} &gt; ${s}, the earliest-free room is still busy — so <b>every</b> room is busy. Open a new room, R${rooms}.`);
+    }
+    ends.push(e); ends.sort((a, b) => a - b); roomOfEnd[e] = room[i];
+    r.step([G(i, { [i]: 'active' }), H({ [ends.indexOf(e)]: 'active' }), V()], [7],
+      `Meeting [${s},${e}) runs in <b>R${room[i]}</b>, so push its end time ${e}. ${i === 0 ? 'First meeting: one room.' : `${ends.length} room${ends.length > 1 ? 's are' : ' is'} busy now.`}`);
+  });
+  r.step([G(null, Object.fromEntries(m.map((_, k) => [k, 'done']))), H(), V()], [9],
+    `All meetings placed. At time 5 three meetings run at once, so the answer is <b>${ends.length} rooms</b> (the heap size).`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Meeting rooms II', code:
+`int minMeetingRooms(int[][] m) {
+    Arrays.sort(m, (a, b) -> a[0] - b[0]);     // by start
+    PriorityQueue<Integer> ends = new PriorityQueue<>();
+    for (int[] x : m) {
+        if (!ends.isEmpty() && ends.peek() <= x[0])
+            ends.poll();            // earliest room is free: reuse
+        ends.offer(x[1]);           // this meeting holds a room
+    }
+    return ends.size();             // rooms needed
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"After sorting by start, an interval can only overlap the block just before it, because everything earlier ended no later than that block. For rooms, the heap top is the room that frees soonest — if even that one is busy, every room is busy, so we must open a new one."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code>Arrays.sort(iv, (a, b) -&gt; Integer.compare(a[<span class="n">0</span>], b[<span class="n">0</span>]));  <span class="c">// sort by start</span>
+<span class="k">int</span>[] last = <span class="k">null</span>;
+<span class="k">for</span> (<span class="k">int</span>[] cur : iv) {
+    <span class="k">if</span> (last == <span class="k">null</span> || cur[<span class="n">0</span>] &gt; last[<span class="n">1</span>]) { out.add(cur); last = cur; } <span class="c">// gap</span>
+    <span class="k">else</span> last[<span class="n">1</span>] = Math.max(last[<span class="n">1</span>], cur[<span class="n">1</span>]);              <span class="c">// overlap</span>
+}
+<span class="c">// rooms: sort by start, min-heap of ends; reuse if ends.peek() &lt;= start</span>
+<span class="c">// most non-overlapping (activity selection): sort by END, keep if start &gt;= lastEnd</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Intervals → sort first. Merge: sort by start, stretch with max. Keep the most: sort by end. Rooms: heap of end times (or +1/−1 sweep).</b></p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Forgetting <code>max</code> when stretching: <code>[1,10]</code> then <code>[2,3]</code> must stay <code>[1,10]</code>.</li>
+  <li>Touching intervals: does <code>[1,2]</code> overlap <code>[2,3]</code>? In Merge Intervals yes (<code>≤</code>); in meetings ending at 2 and starting at 2, no. Read the problem.</li>
+  <li><code>(a, b) -&gt; a[0] - b[0]</code> overflows for huge values (LC 452 has ±2³¹); use <code>Integer.compare</code>.</li>
+  <li>Sorting by start when the problem asks for the maximum number of non-overlapping intervals — sort by <b>end</b> there.</li>
+  <li>In the +1/−1 sweep, at equal times process the −1 (end) before the +1 (start) when an ending meeting frees the room.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/meeting-rooms/">252. Meeting Rooms</a> — sort, check each start against the previous end.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/merge-intervals/">56. Merge Intervals</a> — the first animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/insert-interval/">57. Insert Interval</a> — copy the left ones, merge the middle, copy the right.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/meeting-rooms-ii/">253. Meeting Rooms II</a> — the second animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/non-overlapping-intervals/">435. Non-overlapping Intervals</a> — sort by end, count the keepers.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/minimum-number-of-arrows-to-burst-balloons/">452. Minimum Number of Arrows</a> — sort by end, shoot at each end.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/interval-list-intersections/">986. Interval List Intersections</a> — two pointers, advance the one that ends first.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/employee-free-time/">759. Employee Free Time</a> — merge everyone's intervals, report the gaps.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Merge <code>[[1,3], [2,6], [8,10], [9,12]]</code>.</summary>
+<p><code>[[1,6], [8,12]]</code>.</p></details>
+<details class="quiz"><summary>Why sort by start for merging but by end for "keep the most non-overlapping intervals"?</summary>
+<p>Merging needs neighbours to be next to each other (start order). Keeping the most is greedy: the interval that ends earliest leaves the most room for the rest.</p></details>
+<details class="quiz"><summary>In Meeting Rooms II, why compare only with the heap top and not with every room?</summary>
+<p>The top is the room that frees earliest. If it is still busy at this start time, all others are busy too; if it is free, using it is as good as any.</p></details>
+<details class="quiz"><summary>Rooms needed for <code>[0,30), [5,10), [15,20)</code>?</summary>
+<p>2. [5,10) needs a second room; [15,20) reuses the room freed at 10.</p></details>
+
+<nav class="pager"><a href="trie.html">← Trie</a><a href="greedy.html">Greedy →</a></nav>
+</main>
+</body>
+</html>

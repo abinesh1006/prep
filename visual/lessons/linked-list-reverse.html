@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reverse a Linked List</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Linked lists</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 13 · Linked lists</div>
+<h1>Reverse a Linked List</h1>
+<p class="lede">Walk the list once with three pointers — prev, curr, next — and turn every arrow around as you pass it.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="big-o.html">Big-O</a>, <a href="two-pointers.html">Two pointers</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"<b>Reverse</b> the list", "reverse between positions m and n", "reverse in groups of k", "is the list a <b>palindrome</b>", "reorder the list", "add numbers stored backwards" — anything that wants to read or rebuild a list from the back, with O(1) extra space.</p></div>
+
+<h2>The idea in plain words</h2>
+<p><b>What is a linked list?</b> An array keeps its numbers side by side in memory, so you can jump to item 7 instantly. A linked list keeps each number in its own little box called a <b>node</b>, scattered anywhere in memory. Each node holds two things: its <b>value</b> and a <b>pointer</b> called <code>next</code> — the address of the following node, like an arrow. The last node's next is <code>null</code> (nothing). We only keep the address of the first node, the <b>head</b>.</p>
+<p>So to reach the 4th node you must start at the head and follow 3 arrows. In return, adding or removing a node is just changing one or two arrows — no shifting of other items.</p>
+<p><b>Reversing</b> <code>1 → 2 → 3 → 4 → 5</code> means making it <code>5 → 4 → 3 → 2 → 1</code>. We do not move any values; we just turn every arrow to point backwards. The catch: the moment you turn node 1's arrow away from 2, you have lost your only way to reach 2. So before turning an arrow, <b>save</b> where it pointed. Three pointers:</p>
+<ul>
+  <li><b>curr</b> — the node whose arrow we are turning now.</li>
+  <li><b>prev</b> — the node behind it (where its arrow should point; starts as null).</li>
+  <li><b>next</b> — a bookmark to the rest of the list, saved before the turn.</li>
+</ul>
+<p>Save next, turn curr's arrow to prev, step prev and curr forward. Repeat until curr falls off the end. prev is then the new head. Each node is visited once: O(n) time, O(1) extra space.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A line of people, each pointing at the person in front of them. To reverse the line without anyone moving, you walk down it and ask each person to turn around and point at the person behind. Before you ask someone to turn, you note who they were pointing at — otherwise you would not know whom to visit next.</p></div>
+
+<h2>Watch it work</h2>
+<p>First, how a program walks a list: start at the head and follow next arrows until null.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const vals = [1, 2, 3, 4, 5];
+  const nodes = vals.map(v => ({ id: 'n' + v, val: v }));
+  const next = Object.fromEntries(vals.map((v, i) => ['n' + v, i + 1 < vals.length ? 'n' + vals[i + 1] : null]));
+  const r = Viz.recorder();
+  const seen = [];
+  const pan = (cur, extra = {}) => [{ type: 'list', id: 'L', label: 'each box: value | next arrow', nodes, next, pointers: { head: 'n1', curr: cur },
+    marks: { ...Object.fromEntries(seen.map(id => [id, 'visited'])), ...extra } }, { type: 'vars', id: 'v', vars: { printed: seen.map(id => id.slice(1)).join(' ') || '—' } }];
+  r.step(pan(undefined), [1], 'Five nodes. Each box has the value on the left and its <b>next</b> arrow on the right. The last one says ∅ (null): nothing after it. We only know <b>head</b>.');
+  let cur = 'n1';
+  r.step(pan(cur, { [cur]: 'compare' }), [2], '<b>curr = head</b>. We start at the first node.');
+  while (cur !== null) {
+    seen.push(cur);
+    const nx = next[cur];
+    r.step(pan(cur, { [cur]: 'active' }), [4, 5], `Print curr.val = <b>${cur.slice(1)}</b>, then follow its arrow: curr = curr.next${nx ? ` (node ${nx.slice(1)})` : ' (null)'}.`);
+    cur = nx;
+  }
+  r.step(pan(null), [3, 7], 'curr is <b>null</b>, the loop stops. We visited every node once: O(n). There is no way to jump to node 4 directly — you always walk from the head.');
+  Viz.mount('#demo1', { frames: r.frames, title: 'Walking a linked list', code:
+`class ListNode { int val; ListNode next; }
+ListNode curr = head;          // start at the front
+while (curr != null) {         // until we fall off
+    System.out.print(curr.val);
+    curr = curr.next;          // follow the arrow
+}
+// done: every node visited once` });
+})();
+</script>
+
+<p>Now the <b>iterative reversal</b> of <code>1 → 2 → 3 → 4 → 5</code>. The nodes stay where they are; watch the arrows flip one by one.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const vals = [1, 2, 3, 4, 5];
+  const nodes = vals.map(v => ({ id: 'n' + v, val: v }));
+  const next = Object.fromEntries(vals.map((v, i) => ['n' + v, i + 1 < vals.length ? 'n' + vals[i + 1] : null]));
+  const r = Viz.recorder();
+  const flipped = new Set();
+  const nm = id => id === null ? 'null' : id === undefined ? '—' : id.slice(1);
+  const pan = (prev, curr, nxt, extra = {}, em = {}) => {
+    const ptr = { prev, curr }; if (nxt !== undefined) ptr.next = nxt;
+    return [{ type: 'list', id: 'L', label: 'the list (nodes never move)', nodes, next: { ...next }, pointers: ptr, nullAt: prev === null ? 'left' : 'right',
+      marks: { ...Object.fromEntries([...flipped].map(id => [id, 'done'])), ...extra }, edgeMarks: em },
+      { type: 'vars', id: 'v', vars: { prev: nm(prev), curr: nm(curr), next: nm(nxt) } }];
+  };
+  let prev = null, curr = 'n1';
+  r.step(pan(prev, curr), [2], '<b>prev = null</b> (nothing is behind the first node yet) and <b>curr = head</b> (node 1).');
+  while (curr !== null) {
+    const nxt = next[curr];
+    r.step(pan(prev, curr, nxt, { [curr]: 'compare' }, { [curr]: 'compare' }), [4], `Save <b>next = curr.next</b> (node ${nm(nxt)}). This bookmark is how we will reach the rest after the arrow is turned.`);
+    next[curr] = prev; flipped.add(curr);
+    r.step(pan(prev, curr, nxt, { [curr]: 'active' }, { [curr]: 'active' }), [5], `Turn the arrow: <b>curr.next = prev</b>. Node ${nm(curr)} now points ${prev === null ? 'to null — it will be the new tail' : `back to node ${nm(prev)}`}.`);
+    prev = curr; curr = nxt;
+    r.step(pan(prev, curr, undefined), [6, 7], `Step forward: <b>prev = curr</b> (node ${nm(prev)}), <b>curr = next</b> (${curr === null ? 'null' : 'node ' + nm(curr)}). Nodes 1..${nm(prev)} are reversed.`);
+  }
+  r.step(pan(prev, curr, undefined, { [prev]: 'path' }), [9], `curr is null, so every arrow is turned. <b>prev</b> (node ${nm(prev)}) is the new head: 5 → 4 → 3 → 2 → 1. O(n) time, O(1) space.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Iterative list reversal', code:
+`ListNode reverseList(ListNode head) {
+    ListNode prev = null, curr = head;
+    while (curr != null) {
+        ListNode next = curr.next; // 1. save
+        curr.next = prev;          // 2. flip
+        prev = curr;               // 3. step
+        curr = next;               // 4. step
+    }
+    return prev;                   // new head
+}` });
+})();
+</script>
+
+<p><b>Reverse a sublist</b> (Reverse Linked List II): reverse only positions 2..4 of <code>1 → 2 → 3 → 4 → 5</code>. A <b>dummy</b> node in front means "the node before the part" always exists. Then we repeatedly take the node after <b>cur</b> and move it to the front of the part. Here the boxes are redrawn in list order, so you can see nodes move.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const nodes = [{ id: 'd', val: 'D' }, ...[1, 2, 3, 4, 5].map(v => ({ id: 'n' + v, val: v }))];
+  const next = { d: 'n1', n1: 'n2', n2: 'n3', n3: 'n4', n4: 'n5', n5: null };
+  const left = 2, right = 4;
+  const r = Viz.recorder();
+  const order = () => { const o = []; let c = 'd'; while (c) { o.push(c); c = next[c]; } return o; };
+  const nm = id => id === 'd' ? 'dummy' : id.slice(1);
+  const pan = (ptr, marks = {}, em = {}) => {
+    const o = order();
+    return [{ type: 'list', id: 'L', label: `reverse positions ${left}..${right}`, nodes, next: { ...next }, pointers: ptr, marks, edgeMarks: em,
+      pos: Object.fromEntries(o.map((id, i) => [id, [i, 0]])) },
+      { type: 'vars', id: 'v', vars: { list: o.slice(1).map(nm).join(' → ') } }];
+  };
+  r.step(pan({ dummy: 'd' }, { d: 'dim' }), [3], '<b>dummy</b> (D) points at the head, so even position 1 would have a node before it.');
+  let pre = 'd';
+  for (let i = 1; i < left; i++) pre = next[pre];
+  r.step(pan({ pre }, { d: 'dim', [pre]: 'compare' }), [4, 5, 6], `Walk <b>pre</b> to the node just before position ${left}: node ${nm(pre)}. It will never move; nodes are inserted right after it.`);
+  const cur = next[pre];
+  r.step(pan({ pre, cur }, { d: 'dim', [pre]: 'compare', [cur]: 'active' }), [7], `<b>cur</b> = node ${nm(cur)}, the first node of the part. It will slide towards the back as others jump in front of it.`);
+  for (let i = 0; i < right - left; i++) {
+    const move = next[cur];
+    r.step(pan({ pre, cur, move }, { d: 'dim', [pre]: 'compare', [cur]: 'active', [move]: 'bad' }, { [cur]: 'bad' }), [8, 9], `<b>move</b> = cur.next = node ${nm(move)}. This node will jump to the front of the part.`);
+    next[cur] = next[move]; next[move] = next[pre]; next[pre] = move;
+    r.step(pan({ pre, cur, move }, { d: 'dim', [pre]: 'compare', [cur]: 'active', [move]: 'done' }, { [pre]: 'active', [move]: 'active', [cur]: 'active' }), [10, 11, 12],
+      `Three arrows change: cur skips over ${nm(move)} (cur.next = move.next), ${nm(move)} points to the old front (move.next = pre.next), and pre points to ${nm(move)}. Now: ${order().slice(1).map(nm).join(' → ')}.`);
+  }
+  r.step(pan({ head: next.d }, { d: 'dim', n4: 'done', n3: 'done', n2: 'done' }), [14], `Done after ${right - left} moves: <b>${order().slice(1).map(nm).join(' → ')}</b>. Return dummy.next.`);
+  Viz.mount('#demo3', { frames: r.frames, title: 'Reverse a sublist', code:
+`ListNode reverseBetween(ListNode head,
+                        int left, int right) {
+    ListNode dummy = new ListNode(0, head);
+    ListNode pre = dummy;
+    for (int i = 1; i < left; i++)
+        pre = pre.next;     // node before the part
+    ListNode cur = pre.next;      // first of the part
+    for (int i = 0; i < right - left; i++) {
+        ListNode move = cur.next; // to the front
+        cur.next = move.next;     // unhook it
+        move.next = pre.next;     // point at front
+        pre.next = move;          // new front
+    }
+    return dummy.next;
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"At every step, prev is the head of the already-reversed part and curr is the head of the untouched part. Saving next before turning curr's arrow means we never lose the rest of the list. When curr is null, the reversed part is the whole list, and prev is its head."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code>ListNode prev = <span class="k">null</span>, curr = head;
+<span class="k">while</span> (curr != <span class="k">null</span>) {
+    ListNode next = curr.next;   <span class="c">// save</span>
+    curr.next = prev;            <span class="c">// flip</span>
+    prev = curr;                 <span class="c">// step</span>
+    curr = next;                 <span class="c">// step</span>
+}
+<span class="k">return</span> prev;</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Save, flip, step, step.</b> prev starts null, the answer is prev. Sublist: dummy + pre + "move the next node to the front".</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Flipping before saving <code>next</code> — the rest of the list is lost.</li>
+  <li>Returning <code>head</code> or <code>curr</code> instead of <code>prev</code> (head is now the tail; curr is null).</li>
+  <li>Forgetting that the old head must end with <code>next = null</code> — starting prev at null does this for you.</li>
+  <li>In sublist problems, no dummy node: when left = 1 there is no "node before", and the code needs a special case.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/reverse-linked-list/">206. Reverse Linked List</a> — the second animation; then write the recursive version.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/palindrome-linked-list/">234. Palindrome Linked List</a> — find middle, reverse the second half, compare.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/reverse-linked-list-ii/">92. Reverse Linked List II</a> — the third animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/swap-nodes-in-pairs/">24. Swap Nodes in Pairs</a> — reversal in groups of 2.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/reorder-list/">143. Reorder List</a> — middle + reverse + weave.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/reverse-nodes-in-k-group/">25. Reverse Nodes in k-Group</a> — count k ahead, reverse that block, link, repeat.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Why do we need the <code>next</code> pointer at all?</summary>
+<p>After <code>curr.next = prev</code>, curr no longer points to the rest of the list. Without the saved bookmark we could never reach node curr+1 again.</p></details>
+<details class="quiz"><summary>What is the extra space of the recursive reversal?</summary>
+<p>O(n), for the call stack — one frame per node. The iterative version is O(1).</p></details>
+<details class="quiz"><summary>Getting the 1000th element: array or linked list, and why?</summary>
+<p>Array: O(1), jump straight to it. Linked list: O(n), follow 999 arrows from the head.</p></details>
+
+<nav class="pager"><a href="quick-sort.html">← Quick sort</a><a href="fast-slow-pointers.html">Fast and slow pointers →</a></nav>
+</main>
+</body>
+</html>

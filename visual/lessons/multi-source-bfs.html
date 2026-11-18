@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi-source BFS</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Graphs</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 34 · Graphs</div>
+<h1>Multi-source BFS</h1>
+<p class="lede">Put every starting point in the queue at once and run one BFS: the ripples spread from all of them together, so each cell learns its distance to the <i>nearest</i> source in a single pass.</p>
+<p class="meta">Time to learn: about 1.5 hours · Prerequisites: <a href="grid-bfs-dfs.html">Grid BFS / DFS</a>, <a href="tree-bfs.html">Tree BFS (level by level)</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"<b>Minimum minutes</b> until everything rots / burns / is infected", "distance to the <b>nearest</b> gate / 0 / land / exit" — many starting points, and every cell wants its distance to the closest one.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>Suppose a 4 × 5 box of oranges has 2 rotten ones. Every minute, each rotten orange rots its fresh neighbours (up, down, left, right). How many minutes until no fresh orange is left?</p>
+<p>The slow idea: run a BFS from the first rotten orange, then another from the second, and take the minimum per cell. With k sources that is k full BFS runs.</p>
+<p>The trick: put <b>all</b> rotten oranges in the queue before starting. Now level 0 of the BFS is "every source", level 1 is "everything 1 step from <i>some</i> source", and so on. One BFS, O(R × C) total.</p>
+<p>Process the queue <b>one level at a time</b> (read <code>size = q.size()</code> first, then poll exactly that many). Each level is one minute. At the end, if any fresh orange is left, it was unreachable → answer −1.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Several fires start at the same moment in a forest. You do not simulate each fire separately — all of them spread at the same time, one ring of trees per minute. A tree burns when the <i>nearest</i> fire reaches it.</p></div>
+
+<h2>Watch it work</h2>
+<p><b>1. Rotting Oranges, minute by minute.</b> F = fresh, a number = the minute that orange rotted (0 = rotten from the start), dark = empty.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const G = [[2, 1, 1, 0, 1], [1, 1, 0, 1, 1], [0, 1, 1, 1, 1], [0, 0, 1, 1, 2]];
+  const R = G.length, C = G[0].length;
+  const t = G.map(row => row.map(v => v === 2 ? 0 : null));
+  const r = Viz.recorder();
+  let fresh = 0; const q = [];
+  G.forEach((row, i) => row.forEach((v, j) => { if (v === 1) fresh++; if (v === 2) q.push([i, j]); }));
+  let minute = 0;
+  const panels = (extra = {}, vars = {}) => {
+    const cells = G.map((row, i) => row.map((v, j) => v === 0 ? '' : t[i][j] != null ? t[i][j] : 'F'));
+    const marks = {};
+    G.forEach((row, i) => row.forEach((v, j) => { if (v === 0) marks[`${i},${j}`] = 'dim'; else if (t[i][j] != null) marks[`${i},${j}`] = 'bad'; }));
+    Object.assign(marks, extra);
+    return [{ type: 'grid', id: 'g', label: 'oranges (F = fresh, number = minute it rotted)', cells, marks },
+      { type: 'stack', id: 'q', label: 'queue', items: q.map(([a, b]) => ({ id: `${a},${b}`, val: `${a},${b}` })), kind: 'queue' },
+      { type: 'vars', id: 'v', vars: { minute, fresh, ...vars }, marks: { fresh: fresh ? '' : 'done' } }];
+  };
+  r.step(panels(Object.fromEntries(q.map(([a, b]) => [`${a},${b}`, 'active']))), [4, 5, 6, 7],
+    `Count the fresh oranges (<b>${fresh}</b>) and put <b>every</b> rotten orange in the queue at once: (${q.map(p => p.join(',')).join(') and (')}). These are the sources.`);
+  while (q.length && fresh > 0) {
+    const level = q.splice(0, q.length);
+    r.step(panels(Object.fromEntries(level.map(([a, b]) => [`${a},${b}`, 'compare']))), [10, 11],
+      `Minute ${minute + 1} starts. The queue holds exactly the oranges that rotted last minute (${level.length} of them). Each one now attacks its 4 neighbours.`);
+    minute++;
+    const newly = [];
+    for (const [i, j] of level) for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const a = i + di, b = j + dj;
+      if (a < 0 || b < 0 || a >= R || b >= C || G[a][b] !== 1 || t[a][b] != null) continue;
+      t[a][b] = minute; fresh--; q.push([a, b]); newly.push(`${a},${b}`);
+    }
+    r.step(panels(Object.fromEntries(newly.map(s => [s, 'active']))), [17, 18],
+      `${newly.length} fresh orange${newly.length === 1 ? '' : 's'} rot at minute <b>${minute}</b>: ${newly.map(s => '(' + s + ')').join(' ')}. ${fresh} still fresh. The new ones are the next level.`);
+  }
+  r.step(panels({}, { answer: fresh ? -1 : minute }), [22],
+    fresh ? 'Fresh oranges remain that no rotten orange can reach: answer <b>-1</b>.'
+          : `No fresh orange left after <b>${minute} minutes</b>. Both rotten corners spread at the same time — that is why the answer is the meeting time, not the sum.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Rotting Oranges', code:
+`int orangesRotting(int[][] g) {
+    Queue<int[]> q = new ArrayDeque<>();
+    int fresh = 0, minutes = 0;
+    for (int r = 0; r < g.length; r++)
+        for (int c = 0; c < g[0].length; c++)
+            if (g[r][c] == 2) q.add(new int[]{r, c});  // all sources
+            else if (g[r][c] == 1) fresh++;
+    int[][] D = {{1,0},{-1,0},{0,1},{0,-1}};
+    while (!q.isEmpty() && fresh > 0) {
+        minutes++;
+        for (int k = q.size(); k > 0; k--) {     // one level = 1 minute
+            int[] p = q.poll();
+            for (int[] d : D) {
+                int a = p[0] + d[0], b = p[1] + d[1];
+                if (a < 0 || b < 0 || a >= g.length || b >= g[0].length
+                    || g[a][b] != 1) continue;
+                g[a][b] = 2; fresh--;            // rots now
+                q.add(new int[]{a, b});
+            }
+        }
+    }
+    return fresh == 0 ? minutes : -1;
+}` });
+})();
+</script>
+
+<p><b>2. Walls and Gates.</b> ■ = wall, 0 = gate, ∞ = empty room. Fill every room with the distance to its <b>nearest</b> gate. Start a BFS from <b>both</b> gates at once; the first gate's ripple to reach a room wins.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const INF = Infinity;
+  const G = [[INF, -1, 0, INF], [INF, INF, INF, -1], [INF, -1, INF, -1], [0, -1, INF, INF]];
+  const R = G.length, C = G[0].length;
+  const r = Viz.recorder();
+  const q = [];
+  G.forEach((row, i) => row.forEach((v, j) => { if (v === 0) q.push([i, j]); }));
+  const panels = (extra = {}, vars = {}) => {
+    const cells = G.map(row => row.map(v => v === -1 ? '■' : v === INF ? '∞' : v));
+    const marks = {};
+    G.forEach((row, i) => row.forEach((v, j) => { if (v === -1) marks[`${i},${j}`] = 'dim'; else if (v === 0) marks[`${i},${j}`] = 'done'; else if (v !== INF) marks[`${i},${j}`] = 'visited'; }));
+    Object.assign(marks, extra);
+    return [{ type: 'grid', id: 'g', label: 'rooms (distance to nearest gate)', cells, marks },
+      { type: 'stack', id: 'q', label: 'queue', items: q.map(([a, b]) => ({ id: `${a},${b}`, val: `${a},${b}` })), kind: 'queue' },
+      { type: 'vars', id: 'v', vars }];
+  };
+  r.step(panels(Object.fromEntries(q.map(([a, b]) => [`${a},${b}`, 'active']))), [3, 4, 5],
+    'Find every gate (0) and add them <b>all</b> to the queue before the BFS starts. Rooms still show ∞ = not reached yet.');
+  while (q.length) {
+    const [i, j] = q.shift();
+    const added = [];
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const a = i + di, b = j + dj;
+      if (a < 0 || b < 0 || a >= R || b >= C || G[a][b] !== INF) continue;
+      G[a][b] = G[i][j] + 1; q.push([a, b]); added.push(`${a},${b}`);
+    }
+    const ex = Object.fromEntries(added.map(s => [s, 'active'])); ex[`${i},${j}`] = 'compare';
+    r.step(panels(ex, { polled: `(${i},${j})`, 'its distance': G[i][j] }), added.length ? [7, 12, 13] : [7],
+      added.length
+        ? `Poll (${i},${j}) (distance ${G[i][j]}). Rooms ${added.map(s => '(' + s + ')').join(' ')} are still ∞, so this is the first ripple to reach them: write <b>${G[i][j] + 1}</b>.`
+        : `Poll (${i},${j}). Its neighbours are walls, edges, or already have a smaller number from a closer gate — nothing to do.`);
+  }
+  r.step(panels({}, { result: 'done' }), [6], 'Queue empty: every reachable room holds the distance to its nearest gate. One BFS, each room written once — O(R × C).');
+  Viz.mount('#demo2', { frames: r.frames, title: 'Walls and Gates', code:
+`void wallsAndGates(int[][] rooms) {
+    Queue<int[]> q = new ArrayDeque<>();
+    for (int r = 0; r < rooms.length; r++)
+        for (int c = 0; c < rooms[0].length; c++)
+            if (rooms[r][c] == 0) q.add(new int[]{r, c});  // all gates
+    while (!q.isEmpty()) {
+        int[] p = q.poll();
+        for (int[] d : new int[][]{{1,0},{-1,0},{0,1},{0,-1}}) {
+            int a = p[0] + d[0], b = p[1] + d[1];
+            if (a < 0 || b < 0 || a >= rooms.length || b >= rooms[0].length
+                || rooms[a][b] != Integer.MAX_VALUE) continue;  // not empty
+            rooms[a][b] = rooms[p[0]][p[1]] + 1;   // first to arrive wins
+            q.add(new int[]{a, b});
+        }
+    }
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"Starting the BFS with all sources at distance 0 is the same as adding one invisible super-source connected to every real source. BFS from that super-source visits cells in increasing distance, so each cell is first reached by its nearest source."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">for</span> (every cell) <span class="k">if</span> (isSource) q.add(cell);   <span class="c">// ALL sources first</span>
+<span class="k">int</span> level = <span class="n">0</span>;
+<span class="k">while</span> (!q.isEmpty()) {
+    <span class="k">for</span> (<span class="k">int</span> k = q.size(); k &gt; <span class="n">0</span>; k--) {      <span class="c">// one ring</span>
+        cell = q.poll();
+        <span class="k">for</span> (each neighbour nb) <span class="k">if</span> (unvisited(nb)) { mark(nb); q.add(nb); }
+    }
+    level++;                                <span class="c">// one minute passed</span>
+}</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Many starts, nearest wins → seed the queue with all of them.</b> Freeze <code>q.size()</code> to count minutes.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Running a separate BFS from every source — O(k × R × C), times out.</li>
+  <li>Using <code>q.size()</code> in the loop condition while adding — the level never ends. Read it once.</li>
+  <li>Rotting Oranges: counting one extra minute after the last orange rots (loop while <code>fresh &gt; 0</code>), and forgetting the "0 fresh at the start → 0" case.</li>
+  <li>Forgetting the −1 when some fresh orange is unreachable.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/rotting-oranges/">994. Rotting Oranges</a> — exactly animation 1.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/walls-and-gates/">286. Walls and Gates</a> — exactly animation 2 (premium; same as 542 in spirit).</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/01-matrix/">542. 01 Matrix</a> — all 0s are sources, distance to the nearest 0.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/as-far-from-land-as-possible/">1162. As Far from Land as Possible</a> — all land is a source; answer is the last level.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/map-of-highest-peak/">1765. Map of Highest Peak</a> — water cells are sources, height = BFS distance.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/shortest-bridge/">934. Shortest Bridge</a> — DFS to collect island 1, then multi-source BFS to island 2.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Why can't you just run BFS from the first rotten orange?</summary>
+<p>An orange near the second rotten orange would get a too-large time. All sources spread at the same time, so they must all start at level 0.</p></details>
+<details class="quiz"><summary>In Walls and Gates, why is a room never overwritten with a smaller number later?</summary>
+<p>BFS processes distance 1 rooms before distance 2 rooms, and so on. The first time a room is reached, the distance is already the smallest possible.</p></details>
+<details class="quiz"><summary>What is the time complexity with k sources on an R × C grid?</summary>
+<p>O(R × C), independent of k: each cell enters the queue at most once.</p></details>
+
+<nav class="pager"><a href="grid-bfs-dfs.html">← Grid BFS / DFS</a><a href="topo-sort.html">Topological sort →</a></nav>
+</main>
+</body>
+</html>

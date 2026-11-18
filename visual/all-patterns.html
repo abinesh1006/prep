@@ -1,0 +1,1318 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../index.html')}catch(e){location.replace('../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Every pattern on one page</title>
+<link rel="stylesheet" href="visual.css">
+<style>
+  .filter { position: sticky; top: 49px; z-index: 5; background: var(--bg); padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: center; }
+  .filter input { flex: 1; min-width: 0; font: inherit; font-size: 17px; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
+  .filter input:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+  .jump { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 16px; margin: .6em 0 0; }
+  .pgroup h2 .meta { font-weight: 500; }
+  .pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 470px), 1fr)); gap: 16px; }
+  .pc { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; box-shadow: var(--shadow); min-width: 0; font-size: 17px; line-height: 1.6; }
+  .pc h3 { margin: 0 0 .3em; font-size: 1.2rem; }
+  .pc p { margin: .45em 0; max-width: none; }
+  .pc .sig { color: var(--ink-2); }
+  .pc pre.code { margin: .7em 0; font-size: 13.5px; }
+  .pc .hook { background: var(--remember); border-left: 4px solid var(--remember-line); border-radius: 6px; padding: 6px 12px; font-weight: 600; }
+  @media (min-width: 1000px) {
+    .pgrid { grid-template-columns: 1fr; }
+    .pc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.75fr); column-gap: 24px; align-items: start; }
+    .pc > * { grid-column: 1; }
+    .pc pre.code { grid-column: 2; grid-row: 1 / span 6; margin: 0; }
+  }
+  .drillbar { display: flex; gap: 10px; flex-wrap: wrap; margin: 1em 0; }
+  .drillbar button { font: inherit; font-size: 16px; height: 40px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; }
+  .drillbar button.main { background: var(--brand); border-color: var(--brand); color: #fff; }
+  #drill-list { counter-reset: q; }
+  #drill-list details.quiz summary::before { counter-increment: q; content: counter(q) ". "; color: var(--brand); }
+  #drill-list details.quiz p { margin: .3em 0 .2em; max-width: none; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="index.html">DSA Visual</a><span class="sp"></span>
+  <a href="#patterns">Patterns</a><a href="#drill">Drill</a><a href="#week1">Week 1</a><a href="index.html">Lessons</a>
+</div></header>
+<main class="wide">
+<section style="max-width:760px">
+  <div class="kicker">Cheat sheet · 55 patterns</div>
+  <h1>Every pattern on one page</h1>
+  <p class="lede">Each card is one interview pattern: the words that give it away, the idea in one sentence, the Java template to write from memory, its cost, three classic problems and a hook to remember it by. Then drill yourself on spotting them.</p>
+  <nav class="jump"><a href="#g-arrays-and-strings">Arrays &amp; strings</a><a href="#g-searching-and-sorting">Searching &amp; sorting</a><a href="#g-linked-lists">Linked lists</a><a href="#g-stacks-queues-and-heaps">Stacks, queues &amp; heaps</a><a href="#g-trees">Trees</a><a href="#g-graphs">Graphs</a><a href="#g-backtracking">Backtracking</a><a href="#g-dynamic-programming">Dynamic programming</a><a href="#g-greedy-intervals-and-bits">Greedy, intervals &amp; bits</a><a href="#g-maang-extras">MAANG extras</a><a href="#drill">Pattern-spotting drill</a></nav>
+</section>
+
+<section id="week1" style="max-width:760px">
+<h2>How to use this page in week 1</h2>
+<ol class="steps">
+  <li><b>Each evening</b>, take the groups you learned that day. Cover the code on each card, read only its name and "If you see" line, and write the template from memory on paper. Then uncover and check line by line.</li>
+  <li>Any template you could not write: re-read its lesson and its hook, and put it first on tomorrow evening's list.</li>
+  <li><b>Do 15 drill questions a day.</b> Press Shuffle, read each problem, say the pattern and why <em>out loud</em>, then open the answer. By day 4 you will have seen all 60.</li>
+</ol>
+<div class="box remember"><span class="tag">The rule</span><p>Learning a pattern is not the hard part; spotting it inside a story is. The drill trains the spotting, the from-memory templates stop the forgetting.</p></div>
+</section>
+
+<section id="patterns">
+<div class="filter">
+  <input id="q" type="search" placeholder="Filter patterns: try heap, sorted, prefix, k stops…" aria-label="Filter patterns" autocomplete="off">
+  <span id="count" class="meta"></span>
+</div>
+
+<section class="pgroup" id="g-arrays-and-strings">
+<h2>Arrays &amp; strings <span class="meta">7 patterns</span></h2>
+<div class="pgrid">
+<article class="pc" id="big-o">
+  <h3><a href="lessons/big-o.html">Big-O</a></h3>
+  <p class="sig"><b>If you see:</b> "n ≤ 10^5", "efficient", "can you do better?", any input-size limit in the constraints</p>
+  <p class="idea">Read the input limit first: it tells you which running time the interviewer expects, before you write any code.</p>
+  <pre class="code"><span class="c">// ~10^8 simple steps per second. From the limit on n:</span>
+<span class="c">// n ≤ 10       → O(n!)        n ≤ 20      → O(2^n)</span>
+<span class="c">// n ≤ 500      → O(n³)        n ≤ 10^4    → O(n²)</span>
+<span class="c">// n ≤ 10^6     → O(n log n)   n ≥ 10^8    → O(log n) or O(1)</span>
+<span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; n; i++)            <span class="c">// O(n)</span>
+  <span class="k">for</span> (<span class="k">int</span> j = i + 1; j &lt; n; j++)      <span class="c">// inside it: O(n²) total</span>
+    count++;
+<span class="k">for</span> (<span class="k">int</span> k = n; k &gt; 1; k /= 2) steps++; <span class="c">// halving: O(log n)</span>
+Arrays.sort(a);                          <span class="c">// O(n log n)</span></pre>
+  <p class="cx"><b>Cost:</b> Count loops: nested = multiply, one after another = add, halving = log n.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/two-sum/" target="_blank" rel="noopener">Two Sum</a> · <a href="https://leetcode.com/problems/contains-duplicate/" target="_blank" rel="noopener">Contains Duplicate</a> · <a href="https://leetcode.com/problems/valid-anagram/" target="_blank" rel="noopener">Valid Anagram</a></p>
+  <p class="hook">The constraint is the hint: n tells you the Big-O.</p>
+</article>
+<article class="pc" id="arrays-hashing">
+  <h3><a href="lessons/arrays-hashing.html">Arrays &amp; hashing</a></h3>
+  <p class="sig"><b>If you see:</b> "seen before", "duplicate", "pair that sums to", "group by", "count frequency"</p>
+  <p class="idea">Store what you have already seen in a HashMap or HashSet so each later question ("have I seen X?") takes O(1) instead of a scan.</p>
+  <pre class="code"><span class="k">int</span>[] twoSum(<span class="k">int</span>[] nums, <span class="k">int</span> target) {
+  Map&lt;Integer, Integer&gt; seen = <span class="k">new</span> HashMap&lt;&gt;();   <span class="c">// value -&gt; index</span>
+  <span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; nums.length; i++) {
+    Integer j = seen.get(target - nums[i]);       <span class="c">// the partner I need</span>
+    <span class="k">if</span> (j != <span class="k">null</span>) <span class="k">return</span> <span class="k">new</span> <span class="k">int</span>[]{j, i};
+    seen.put(nums[i], i);
+  }
+  <span class="k">return</span> <span class="k">new</span> <span class="k">int</span>[0];
+}</pre>
+  <p class="cx"><b>Cost:</b> O(n) time, O(n) extra space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/two-sum/" target="_blank" rel="noopener">Two Sum</a> · <a href="https://leetcode.com/problems/group-anagrams/" target="_blank" rel="noopener">Group Anagrams</a> · <a href="https://leetcode.com/problems/longest-consecutive-sequence/" target="_blank" rel="noopener">Longest Consecutive Sequence</a></p>
+  <p class="hook">Trade memory for time: a map turns "search" into "look up".</p>
+</article>
+<article class="pc" id="two-pointers">
+  <h3><a href="lessons/two-pointers.html">Two pointers</a></h3>
+  <p class="sig"><b>If you see:</b> "sorted array", "pair / triplet with sum", "in place", "palindrome", "from both ends"</p>
+  <p class="idea">Put one finger at each end of a sorted array and move the one that brings you closer to the goal; each step rules out a whole row of pairs.</p>
+  <pre class="code"><span class="k">int</span>[] pairWithSum(<span class="k">int</span>[] a, <span class="k">int</span> target) {          <span class="c">// a is sorted</span>
+  <span class="k">int</span> l = 0, r = a.length - 1;
+  <span class="k">while</span> (l &lt; r) {
+    <span class="k">int</span> s = a[l] + a[r];
+    <span class="k">if</span> (s == target) <span class="k">return</span> <span class="k">new</span> <span class="k">int</span>[]{l, r};
+    <span class="k">if</span> (s &lt; target) l++;                          <span class="c">// need bigger</span>
+    <span class="k">else</span> r--;                                     <span class="c">// need smaller</span>
+  }
+  <span class="k">return</span> <span class="k">new</span> <span class="k">int</span>[0];
+}</pre>
+  <p class="cx"><b>Cost:</b> O(n) time, O(1) space (plus O(n log n) if you must sort first).</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/" target="_blank" rel="noopener">Two Sum II</a> · <a href="https://leetcode.com/problems/3sum/" target="_blank" rel="noopener">3Sum</a> · <a href="https://leetcode.com/problems/container-with-most-water/" target="_blank" rel="noopener">Container With Most Water</a></p>
+  <p class="hook">Sorted + pair → two fingers walking inward.</p>
+</article>
+<article class="pc" id="sliding-window">
+  <h3><a href="lessons/sliding-window.html">Sliding window</a></h3>
+  <p class="sig"><b>If you see:</b> "longest / shortest substring or subarray", "at most K distinct", "contiguous", "window of size k"</p>
+  <p class="idea">Grow the window on the right; when it breaks the rule, shrink it from the left until it is valid again, and record the best size.</p>
+  <pre class="code"><span class="k">int</span> lengthOfLongestSubstring(String s) {
+  Map&lt;Character, Integer&gt; count = <span class="k">new</span> HashMap&lt;&gt;();
+  <span class="k">int</span> best = 0;
+  <span class="k">for</span> (<span class="k">int</span> l = 0, r = 0; r &lt; s.length(); r++) {
+    count.merge(s.charAt(r), 1, Integer::sum);     <span class="c">// grow right</span>
+    <span class="k">while</span> (count.get(s.charAt(r)) &gt; 1)              <span class="c">// rule broken</span>
+      count.merge(s.charAt(l++), -1, Integer::sum); <span class="c">// shrink left</span>
+    best = Math.max(best, r - l + 1);
+  }
+  <span class="k">return</span> best;
+}</pre>
+  <p class="cx"><b>Cost:</b> O(n) time: each index enters and leaves the window once. O(k) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/longest-substring-without-repeating-characters/" target="_blank" rel="noopener">Longest Substring Without Repeating Characters</a> · <a href="https://leetcode.com/problems/longest-repeating-character-replacement/" target="_blank" rel="noopener">Longest Repeating Character Replacement</a> · <a href="https://leetcode.com/problems/minimum-window-substring/" target="_blank" rel="noopener">Minimum Window Substring</a></p>
+  <p class="hook">Right pointer explores, left pointer repairs.</p>
+</article>
+<article class="pc" id="prefix-sum">
+  <h3><a href="lessons/prefix-sum.html">Prefix sum</a></h3>
+  <p class="sig"><b>If you see:</b> "sum of range i..j", "many range queries", "subarray sum equals K", negatives allowed</p>
+  <p class="idea">Keep running totals so any range sum is one subtraction; to count subarrays summing to K, look up how many earlier totals equal "now − K".</p>
+  <pre class="code"><span class="k">int</span> subarraySum(<span class="k">int</span>[] nums, <span class="k">int</span> k) {
+  Map&lt;Integer, Integer&gt; seen = <span class="k">new</span> HashMap&lt;&gt;();
+  seen.put(0, 1);                                 <span class="c">// the empty prefix</span>
+  <span class="k">int</span> sum = 0, count = 0;
+  <span class="k">for</span> (<span class="k">int</span> x : nums) {
+    sum += x;
+    count += seen.getOrDefault(sum - k, 0);       <span class="c">// earlier prefixes that fit</span>
+    seen.merge(sum, 1, Integer::sum);
+  }
+  <span class="k">return</span> count;
+}</pre>
+  <p class="cx"><b>Cost:</b> O(n) time, O(n) space. Range query after building: O(1).</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/range-sum-query-immutable/" target="_blank" rel="noopener">Range Sum Query - Immutable</a> · <a href="https://leetcode.com/problems/subarray-sum-equals-k/" target="_blank" rel="noopener">Subarray Sum Equals K</a> · <a href="https://leetcode.com/problems/contiguous-array/" target="_blank" rel="noopener">Contiguous Array</a></p>
+  <p class="hook">sum(i..j) = pre[j+1] − pre[i]; remember to seed the map with 0.</p>
+</article>
+<article class="pc" id="kadane">
+  <h3><a href="lessons/kadane.html">Kadane</a></h3>
+  <p class="sig"><b>If you see:</b> "maximum sum subarray", "best contiguous run", "max profit in one pass"</p>
+  <p class="idea">At each number decide: add it to the run you have, or start a new run here — whichever is bigger — and remember the best run ever seen.</p>
+  <pre class="code"><span class="k">int</span> maxSubArray(<span class="k">int</span>[] nums) {
+  <span class="k">int</span> cur = nums[0], best = nums[0];
+  <span class="k">for</span> (<span class="k">int</span> i = 1; i &lt; nums.length; i++) {
+    cur = Math.max(nums[i], cur + nums[i]);       <span class="c">// extend or restart</span>
+    best = Math.max(best, cur);
+  }
+  <span class="k">return</span> best;
+}</pre>
+  <p class="cx"><b>Cost:</b> O(n) time, O(1) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/maximum-subarray/" target="_blank" rel="noopener">Maximum Subarray</a> · <a href="https://leetcode.com/problems/maximum-product-subarray/" target="_blank" rel="noopener">Maximum Product Subarray</a> · <a href="https://leetcode.com/problems/maximum-sum-circular-subarray/" target="_blank" rel="noopener">Maximum Sum Circular Subarray</a></p>
+  <p class="hook">A negative past only drags you down — drop it.</p>
+</article>
+<article class="pc" id="in-place-tricks">
+  <h3><a href="lessons/in-place-tricks.html">In-place tricks</a></h3>
+  <p class="sig"><b>If you see:</b> "O(1) extra space", "without a copy", "rotate", "partition 0/1/2", "without division"</p>
+  <p class="idea">Rearrange inside the same array with a few pointers (Dutch flag), reversals (rotation) or left/right running products.</p>
+  <pre class="code"><span class="k">void</span> sortColors(<span class="k">int</span>[] a) {                        <span class="c">// values are 0, 1, 2</span>
+  <span class="k">int</span> lo = 0, mid = 0, hi = a.length - 1;
+  <span class="k">while</span> (mid &lt;= hi) {
+    <span class="k">if</span> (a[mid] == 0) swap(a, lo++, mid++);        <span class="c">// 0 goes left</span>
+    <span class="k">else</span> <span class="k">if</span> (a[mid] == 2) swap(a, mid, hi--);     <span class="c">// 2 goes right, recheck mid</span>
+    <span class="k">else</span> mid++;                                   <span class="c">// 1 stays</span>
+  }
+}
+<span class="k">void</span> swap(<span class="k">int</span>[] a, <span class="k">int</span> i, <span class="k">int</span> j) { <span class="k">int</span> t = a[i]; a[i] = a[j]; a[j] = t; }
+<span class="c">// rotate right by k: reverse all, reverse first k, reverse the rest</span></pre>
+  <p class="cx"><b>Cost:</b> O(n) time, O(1) extra space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/sort-colors/" target="_blank" rel="noopener">Sort Colors</a> · <a href="https://leetcode.com/problems/rotate-array/" target="_blank" rel="noopener">Rotate Array</a> · <a href="https://leetcode.com/problems/product-of-array-except-self/" target="_blank" rel="noopener">Product of Array Except Self</a></p>
+  <p class="hook">Three regions, three pointers; rotation = three reversals.</p>
+</article>
+</div>
+</section>
+
+<section class="pgroup" id="g-searching-and-sorting">
+<h2>Searching &amp; sorting <span class="meta">5 patterns</span></h2>
+<div class="pgrid">
+<article class="pc" id="binary-search">
+  <h3><a href="lessons/binary-search.html">Binary search</a></h3>
+  <p class="sig"><b>If you see:</b> "sorted", "find position / first / last", "O(log n)", "insert position"</p>
+  <p class="idea">Look at the middle, throw away the half that cannot hold the answer, repeat until one spot is left.</p>
+  <pre class="code"><span class="k">int</span> lowerBound(<span class="k">int</span>[] a, <span class="k">int</span> target) {             <span class="c">// first i with a[i] &gt;= target</span>
+  <span class="k">int</span> lo = 0, hi = a.length;                      <span class="c">// answer lies in [lo, hi]</span>
+  <span class="k">while</span> (lo &lt; hi) {
+    <span class="k">int</span> mid = lo + (hi - lo) / 2;                 <span class="c">// no overflow</span>
+    <span class="k">if</span> (a[mid] &lt; target) lo = mid + 1;            <span class="c">// answer is right of mid</span>
+    <span class="k">else</span> hi = mid;                                <span class="c">// mid might be it</span>
+  }
+  <span class="k">return</span> lo;
+}</pre>
+  <p class="cx"><b>Cost:</b> O(log n) time, O(1) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/binary-search/" target="_blank" rel="noopener">Binary Search</a> · <a href="https://leetcode.com/problems/search-insert-position/" target="_blank" rel="noopener">Search Insert Position</a> · <a href="https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/" target="_blank" rel="noopener">Find First and Last Position</a></p>
+  <p class="hook">lo &lt; hi, hi = mid, lo = mid + 1: the one loop that never goes infinite.</p>
+</article>
+<article class="pc" id="binary-search-answer">
+  <h3><a href="lessons/binary-search-answer.html">Binary search on the answer</a></h3>
+  <p class="sig"><b>If you see:</b> "minimum speed / capacity / time such that…", "maximise the minimum", "within D days"</p>
+  <p class="idea">If "can I do it with value X?" is a yes/no that flips only once as X grows, binary search X and run the check each time.</p>
+  <pre class="code"><span class="k">int</span> minEatingSpeed(<span class="k">int</span>[] piles, <span class="k">int</span> h) {
+  <span class="k">int</span> lo = 1, hi = 1_000_000_000;
+  <span class="k">while</span> (lo &lt; hi) {
+    <span class="k">int</span> mid = lo + (hi - lo) / 2;
+    <span class="k">long</span> hours = 0;
+    <span class="k">for</span> (<span class="k">int</span> p : piles) hours += (p - 1) / mid + 1;   <span class="c">// ceil(p / mid)</span>
+    <span class="k">if</span> (hours &lt;= h) hi = mid;                         <span class="c">// fast enough: try slower</span>
+    <span class="k">else</span> lo = mid + 1;
+  }
+  <span class="k">return</span> lo;
+}</pre>
+  <p class="cx"><b>Cost:</b> O(n · log(range)) time, O(1) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/koko-eating-bananas/" target="_blank" rel="noopener">Koko Eating Bananas</a> · <a href="https://leetcode.com/problems/capacity-to-ship-packages-within-d-days/" target="_blank" rel="noopener">Capacity To Ship Packages Within D Days</a> · <a href="https://leetcode.com/problems/split-array-largest-sum/" target="_blank" rel="noopener">Split Array Largest Sum</a></p>
+  <p class="hook">Guess the answer, check it, halve the guesses.</p>
+</article>
+<article class="pc" id="rotated-array">
+  <h3><a href="lessons/rotated-array.html">Rotated sorted array</a></h3>
+  <p class="sig"><b>If you see:</b> "sorted then rotated", "pivot unknown", "find minimum", still O(log n)</p>
+  <p class="idea">Cut at the middle: one half is always properly sorted, so check if the target sits inside that half and drop the other.</p>
+  <pre class="code"><span class="k">int</span> search(<span class="k">int</span>[] a, <span class="k">int</span> t) {
+  <span class="k">int</span> lo = 0, hi = a.length - 1;
+  <span class="k">while</span> (lo &lt;= hi) {
+    <span class="k">int</span> mid = (lo + hi) &gt;&gt;&gt; 1; <span class="k">if</span> (a[mid] == t) <span class="k">return</span> mid;
+    <span class="k">if</span> (a[lo] &lt;= a[mid]) {                         <span class="c">// left half sorted</span>
+      <span class="k">if</span> (a[lo] &lt;= t &amp;&amp; t &lt; a[mid]) hi = mid - 1; <span class="k">else</span> lo = mid + 1;
+    } <span class="k">else</span> {                                       <span class="c">// right half sorted</span>
+      <span class="k">if</span> (a[mid] &lt; t &amp;&amp; t &lt;= a[hi]) lo = mid + 1; <span class="k">else</span> hi = mid - 1;
+    }
+  }
+  <span class="k">return</span> -1;
+}</pre>
+  <p class="cx"><b>Cost:</b> O(log n) time, O(1) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/search-in-rotated-sorted-array/" target="_blank" rel="noopener">Search in Rotated Sorted Array</a> · <a href="https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/" target="_blank" rel="noopener">Find Minimum in Rotated Sorted Array</a> · <a href="https://leetcode.com/problems/search-in-rotated-sorted-array-ii/" target="_blank" rel="noopener">Search in Rotated Sorted Array II</a></p>
+  <p class="hook">One half is always sorted — ask that half.</p>
+</article>
+<article class="pc" id="merge-sort">
+  <h3><a href="lessons/merge-sort.html">Merge sort</a></h3>
+  <p class="sig"><b>If you see:</b> "sort a linked list", "stable sort", "count inversions / smaller after self", "divide and conquer"</p>
+  <p class="idea">Split in half, sort each half the same way, then merge two sorted halves with two pointers — counting things during the merge is the interview twist.</p>
+  <pre class="code"><span class="k">void</span> sort(<span class="k">int</span>[] a, <span class="k">int</span> lo, <span class="k">int</span> hi, <span class="k">int</span>[] tmp) {   <span class="c">// sorts a[lo..hi]</span>
+  <span class="k">if</span> (lo &gt;= hi) <span class="k">return</span>;
+  <span class="k">int</span> mid = (lo + hi) &gt;&gt;&gt; 1;
+  sort(a, lo, mid, tmp);
+  sort(a, mid + 1, hi, tmp);
+  <span class="k">int</span> i = lo, j = mid + 1, k = lo;
+  <span class="k">while</span> (i &lt;= mid || j &lt;= hi)
+    tmp[k++] = (j &gt; hi || (i &lt;= mid &amp;&amp; a[i] &lt;= a[j])) ? a[i++] : a[j++];
+  <span class="k">for</span> (k = lo; k &lt;= hi; k++) a[k] = tmp[k];
+}</pre>
+  <p class="cx"><b>Cost:</b> O(n log n) time always, O(n) extra space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/sort-an-array/" target="_blank" rel="noopener">Sort an Array</a> · <a href="https://leetcode.com/problems/sort-list/" target="_blank" rel="noopener">Sort List</a> · <a href="https://leetcode.com/problems/count-of-smaller-numbers-after-self/" target="_blank" rel="noopener">Count of Smaller Numbers After Self</a></p>
+  <p class="hook">Split, trust, merge.</p>
+</article>
+<article class="pc" id="quick-sort">
+  <h3><a href="lessons/quick-sort.html">Quick sort &amp; quickselect</a></h3>
+  <p class="sig"><b>If you see:</b> "kth largest / smallest", "partition around", "average O(n)"</p>
+  <p class="idea">Partition around a pivot so smaller values go left; the pivot lands in its final spot, so for kth element recurse into one side only.</p>
+  <pre class="code"><span class="k">int</span> findKthLargest(<span class="k">int</span>[] a, <span class="k">int</span> k) {              <span class="c">// swap() as in Sort Colors</span>
+  <span class="k">int</span> target = a.length - k, lo = 0, hi = a.length - 1;
+  <span class="k">while</span> (<span class="k">true</span>) {
+    swap(a, hi, lo + (<span class="k">int</span>) (Math.random() * (hi - lo + 1))); <span class="c">// random pivot</span>
+    <span class="k">int</span> pivot = a[hi], p = lo;
+    <span class="k">for</span> (<span class="k">int</span> i = lo; i &lt; hi; i++)
+      <span class="k">if</span> (a[i] &lt; pivot) swap(a, i, p++);          <span class="c">// smaller ones to the left</span>
+    swap(a, p, hi);                               <span class="c">// pivot in its final place</span>
+    <span class="k">if</span> (p == target) <span class="k">return</span> a[p];
+    <span class="k">if</span> (p &lt; target) lo = p + 1; <span class="k">else</span> hi = p - 1;
+  }
+}</pre>
+  <p class="cx"><b>Cost:</b> Quickselect O(n) average, O(n²) worst; quicksort O(n log n) average.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/kth-largest-element-in-an-array/" target="_blank" rel="noopener">Kth Largest Element in an Array</a> · <a href="https://leetcode.com/problems/k-closest-points-to-origin/" target="_blank" rel="noopener">K Closest Points to Origin</a> · <a href="https://leetcode.com/problems/sort-an-array/" target="_blank" rel="noopener">Sort an Array</a></p>
+  <p class="hook">Pivot lands home; keep only the side with k.</p>
+</article>
+</div>
+</section>
+
+<section class="pgroup" id="g-linked-lists">
+<h2>Linked lists <span class="meta">4 patterns</span></h2>
+<div class="pgrid">
+<article class="pc" id="linked-list-reverse">
+  <h3><a href="lessons/linked-list-reverse.html">Reverse a linked list</a></h3>
+  <p class="sig"><b>If you see:</b> "reverse", "reverse between m and n", "in groups of k", "palindrome list"</p>
+  <p class="idea">Walk the list once and turn each arrow around, keeping three pointers so you never lose the rest of the list.</p>
+  <pre class="code">ListNode reverse(ListNode head) {
+  ListNode prev = <span class="k">null</span>, curr = head;
+  <span class="k">while</span> (curr != <span class="k">null</span>) {
+    ListNode next = curr.next;                    <span class="c">// 1. save</span>
+    curr.next = prev;                             <span class="c">// 2. flip</span>
+    prev = curr;                                  <span class="c">// 3. step</span>
+    curr = next;
+  }
+  <span class="k">return</span> prev;                                    <span class="c">// new head</span>
+}</pre>
+  <p class="cx"><b>Cost:</b> O(n) time, O(1) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/reverse-linked-list/" target="_blank" rel="noopener">Reverse Linked List</a> · <a href="https://leetcode.com/problems/reverse-linked-list-ii/" target="_blank" rel="noopener">Reverse Linked List II</a> · <a href="https://leetcode.com/problems/reverse-nodes-in-k-group/" target="_blank" rel="noopener">Reverse Nodes in k-Group</a></p>
+  <p class="hook">Save, flip, step.</p>
+</article>
+<article class="pc" id="fast-slow-pointers">
+  <h3><a href="lessons/fast-slow-pointers.html">Fast &amp; slow pointers</a></h3>
+  <p class="sig"><b>If you see:</b> "cycle", "middle of the list", "nth from the end", "duplicate number in 1..n"</p>
+  <p class="idea">Move one pointer twice as fast as the other: if there is a loop they meet; if not, the slow one stops at the middle.</p>
+  <pre class="code"><span class="k">boolean</span> hasCycle(ListNode head) {
+  ListNode slow = head, fast = head;
+  <span class="k">while</span> (fast != <span class="k">null</span> &amp;&amp; fast.next != <span class="k">null</span>) {
+    slow = slow.next;                             <span class="c">// 1 step</span>
+    fast = fast.next.next;                        <span class="c">// 2 steps</span>
+    <span class="k">if</span> (slow == fast) <span class="k">return</span> <span class="k">true</span>;                <span class="c">// they met in the loop</span>
+  }
+  <span class="k">return</span> <span class="k">false</span>;                                   <span class="c">// no loop; slow = middle</span>
+}
+<span class="c">// cycle start: after meeting, move one pointer to head, step both by 1</span></pre>
+  <p class="cx"><b>Cost:</b> O(n) time, O(1) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/middle-of-the-linked-list/" target="_blank" rel="noopener">Middle of the Linked List</a> · <a href="https://leetcode.com/problems/linked-list-cycle-ii/" target="_blank" rel="noopener">Linked List Cycle II</a> · <a href="https://leetcode.com/problems/find-the-duplicate-number/" target="_blank" rel="noopener">Find the Duplicate Number</a></p>
+  <p class="hook">Hare and tortoise: a loop makes them meet.</p>
+</article>
+<article class="pc" id="merge-lists">
+  <h3><a href="lessons/merge-lists.html">Merge lists</a></h3>
+  <p class="sig"><b>If you see:</b> "merge two / k sorted lists", "combine sorted streams", "add two numbers as lists"</p>
+  <p class="idea">Start with a dummy node and always attach the smaller head; for k lists, a min-heap tells you the smallest head.</p>
+  <pre class="code">ListNode merge(ListNode a, ListNode b) {
+  ListNode dummy = <span class="k">new</span> ListNode(0), tail = dummy;
+  <span class="k">while</span> (a != <span class="k">null</span> &amp;&amp; b != <span class="k">null</span>) {
+    <span class="k">if</span> (a.val &lt;= b.val) { tail.next = a; a = a.next; }
+    <span class="k">else</span> { tail.next = b; b = b.next; }
+    tail = tail.next;
+  }
+  tail.next = (a != <span class="k">null</span>) ? a : b;                <span class="c">// attach the leftover</span>
+  <span class="k">return</span> dummy.next;
+}</pre>
+  <p class="cx"><b>Cost:</b> Two lists O(n + m); k lists with a heap O(N log k).</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/merge-two-sorted-lists/" target="_blank" rel="noopener">Merge Two Sorted Lists</a> · <a href="https://leetcode.com/problems/merge-k-sorted-lists/" target="_blank" rel="noopener">Merge k Sorted Lists</a> · <a href="https://leetcode.com/problems/add-two-numbers/" target="_blank" rel="noopener">Add Two Numbers</a></p>
+  <p class="hook">Dummy head first, then never special-case the start.</p>
+</article>
+<article class="pc" id="lru-cache">
+  <h3><a href="lessons/lru-cache.html">LRU cache</a></h3>
+  <p class="sig"><b>If you see:</b> "least recently used", "evict", "get and put in O(1)", "capacity"</p>
+  <p class="idea">A HashMap finds the node in O(1) and a doubly linked list keeps use-order; in the interview write the list yourself — this is the shortcut to check your answer.</p>
+  <pre class="code"><span class="k">class</span> LRUCache <span class="k">extends</span> LinkedHashMap&lt;Integer, Integer&gt; {
+  <span class="k">private</span> <span class="k">final</span> <span class="k">int</span> cap;
+  LRUCache(<span class="k">int</span> capacity) {
+    super(capacity, 0.75f, <span class="k">true</span>);                 <span class="c">// true = access order</span>
+    cap = capacity;
+  }
+  <span class="k">public</span> <span class="k">int</span> get(<span class="k">int</span> key) { <span class="k">return</span> getOrDefault(key, -1); }
+  <span class="k">public</span> <span class="k">void</span> put(<span class="k">int</span> key, <span class="k">int</span> value) { super.put(key, value); }
+  @Override <span class="k">protected</span> <span class="k">boolean</span> removeEldestEntry(Map.Entry&lt;Integer, Integer&gt; e) {
+    <span class="k">return</span> size() &gt; cap;                          <span class="c">// evict least recent</span>
+  }
+}</pre>
+  <p class="cx"><b>Cost:</b> O(1) per get / put, O(capacity) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/lru-cache/" target="_blank" rel="noopener">LRU Cache</a> · <a href="https://leetcode.com/problems/lfu-cache/" target="_blank" rel="noopener">LFU Cache</a> · <a href="https://leetcode.com/problems/design-browser-history/" target="_blank" rel="noopener">Design Browser History</a></p>
+  <p class="hook">Map for "where", list for "when".</p>
+</article>
+</div>
+</section>
+
+<section class="pgroup" id="g-stacks-queues-and-heaps">
+<h2>Stacks, queues &amp; heaps <span class="meta">5 patterns</span></h2>
+<div class="pgrid">
+<article class="pc" id="stack-basics">
+  <h3><a href="lessons/stack-basics.html">Stacks &amp; queues</a></h3>
+  <p class="sig"><b>If you see:</b> "valid brackets", "undo", "most recent first", "evaluate expression", "min stack"</p>
+  <p class="idea">A stack remembers the most recent unfinished thing; push when something opens, pop when it closes.</p>
+  <pre class="code"><span class="k">boolean</span> isValid(String s) {
+  Deque&lt;Character&gt; st = <span class="k">new</span> ArrayDeque&lt;&gt;();
+  <span class="k">for</span> (<span class="k">char</span> c : s.toCharArray()) {
+    <span class="k">if</span> (c == '(') st.push(')');                   <span class="c">// push the closer we expect</span>
+    <span class="k">else</span> <span class="k">if</span> (c == '[') st.push(']');
+    <span class="k">else</span> <span class="k">if</span> (c == '{') st.push('}');
+    <span class="k">else</span> <span class="k">if</span> (st.isEmpty() || st.pop() != c) <span class="k">return</span> <span class="k">false</span>;
+  }
+  <span class="k">return</span> st.isEmpty();
+}</pre>
+  <p class="cx"><b>Cost:</b> O(n) time, O(n) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/valid-parentheses/" target="_blank" rel="noopener">Valid Parentheses</a> · <a href="https://leetcode.com/problems/min-stack/" target="_blank" rel="noopener">Min Stack</a> · <a href="https://leetcode.com/problems/evaluate-reverse-polish-notation/" target="_blank" rel="noopener">Evaluate Reverse Polish Notation</a></p>
+  <p class="hook">Last opened, first closed.</p>
+</article>
+<article class="pc" id="monotonic-stack">
+  <h3><a href="lessons/monotonic-stack.html">Monotonic stack</a></h3>
+  <p class="sig"><b>If you see:</b> "next greater / smaller element", "days until warmer", "largest rectangle", "stock span"</p>
+  <p class="idea">Keep a stack of indices whose values only go down; a bigger new value pops them and is their "next greater" answer.</p>
+  <pre class="code"><span class="k">int</span>[] dailyTemperatures(<span class="k">int</span>[] t) {
+  <span class="k">int</span>[] ans = <span class="k">new</span> <span class="k">int</span>[t.length];
+  Deque&lt;Integer&gt; st = <span class="k">new</span> ArrayDeque&lt;&gt;();         <span class="c">// indices, temps decreasing</span>
+  <span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; t.length; i++) {
+    <span class="k">while</span> (!st.isEmpty() &amp;&amp; t[st.peek()] &lt; t[i]) {
+      <span class="k">int</span> j = st.pop();
+      ans[j] = i - j;                             <span class="c">// i is j's next warmer day</span>
+    }
+    st.push(i);
+  }
+  <span class="k">return</span> ans;
+}</pre>
+  <p class="cx"><b>Cost:</b> O(n) time — each index is pushed and popped once. O(n) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/daily-temperatures/" target="_blank" rel="noopener">Daily Temperatures</a> · <a href="https://leetcode.com/problems/next-greater-element-ii/" target="_blank" rel="noopener">Next Greater Element II</a> · <a href="https://leetcode.com/problems/largest-rectangle-in-histogram/" target="_blank" rel="noopener">Largest Rectangle in Histogram</a></p>
+  <p class="hook">Waiting line of the unanswered; a taller one answers them all.</p>
+</article>
+<article class="pc" id="heap">
+  <h3><a href="lessons/heap.html">Heap (priority queue)</a></h3>
+  <p class="sig"><b>If you see:</b> "smallest / largest so far", "repeatedly take the min", "schedule by priority", "merge k"</p>
+  <p class="idea">A heap always hands you the smallest (or largest) item in O(log n), even while items keep arriving.</p>
+  <pre class="code">PriorityQueue&lt;Integer&gt; minHeap = <span class="k">new</span> PriorityQueue&lt;&gt;();
+PriorityQueue&lt;Integer&gt; maxHeap = <span class="k">new</span> PriorityQueue&lt;&gt;(Collections.reverseOrder());
+PriorityQueue&lt;<span class="k">int</span>[]&gt; byFirst =
+    <span class="k">new</span> PriorityQueue&lt;&gt;((a, b) -&gt; Integer.compare(a[0], b[0]));
+minHeap.offer(5);                                 <span class="c">// O(log n) add</span>
+minHeap.offer(2);
+<span class="k">int</span> smallest = minHeap.peek();                    <span class="c">// O(1) look: 2</span>
+minHeap.poll();                                   <span class="c">// O(log n) remove the top</span></pre>
+  <p class="cx"><b>Cost:</b> offer / poll O(log n), peek O(1), build from n items O(n).</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/last-stone-weight/" target="_blank" rel="noopener">Last Stone Weight</a> · <a href="https://leetcode.com/problems/kth-largest-element-in-a-stream/" target="_blank" rel="noopener">Kth Largest Element in a Stream</a> · <a href="https://leetcode.com/problems/task-scheduler/" target="_blank" rel="noopener">Task Scheduler</a></p>
+  <p class="hook">Compare with Integer.compare, never a − b.</p>
+</article>
+<article class="pc" id="top-k">
+  <h3><a href="lessons/top-k.html">Top K</a></h3>
+  <p class="sig"><b>If you see:</b> "k most frequent", "k closest", "k largest", "k smallest"</p>
+  <p class="idea">Keep a heap of only k items, holding the opposite order: a min-heap for the k largest, so the weakest of the top k sits on top and is easy to drop.</p>
+  <pre class="code"><span class="k">int</span>[] topKFrequent(<span class="k">int</span>[] nums, <span class="k">int</span> k) {
+  Map&lt;Integer, Integer&gt; freq = <span class="k">new</span> HashMap&lt;&gt;();
+  <span class="k">for</span> (<span class="k">int</span> x : nums) freq.merge(x, 1, Integer::sum);
+  PriorityQueue&lt;Integer&gt; heap =                   <span class="c">// min-heap by count</span>
+      <span class="k">new</span> PriorityQueue&lt;&gt;((a, b) -&gt; Integer.compare(freq.get(a), freq.get(b)));
+  <span class="k">for</span> (<span class="k">int</span> x : freq.keySet()) {
+    heap.offer(x);
+    <span class="k">if</span> (heap.size() &gt; k) heap.poll();             <span class="c">// drop the least frequent</span>
+  }
+  <span class="k">return</span> heap.stream().mapToInt(Integer::intValue).toArray();
+}</pre>
+  <p class="cx"><b>Cost:</b> O(n log k) time, O(n) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/top-k-frequent-elements/" target="_blank" rel="noopener">Top K Frequent Elements</a> · <a href="https://leetcode.com/problems/top-k-frequent-words/" target="_blank" rel="noopener">Top K Frequent Words</a> · <a href="https://leetcode.com/problems/find-k-pairs-with-smallest-sums/" target="_blank" rel="noopener">Find K Pairs with Smallest Sums</a></p>
+  <p class="hook">K largest → min-heap of size k (opposite heap).</p>
+</article>
+<article class="pc" id="two-heaps">
+  <h3><a href="lessons/two-heaps.html">Two heaps</a></h3>
+  <p class="sig"><b>If you see:</b> "running median", "median of a stream", "balance two halves"</p>
+  <p class="idea">Keep the smaller half in a max-heap and the larger half in a min-heap; the median is at the tops.</p>
+  <pre class="code"><span class="k">class</span> MedianFinder {
+  PriorityQueue&lt;Integer&gt; lo = <span class="k">new</span> PriorityQueue&lt;&gt;(Collections.reverseOrder());
+  PriorityQueue&lt;Integer&gt; hi = <span class="k">new</span> PriorityQueue&lt;&gt;();
+  <span class="k">public</span> <span class="k">void</span> addNum(<span class="k">int</span> x) {
+    lo.offer(x);
+    hi.offer(lo.poll());                          <span class="c">// biggest small one goes up</span>
+    <span class="k">if</span> (hi.size() &gt; lo.size()) lo.offer(hi.poll()); <span class="c">// keep lo the same or +1</span>
+  }
+  <span class="k">public</span> <span class="k">double</span> findMedian() {
+    <span class="k">return</span> lo.size() &gt; hi.size() ? lo.peek() : (lo.peek() + (<span class="k">long</span>) hi.peek()) / 2.0;
+  }
+}</pre>
+  <p class="cx"><b>Cost:</b> addNum O(log n), findMedian O(1).</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/find-median-from-data-stream/" target="_blank" rel="noopener">Find Median from Data Stream</a> · <a href="https://leetcode.com/problems/sliding-window-median/" target="_blank" rel="noopener">Sliding Window Median</a> · <a href="https://leetcode.com/problems/ipo/" target="_blank" rel="noopener">IPO</a></p>
+  <p class="hook">Small half max-heap, big half min-heap, median at the seam.</p>
+</article>
+</div>
+</section>
+
+<section class="pgroup" id="g-trees">
+<h2>Trees <span class="meta">7 patterns</span></h2>
+<div class="pgrid">
+<article class="pc" id="recursion">
+  <h3><a href="lessons/recursion.html">Recursion</a></h3>
+  <p class="sig"><b>If you see:</b> "defined in terms of itself", "nested", "tree / list structure", "divide in half"</p>
+  <p class="idea">Solve the smallest case directly, then trust the same function to solve a smaller piece and build your answer from it.</p>
+  <pre class="code"><span class="k">double</span> power(<span class="k">double</span> x, <span class="k">long</span> n) {                  <span class="c">// x^n with n &gt;= 0</span>
+  <span class="k">if</span> (n == 0) <span class="k">return</span> 1;                           <span class="c">// 1. base case</span>
+  <span class="k">double</span> half = power(x, n / 2);                  <span class="c">// 2. trust the smaller call</span>
+  <span class="k">return</span> n % 2 == 0 ? half * half                 <span class="c">// 3. combine</span>
+                    : half * half * x;
+}</pre>
+  <p class="cx"><b>Cost:</b> Time = number of calls × work per call. Space = depth of calls.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/powx-n/" target="_blank" rel="noopener">Pow(x, n)</a> · <a href="https://leetcode.com/problems/fibonacci-number/" target="_blank" rel="noopener">Fibonacci Number</a> · <a href="https://leetcode.com/problems/swap-nodes-in-pairs/" target="_blank" rel="noopener">Swap Nodes in Pairs</a></p>
+  <p class="hook">Base case, smaller call, combine — and trust it.</p>
+</article>
+<article class="pc" id="tree-traversals">
+  <h3><a href="lessons/tree-traversals.html">Tree traversals</a></h3>
+  <p class="sig"><b>If you see:</b> "inorder / preorder / postorder", "sorted order of a BST", "serialize", "build from traversals"</p>
+  <p class="idea">Visit left subtree, node and right subtree in a fixed order; where you write down the node gives pre, in or post order.</p>
+  <pre class="code"><span class="k">void</span> inorder(TreeNode n, List&lt;Integer&gt; out) { <span class="k">if</span> (n == <span class="k">null</span>) <span class="k">return</span>;
+  inorder(n.left, out);                           <span class="c">// pre-order: add before this</span>
+  out.add(n.val);
+  inorder(n.right, out);                          <span class="c">// post-order: add after this</span>
+}
+List&lt;Integer&gt; inorderIter(TreeNode cur) {         <span class="c">// same, with a stack</span>
+  List&lt;Integer&gt; out = <span class="k">new</span> ArrayList&lt;&gt;(); Deque&lt;TreeNode&gt; st = <span class="k">new</span> ArrayDeque&lt;&gt;();
+  <span class="k">while</span> (cur != <span class="k">null</span> || !st.isEmpty()) {
+    <span class="k">while</span> (cur != <span class="k">null</span>) { st.push(cur); cur = cur.left; }
+    cur = st.pop(); out.add(cur.val); cur = cur.right;
+  }
+  <span class="k">return</span> out; }</pre>
+  <p class="cx"><b>Cost:</b> O(n) time, O(h) space where h is the height.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/binary-tree-inorder-traversal/" target="_blank" rel="noopener">Binary Tree Inorder Traversal</a> · <a href="https://leetcode.com/problems/binary-tree-preorder-traversal/" target="_blank" rel="noopener">Binary Tree Preorder Traversal</a> · <a href="https://leetcode.com/problems/construct-binary-tree-from-preorder-and-inorder-traversal/" target="_blank" rel="noopener">Construct Binary Tree from Preorder and Inorder</a></p>
+  <p class="hook">Pre = me first, in = me middle, post = me last.</p>
+</article>
+<article class="pc" id="tree-bfs">
+  <h3><a href="lessons/tree-bfs.html">Level order (tree BFS)</a></h3>
+  <p class="sig"><b>If you see:</b> "level by level", "right side view", "zigzag", "minimum depth", "per level average"</p>
+  <p class="idea">Use a queue; at the start of each round, its size is exactly the number of nodes on this level.</p>
+  <pre class="code">List&lt;List&lt;Integer&gt;&gt; levelOrder(TreeNode root) {
+  List&lt;List&lt;Integer&gt;&gt; res = <span class="k">new</span> ArrayList&lt;&gt;(); Deque&lt;TreeNode&gt; q = <span class="k">new</span> ArrayDeque&lt;&gt;();
+  <span class="k">if</span> (root != <span class="k">null</span>) q.offer(root);
+  <span class="k">while</span> (!q.isEmpty()) {
+    List&lt;Integer&gt; level = <span class="k">new</span> ArrayList&lt;&gt;();
+    <span class="k">for</span> (<span class="k">int</span> i = q.size(); i &gt; 0; i--) {          <span class="c">// exactly one level</span>
+      TreeNode n = q.poll(); level.add(n.val);
+      <span class="k">if</span> (n.left != <span class="k">null</span>) q.offer(n.left); <span class="k">if</span> (n.right != <span class="k">null</span>) q.offer(n.right);
+    }
+    res.add(level);
+  }
+  <span class="k">return</span> res; }</pre>
+  <p class="cx"><b>Cost:</b> O(n) time, O(width) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/binary-tree-level-order-traversal/" target="_blank" rel="noopener">Binary Tree Level Order Traversal</a> · <a href="https://leetcode.com/problems/binary-tree-right-side-view/" target="_blank" rel="noopener">Binary Tree Right Side View</a> · <a href="https://leetcode.com/problems/binary-tree-zigzag-level-order-traversal/" target="_blank" rel="noopener">Binary Tree Zigzag Level Order Traversal</a></p>
+  <p class="hook">Freeze q.size() — that is one level.</p>
+</article>
+<article class="pc" id="tree-recursion">
+  <h3><a href="lessons/tree-recursion.html">Tree recursion</a></h3>
+  <p class="sig"><b>If you see:</b> "depth", "diameter", "balanced", "path sum", "any question about a whole tree"</p>
+  <p class="idea">Ask three things: what do I return for null, what do I need from each child, and what do I give my parent (updating a global best on the way).</p>
+  <pre class="code"><span class="k">int</span> best = 0;
+<span class="k">int</span> diameterOfBinaryTree(TreeNode root) { height(root); <span class="k">return</span> best; }
+<span class="k">int</span> height(TreeNode n) {
+  <span class="k">if</span> (n == <span class="k">null</span>) <span class="k">return</span> 0;                        <span class="c">// 1. empty tree</span>
+  <span class="k">int</span> l = height(n.left), r = height(n.right);    <span class="c">// 2. ask the children</span>
+  best = Math.max(best, l + r);                   <span class="c">// 3. best path through me</span>
+  <span class="k">return</span> 1 + Math.max(l, r);                      <span class="c">//    my height, for my parent</span>
+}</pre>
+  <p class="cx"><b>Cost:</b> O(n) time, O(h) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/maximum-depth-of-binary-tree/" target="_blank" rel="noopener">Maximum Depth of Binary Tree</a> · <a href="https://leetcode.com/problems/diameter-of-binary-tree/" target="_blank" rel="noopener">Diameter of Binary Tree</a> · <a href="https://leetcode.com/problems/binary-tree-maximum-path-sum/" target="_blank" rel="noopener">Binary Tree Maximum Path Sum</a></p>
+  <p class="hook">Return one thing to the parent, record the other globally.</p>
+</article>
+<article class="pc" id="bst">
+  <h3><a href="lessons/bst.html">Binary search tree</a></h3>
+  <p class="sig"><b>If you see:</b> "BST", "sorted tree", "kth smallest", "validate", "insert / delete"</p>
+  <p class="idea">Left is smaller, right is bigger at every node, so pass down a (low, high) range or walk left/right like binary search.</p>
+  <pre class="code"><span class="k">boolean</span> isValidBST(TreeNode root) {
+  <span class="k">return</span> valid(root, Long.MIN_VALUE, Long.MAX_VALUE);
+}
+<span class="k">boolean</span> valid(TreeNode n, <span class="k">long</span> lo, <span class="k">long</span> hi) {     <span class="c">// n.val must be in (lo, hi)</span>
+  <span class="k">if</span> (n == <span class="k">null</span>) <span class="k">return</span> <span class="k">true</span>;
+  <span class="k">if</span> (n.val &lt;= lo || n.val &gt;= hi) <span class="k">return</span> <span class="k">false</span>;
+  <span class="k">return</span> valid(n.left, lo, n.val) &amp;&amp; valid(n.right, n.val, hi);
+}
+TreeNode search(TreeNode n, <span class="k">int</span> x) {
+  <span class="k">while</span> (n != <span class="k">null</span> &amp;&amp; n.val != x) n = x &lt; n.val ? n.left : n.right;
+  <span class="k">return</span> n;
+}</pre>
+  <p class="cx"><b>Cost:</b> Search / insert O(h); validate O(n). h = log n if balanced, n if not.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/validate-binary-search-tree/" target="_blank" rel="noopener">Validate Binary Search Tree</a> · <a href="https://leetcode.com/problems/kth-smallest-element-in-a-bst/" target="_blank" rel="noopener">Kth Smallest Element in a BST</a> · <a href="https://leetcode.com/problems/delete-node-in-a-bst/" target="_blank" rel="noopener">Delete Node in a BST</a></p>
+  <p class="hook">Pass the range down, not just the parent.</p>
+</article>
+<article class="pc" id="lca">
+  <h3><a href="lessons/lca.html">Lowest common ancestor</a></h3>
+  <p class="sig"><b>If you see:</b> "common ancestor", "where two paths meet", "distance between two nodes"</p>
+  <p class="idea">Search both sides: if p and q are found on different sides, this node is where their paths split.</p>
+  <pre class="code">TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
+  <span class="k">if</span> (root == <span class="k">null</span> || root == p || root == q) <span class="k">return</span> root;
+  TreeNode l = lowestCommonAncestor(root.left, p, q);
+  TreeNode r = lowestCommonAncestor(root.right, p, q);
+  <span class="k">if</span> (l != <span class="k">null</span> &amp;&amp; r != <span class="k">null</span>) <span class="k">return</span> root;        <span class="c">// split here</span>
+  <span class="k">return</span> l != <span class="k">null</span> ? l : r;                       <span class="c">// pass up what was found</span>
+}
+<span class="c">// BST: go left while both &lt; root, right while both &gt; root, else root</span></pre>
+  <p class="cx"><b>Cost:</b> O(n) time, O(h) space; in a BST O(h).</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/" target="_blank" rel="noopener">LCA of a Binary Tree</a> · <a href="https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/" target="_blank" rel="noopener">LCA of a Binary Search Tree</a> · <a href="https://leetcode.com/problems/lowest-common-ancestor-of-deepest-leaves/" target="_blank" rel="noopener">LCA of Deepest Leaves</a></p>
+  <p class="hook">Found on both sides → I am the answer.</p>
+</article>
+<article class="pc" id="trie">
+  <h3><a href="lessons/trie.html">Trie (prefix tree)</a></h3>
+  <p class="sig"><b>If you see:</b> "prefix", "starts with", "autocomplete", "dictionary of words", "word search with many words"</p>
+  <p class="idea">Store words letter by letter in a tree of 26-way nodes, so checking any prefix costs only its length.</p>
+  <pre class="code"><span class="k">class</span> Trie {
+  Trie[] next = <span class="k">new</span> Trie[26];
+  <span class="k">boolean</span> end;                                    <span class="c">// a word ends here</span>
+  <span class="k">void</span> insert(String w) {
+    Trie t = <span class="k">this</span>;
+    <span class="k">for</span> (<span class="k">char</span> c : w.toCharArray()) {
+      <span class="k">if</span> (t.next[c - 'a'] == <span class="k">null</span>) t.next[c - 'a'] = <span class="k">new</span> Trie();
+      t = t.next[c - 'a'];
+    }
+    t.end = <span class="k">true</span>;
+  }
+} <span class="c">// search / startsWith: walk the same way; word needs end, prefix needs a node</span></pre>
+  <p class="cx"><b>Cost:</b> O(L) per insert / lookup; space up to total letters × 26.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/implement-trie-prefix-tree/" target="_blank" rel="noopener">Implement Trie (Prefix Tree)</a> · <a href="https://leetcode.com/problems/design-add-and-search-words-data-structure/" target="_blank" rel="noopener">Design Add and Search Words Data Structure</a> · <a href="https://leetcode.com/problems/word-search-ii/" target="_blank" rel="noopener">Word Search II</a></p>
+  <p class="hook">One letter per level; mark where words end.</p>
+</article>
+</div>
+</section>
+
+<section class="pgroup" id="g-graphs">
+<h2>Graphs <span class="meta">7 patterns</span></h2>
+<div class="pgrid">
+<article class="pc" id="graph-basics">
+  <h3><a href="lessons/graph-basics.html">Graph basics</a></h3>
+  <p class="sig"><b>If you see:</b> "connected", "network", "friends of friends", "nodes and edges", "is there a path"</p>
+  <p class="idea">Turn the edge list into an adjacency list, then DFS or BFS from each unvisited node, marking visited so you never loop.</p>
+  <pre class="code">List&lt;List&lt;Integer&gt;&gt; g = <span class="k">new</span> ArrayList&lt;&gt;();
+<span class="k">boolean</span>[] seen;
+<span class="k">int</span> countComponents(<span class="k">int</span> n, <span class="k">int</span>[][] edges) {
+  <span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; n; i++) g.add(<span class="k">new</span> ArrayList&lt;&gt;());
+  <span class="k">for</span> (<span class="k">int</span>[] e : edges) { g.get(e[0]).add(e[1]); g.get(e[1]).add(e[0]); }
+  seen = <span class="k">new</span> <span class="k">boolean</span>[n]; <span class="k">int</span> count = 0;
+  <span class="k">for</span> (<span class="k">int</span> u = 0; u &lt; n; u++) <span class="k">if</span> (!seen[u]) { count++; dfs(u); }
+  <span class="k">return</span> count;
+}
+<span class="k">void</span> dfs(<span class="k">int</span> u) {
+  seen[u] = <span class="k">true</span>;
+  <span class="k">for</span> (<span class="k">int</span> v : g.get(u)) <span class="k">if</span> (!seen[v]) dfs(v); }</pre>
+  <p class="cx"><b>Cost:</b> O(V + E) time and space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/find-if-path-exists-in-graph/" target="_blank" rel="noopener">Find if Path Exists in Graph</a> · <a href="https://leetcode.com/problems/number-of-provinces/" target="_blank" rel="noopener">Number of Provinces</a> · <a href="https://leetcode.com/problems/clone-graph/" target="_blank" rel="noopener">Clone Graph</a></p>
+  <p class="hook">Adjacency list + visited set — every graph starts here.</p>
+</article>
+<article class="pc" id="grid-bfs-dfs">
+  <h3><a href="lessons/grid-bfs-dfs.html">Grids (BFS / DFS)</a></h3>
+  <p class="sig"><b>If you see:</b> "islands", "flood fill", "connected cells", "shortest path in a maze", "4 directions"</p>
+  <p class="idea">Each cell is a node with up to 4 neighbours; DFS to explore a region, BFS when you need the fewest steps.</p>
+  <pre class="code"><span class="k">int</span> numIslands(<span class="k">char</span>[][] g) {
+  <span class="k">int</span> count = 0;
+  <span class="k">for</span> (<span class="k">int</span> r = 0; r &lt; g.length; r++)
+    <span class="k">for</span> (<span class="k">int</span> c = 0; c &lt; g[0].length; c++)
+      <span class="k">if</span> (g[r][c] == '1') { count++; sink(g, r, c); }
+  <span class="k">return</span> count;
+}
+<span class="k">void</span> sink(<span class="k">char</span>[][] g, <span class="k">int</span> r, <span class="k">int</span> c) {
+  <span class="k">if</span> (r &lt; 0 || c &lt; 0 || r &gt;= g.length || c &gt;= g[0].length || g[r][c] != '1') <span class="k">return</span>;
+  g[r][c] = '0';                                  <span class="c">// mark visited</span>
+  sink(g, r + 1, c); sink(g, r - 1, c); sink(g, r, c + 1); sink(g, r, c - 1);
+}</pre>
+  <p class="cx"><b>Cost:</b> O(R × C) time, O(R × C) worst-case stack.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/number-of-islands/" target="_blank" rel="noopener">Number of Islands</a> · <a href="https://leetcode.com/problems/max-area-of-island/" target="_blank" rel="noopener">Max Area of Island</a> · <a href="https://leetcode.com/problems/shortest-path-in-binary-matrix/" target="_blank" rel="noopener">Shortest Path in Binary Matrix</a></p>
+  <p class="hook">Bounds check first, then mark, then 4 calls.</p>
+</article>
+<article class="pc" id="multi-source-bfs">
+  <h3><a href="lessons/multi-source-bfs.html">Multi-source BFS</a></h3>
+  <p class="sig"><b>If you see:</b> "nearest X for every cell", "spreads every minute", "rotting", "distance to closest"</p>
+  <p class="idea">Put every starting cell in the queue at once; the BFS wave then gives each cell its distance to the nearest start.</p>
+  <pre class="code"><span class="k">int</span>[][] updateMatrix(<span class="k">int</span>[][] mat) {               <span class="c">// distance to nearest 0</span>
+  <span class="k">int</span> R = mat.length, C = mat[0].length; <span class="k">int</span>[][] dist = <span class="k">new</span> <span class="k">int</span>[R][C];
+  Deque&lt;<span class="k">int</span>[]&gt; q = <span class="k">new</span> ArrayDeque&lt;&gt;();
+  <span class="k">for</span> (<span class="k">int</span> r = 0; r &lt; R; r++) <span class="k">for</span> (<span class="k">int</span> c = 0; c &lt; C; c++)
+    <span class="k">if</span> (mat[r][c] == 0) q.offer(<span class="k">new</span> <span class="k">int</span>[]{r, c}); <span class="k">else</span> dist[r][c] = -1;
+  <span class="k">while</span> (!q.isEmpty()) { <span class="k">int</span>[] p = q.poll();
+    <span class="k">for</span> (<span class="k">int</span>[] d : <span class="k">new</span> <span class="k">int</span>[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+      <span class="k">int</span> r = p[0] + d[0], c = p[1] + d[1];
+      <span class="k">if</span> (r &lt; 0 || c &lt; 0 || r &gt;= R || c &gt;= C || dist[r][c] != -1) <span class="k">continue</span>;
+      dist[r][c] = dist[p[0]][p[1]] + 1; q.offer(<span class="k">new</span> <span class="k">int</span>[]{r, c}); } }
+  <span class="k">return</span> dist;
+}</pre>
+  <p class="cx"><b>Cost:</b> O(R × C) time and space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/rotting-oranges/" target="_blank" rel="noopener">Rotting Oranges</a> · <a href="https://leetcode.com/problems/01-matrix/" target="_blank" rel="noopener">01 Matrix</a> · <a href="https://leetcode.com/problems/pacific-atlantic-water-flow/" target="_blank" rel="noopener">Pacific Atlantic Water Flow</a></p>
+  <p class="hook">All sources go in the queue before the first step.</p>
+</article>
+<article class="pc" id="topo-sort">
+  <h3><a href="lessons/topo-sort.html">Topological sort</a></h3>
+  <p class="sig"><b>If you see:</b> "prerequisites", "dependencies", "build order", "can all tasks finish", "ordering of letters"</p>
+  <p class="idea">Count incoming arrows; repeatedly take a node with zero, and "remove" its arrows. If some nodes never reach zero, there is a cycle.</p>
+  <pre class="code"><span class="k">int</span>[] findOrder(<span class="k">int</span> n, <span class="k">int</span>[][] pre) {             <span class="c">// pre[i] = {course, needs}</span>
+  List&lt;List&lt;Integer&gt;&gt; g = <span class="k">new</span> ArrayList&lt;&gt;(); <span class="k">int</span>[] indeg = <span class="k">new</span> <span class="k">int</span>[n];
+  <span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; n; i++) g.add(<span class="k">new</span> ArrayList&lt;&gt;());
+  <span class="k">for</span> (<span class="k">int</span>[] p : pre) { g.get(p[1]).add(p[0]); indeg[p[0]]++; }
+  Deque&lt;Integer&gt; q = <span class="k">new</span> ArrayDeque&lt;&gt;();
+  <span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; n; i++) <span class="k">if</span> (indeg[i] == 0) q.offer(i);
+  <span class="k">int</span>[] order = <span class="k">new</span> <span class="k">int</span>[n]; <span class="k">int</span> k = 0;
+  <span class="k">while</span> (!q.isEmpty()) { <span class="k">int</span> u = q.poll(); order[k++] = u;
+    <span class="k">for</span> (<span class="k">int</span> v : g.get(u)) <span class="k">if</span> (--indeg[v] == 0) q.offer(v); }
+  <span class="k">return</span> k == n ? order : <span class="k">new</span> <span class="k">int</span>[0];             <span class="c">// k &lt; n means a cycle</span>
+}</pre>
+  <p class="cx"><b>Cost:</b> O(V + E) time and space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/course-schedule/" target="_blank" rel="noopener">Course Schedule</a> · <a href="https://leetcode.com/problems/course-schedule-ii/" target="_blank" rel="noopener">Course Schedule II</a> · <a href="https://leetcode.com/problems/find-all-possible-recipes-from-given-supplies/" target="_blank" rel="noopener">Find All Possible Recipes from Given Supplies</a></p>
+  <p class="hook">Zero in-degree goes first; leftovers mean a cycle.</p>
+</article>
+<article class="pc" id="union-find">
+  <h3><a href="lessons/union-find.html">Union-find</a></h3>
+  <p class="sig"><b>If you see:</b> "connected groups", "merge accounts", "redundant edge", "are a and b connected", edges arrive one by one</p>
+  <p class="idea">Each group has a leader; find follows parents to the leader (squashing the path), union joins two leaders.</p>
+  <pre class="code"><span class="k">int</span>[] parent, rank;
+<span class="k">void</span> init(<span class="k">int</span> n) {
+  parent = <span class="k">new</span> <span class="k">int</span>[n]; rank = <span class="k">new</span> <span class="k">int</span>[n];
+  <span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; n; i++) parent[i] = i;
+}
+<span class="k">int</span> find(<span class="k">int</span> x) { <span class="k">return</span> parent[x] == x ? x : (parent[x] = find(parent[x])); }
+<span class="k">boolean</span> union(<span class="k">int</span> a, <span class="k">int</span> b) {
+  <span class="k">int</span> ra = find(a), rb = find(b);
+  <span class="k">if</span> (ra == rb) <span class="k">return</span> <span class="k">false</span>;                     <span class="c">// already connected</span>
+  <span class="k">if</span> (rank[ra] &lt; rank[rb]) { <span class="k">int</span> t = ra; ra = rb; rb = t; }
+  parent[rb] = ra; <span class="k">if</span> (rank[ra] == rank[rb]) rank[ra]++;
+  <span class="k">return</span> <span class="k">true</span>; }</pre>
+  <p class="cx"><b>Cost:</b> Almost O(1) per operation (inverse Ackermann), O(n) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/redundant-connection/" target="_blank" rel="noopener">Redundant Connection</a> · <a href="https://leetcode.com/problems/number-of-provinces/" target="_blank" rel="noopener">Number of Provinces</a> · <a href="https://leetcode.com/problems/accounts-merge/" target="_blank" rel="noopener">Accounts Merge</a></p>
+  <p class="hook">Find the boss, squash the path, join the bosses.</p>
+</article>
+<article class="pc" id="dijkstra">
+  <h3><a href="lessons/dijkstra.html">Dijkstra</a></h3>
+  <p class="sig"><b>If you see:</b> "shortest / cheapest path", "weighted edges", "network delay", "minimum time", weights ≥ 0</p>
+  <p class="idea">Always settle the closest unsettled node next (min-heap by distance) and relax its edges; skip stale heap entries.</p>
+  <pre class="code"><span class="k">int</span>[] dijkstra(List&lt;List&lt;<span class="k">int</span>[]&gt;&gt; g, <span class="k">int</span> src) {    <span class="c">// g.get(u) holds {v, w}</span>
+  <span class="k">int</span>[] dist = <span class="k">new</span> <span class="k">int</span>[g.size()]; Arrays.fill(dist, Integer.MAX_VALUE);
+  PriorityQueue&lt;<span class="k">int</span>[]&gt; pq = <span class="k">new</span> PriorityQueue&lt;&gt;((a, b) -&gt; Integer.compare(a[1], b[1]));
+  dist[src] = 0; pq.offer(<span class="k">new</span> <span class="k">int</span>[]{src, 0});
+  <span class="k">while</span> (!pq.isEmpty()) { <span class="k">int</span>[] top = pq.poll(); <span class="k">int</span> u = top[0];
+    <span class="k">if</span> (top[1] &gt; dist[u]) <span class="k">continue</span>;               <span class="c">// stale entry, skip</span>
+    <span class="k">for</span> (<span class="k">int</span>[] e : g.get(u)) { <span class="k">int</span> nd = dist[u] + e[1];
+      <span class="k">if</span> (nd &lt; dist[e[0]]) { dist[e[0]] = nd; pq.offer(<span class="k">new</span> <span class="k">int</span>[]{e[0], nd}); } }
+  }
+  <span class="k">return</span> dist;
+}</pre>
+  <p class="cx"><b>Cost:</b> O((V + E) log V) time, O(V + E) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/network-delay-time/" target="_blank" rel="noopener">Network Delay Time</a> · <a href="https://leetcode.com/problems/path-with-minimum-effort/" target="_blank" rel="noopener">Path With Minimum Effort</a> · <a href="https://leetcode.com/problems/swim-in-rising-water/" target="_blank" rel="noopener">Swim in Rising Water</a></p>
+  <p class="hook">BFS with a heap; no negative weights.</p>
+</article>
+<article class="pc" id="mst">
+  <h3><a href="lessons/mst.html">Minimum spanning tree</a></h3>
+  <p class="sig"><b>If you see:</b> "connect all points / cities at minimum cost", "cheapest network", "no cycles, everyone connected"</p>
+  <p class="idea">Kruskal: sort edges by cost and take each one that joins two different groups (union-find), until n − 1 edges are taken.</p>
+  <pre class="code"><span class="k">int</span> kruskal(<span class="k">int</span> n, <span class="k">int</span>[][] edges) {               <span class="c">// edges[i] = {u, v, w}</span>
+  Arrays.sort(edges, (a, b) -&gt; Integer.compare(a[2], b[2]));
+  init(n);                                        <span class="c">// union-find from its card</span>
+  <span class="k">int</span> cost = 0, used = 0;
+  <span class="k">for</span> (<span class="k">int</span>[] e : edges)
+    <span class="k">if</span> (union(e[0], e[1])) { cost += e[2]; <span class="k">if</span> (++used == n - 1) <span class="k">break</span>; }
+  <span class="k">return</span> used == n - 1 ? cost : -1;               <span class="c">// -1: not connected</span>
+}</pre>
+  <p class="cx"><b>Cost:</b> Kruskal O(E log E); Prim with a heap O(E log V).</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/min-cost-to-connect-all-points/" target="_blank" rel="noopener">Min Cost to Connect All Points</a> · <a href="https://leetcode.com/problems/find-critical-and-pseudo-critical-edges-in-minimum-spanning-tree/" target="_blank" rel="noopener">Find Critical and Pseudo-Critical Edges in MST</a> · <a href="https://leetcode.com/problems/path-with-minimum-effort/" target="_blank" rel="noopener">Path With Minimum Effort</a></p>
+  <p class="hook">Cheapest edge that does not close a loop.</p>
+</article>
+</div>
+</section>
+
+<section class="pgroup" id="g-backtracking">
+<h2>Backtracking <span class="meta">3 patterns</span></h2>
+<div class="pgrid">
+<article class="pc" id="backtracking">
+  <h3><a href="lessons/backtracking.html">Backtracking</a></h3>
+  <p class="sig"><b>If you see:</b> "all subsets / combinations", "every way to", "generate all", "word search", n ≤ 20</p>
+  <p class="idea">Build the answer one choice at a time: choose, explore deeper, then undo the choice and try the next one.</p>
+  <pre class="code">List&lt;List&lt;Integer&gt;&gt; subsets(<span class="k">int</span>[] nums) {
+  List&lt;List&lt;Integer&gt;&gt; res = <span class="k">new</span> ArrayList&lt;&gt;(); build(nums, 0, <span class="k">new</span> ArrayList&lt;&gt;(), res);
+  <span class="k">return</span> res;
+}
+<span class="k">void</span> build(<span class="k">int</span>[] nums, <span class="k">int</span> start, List&lt;Integer&gt; cur, List&lt;List&lt;Integer&gt;&gt; res) {
+  res.add(<span class="k">new</span> ArrayList&lt;&gt;(cur));                  <span class="c">// every node is a subset</span>
+  <span class="k">for</span> (<span class="k">int</span> i = start; i &lt; nums.length; i++) {
+    cur.add(nums[i]);                             <span class="c">// choose</span>
+    build(nums, i + 1, cur, res);                 <span class="c">// explore</span>
+    cur.remove(cur.size() - 1);                   <span class="c">// un-choose</span>
+  }
+}</pre>
+  <p class="cx"><b>Cost:</b> O(2^n · n) time for subsets, O(n) recursion depth.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/subsets/" target="_blank" rel="noopener">Subsets</a> · <a href="https://leetcode.com/problems/combination-sum/" target="_blank" rel="noopener">Combination Sum</a> · <a href="https://leetcode.com/problems/word-search/" target="_blank" rel="noopener">Word Search</a></p>
+  <p class="hook">Choose, explore, un-choose — copy the list when you save it.</p>
+</article>
+<article class="pc" id="permutations">
+  <h3><a href="lessons/permutations.html">Permutations</a></h3>
+  <p class="sig"><b>If you see:</b> "all orderings", "arrangements", "with duplicates", "letter combinations"</p>
+  <p class="idea">Each level picks one unused item; a used[] array tracks what is taken, and sorting lets you skip duplicate picks.</p>
+  <pre class="code"><span class="k">void</span> permute(<span class="k">int</span>[] nums, <span class="k">boolean</span>[] used, List&lt;Integer&gt; cur, List&lt;List&lt;Integer&gt;&gt; res) {
+  <span class="k">if</span> (cur.size() == nums.length) { res.add(<span class="k">new</span> ArrayList&lt;&gt;(cur)); <span class="k">return</span>; }
+  <span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; nums.length; i++) {         <span class="c">// nums sorted for dup skip</span>
+    <span class="k">if</span> (used[i]) <span class="k">continue</span>;
+    <span class="k">if</span> (i &gt; 0 &amp;&amp; nums[i] == nums[i - 1] &amp;&amp; !used[i - 1]) <span class="k">continue</span>;
+    used[i] = <span class="k">true</span>; cur.add(nums[i]);
+    permute(nums, used, cur, res);
+    used[i] = <span class="k">false</span>; cur.remove(cur.size() - 1);
+  }
+}</pre>
+  <p class="cx"><b>Cost:</b> O(n! · n) time, O(n) depth.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/permutations/" target="_blank" rel="noopener">Permutations</a> · <a href="https://leetcode.com/problems/permutations-ii/" target="_blank" rel="noopener">Permutations II</a> · <a href="https://leetcode.com/problems/letter-combinations-of-a-phone-number/" target="_blank" rel="noopener">Letter Combinations of a Phone Number</a></p>
+  <p class="hook">used[] for "taken", sorted + !used[i−1] for "same value, skip".</p>
+</article>
+<article class="pc" id="n-queens">
+  <h3><a href="lessons/n-queens.html">N-Queens</a></h3>
+  <p class="sig"><b>If you see:</b> "place so none attack", "sudoku", "constraint puzzle", board fill</p>
+  <p class="idea">Place one queen per row; keep sets for columns and both diagonals so each safety check is O(1), and undo on the way back.</p>
+  <pre class="code"><span class="k">int</span> n, count; <span class="k">boolean</span>[] col, d1, d2;
+<span class="k">int</span> totalNQueens(<span class="k">int</span> n) { <span class="k">this</span>.n = n; col = <span class="k">new</span> <span class="k">boolean</span>[n];
+  d1 = <span class="k">new</span> <span class="k">boolean</span>[2 * n]; d2 = <span class="k">new</span> <span class="k">boolean</span>[2 * n]; place(0); <span class="k">return</span> count; }
+<span class="k">void</span> place(<span class="k">int</span> r) {
+  <span class="k">if</span> (r == n) { count++; <span class="k">return</span>; }
+  <span class="k">for</span> (<span class="k">int</span> c = 0; c &lt; n; c++) {
+    <span class="k">if</span> (col[c] || d1[r + c] || d2[r - c + n]) <span class="k">continue</span>;  <span class="c">// attacked</span>
+    col[c] = d1[r + c] = d2[r - c + n] = <span class="k">true</span>;           <span class="c">// place</span>
+    place(r + 1);
+    col[c] = d1[r + c] = d2[r - c + n] = <span class="k">false</span>;          <span class="c">// undo</span>
+  }
+}</pre>
+  <p class="cx"><b>Cost:</b> About O(n!) time, O(n) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/n-queens/" target="_blank" rel="noopener">N-Queens</a> · <a href="https://leetcode.com/problems/n-queens-ii/" target="_blank" rel="noopener">N-Queens II</a> · <a href="https://leetcode.com/problems/sudoku-solver/" target="_blank" rel="noopener">Sudoku Solver</a></p>
+  <p class="hook">r + c and r − c name the diagonals.</p>
+</article>
+</div>
+</section>
+
+<section class="pgroup" id="g-dynamic-programming">
+<h2>Dynamic programming <span class="meta">6 patterns</span></h2>
+<div class="pgrid">
+<article class="pc" id="dp-intro">
+  <h3><a href="lessons/dp-intro.html">DP intro (1D)</a></h3>
+  <p class="sig"><b>If you see:</b> "number of ways", "minimum / maximum", "can you reach", choices at each step, overlapping subproblems</p>
+  <p class="idea">Define dp[i] as the answer for the first i items, write how it depends on smaller i, and fill it from small to large.</p>
+  <pre class="code"><span class="k">int</span> rob(<span class="k">int</span>[] nums) {                             <span class="c">// House Robber</span>
+  <span class="k">int</span> prev2 = 0, prev1 = 0;                       <span class="c">// best up to i-2, i-1</span>
+  <span class="k">for</span> (<span class="k">int</span> x : nums) {
+    <span class="k">int</span> cur = Math.max(prev1, prev2 + x);         <span class="c">// skip it, or rob it</span>
+    prev2 = prev1;
+    prev1 = cur;
+  }
+  <span class="k">return</span> prev1;
+}</pre>
+  <p class="cx"><b>Cost:</b> O(n) time, O(1) space after rolling variables.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/climbing-stairs/" target="_blank" rel="noopener">Climbing Stairs</a> · <a href="https://leetcode.com/problems/house-robber/" target="_blank" rel="noopener">House Robber</a> · <a href="https://leetcode.com/problems/decode-ways/" target="_blank" rel="noopener">Decode Ways</a></p>
+  <p class="hook">Recursion → memo → table → two variables.</p>
+</article>
+<article class="pc" id="coin-change">
+  <h3><a href="lessons/coin-change.html">Coin change</a></h3>
+  <p class="sig"><b>If you see:</b> "fewest coins", "number of ways to make amount", "unlimited supply", "perfect squares"</p>
+  <p class="idea">dp[a] = best way to make amount a; try every coin as the last coin used.</p>
+  <pre class="code"><span class="k">int</span> coinChange(<span class="k">int</span>[] coins, <span class="k">int</span> amount) {
+  <span class="k">int</span>[] dp = <span class="k">new</span> <span class="k">int</span>[amount + 1];                 <span class="c">// dp[a] = fewest coins for a</span>
+  Arrays.fill(dp, amount + 1); dp[0] = 0;         <span class="c">// amount+1 means impossible</span>
+  <span class="k">for</span> (<span class="k">int</span> a = 1; a &lt;= amount; a++)
+    <span class="k">for</span> (<span class="k">int</span> c : coins)
+      <span class="k">if</span> (c &lt;= a) dp[a] = Math.min(dp[a], dp[a - c] + 1);
+  <span class="k">return</span> dp[amount] &gt; amount ? -1 : dp[amount];
+}
+<span class="c">// number of ways: coins in the OUTER loop, amounts inner, dp[a] += dp[a - c]</span></pre>
+  <p class="cx"><b>Cost:</b> O(amount × coins) time, O(amount) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/coin-change/" target="_blank" rel="noopener">Coin Change</a> · <a href="https://leetcode.com/problems/coin-change-ii/" target="_blank" rel="noopener">Coin Change II</a> · <a href="https://leetcode.com/problems/perfect-squares/" target="_blank" rel="noopener">Perfect Squares</a></p>
+  <p class="hook">Last coin is c → dp[a − c] + 1.</p>
+</article>
+<article class="pc" id="lis">
+  <h3><a href="lessons/lis.html">Longest increasing subsequence</a></h3>
+  <p class="sig"><b>If you see:</b> "longest increasing subsequence", "chain", "nested envelopes", "not necessarily contiguous"</p>
+  <p class="idea">Keep tails[len] = smallest possible ending of an increasing run of that length; binary search where each number goes.</p>
+  <pre class="code"><span class="k">int</span> lengthOfLIS(<span class="k">int</span>[] nums) {
+  <span class="k">int</span>[] tails = <span class="k">new</span> <span class="k">int</span>[nums.length]; <span class="k">int</span> len = 0;
+  <span class="k">for</span> (<span class="k">int</span> x : nums) {
+    <span class="k">int</span> lo = 0, hi = len;                         <span class="c">// first tail &gt;= x</span>
+    <span class="k">while</span> (lo &lt; hi) {
+      <span class="k">int</span> mid = (lo + hi) &gt;&gt;&gt; 1;
+      <span class="k">if</span> (tails[mid] &lt; x) lo = mid + 1; <span class="k">else</span> hi = mid;
+    }
+    tails[lo] = x; <span class="k">if</span> (lo == len) len++;          <span class="c">// replace or extend</span>
+  }
+  <span class="k">return</span> len;
+}</pre>
+  <p class="cx"><b>Cost:</b> O(n log n) with tails; the simple dp[i] version is O(n²).</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/longest-increasing-subsequence/" target="_blank" rel="noopener">Longest Increasing Subsequence</a> · <a href="https://leetcode.com/problems/number-of-longest-increasing-subsequence/" target="_blank" rel="noopener">Number of Longest Increasing Subsequence</a> · <a href="https://leetcode.com/problems/russian-doll-envelopes/" target="_blank" rel="noopener">Russian Doll Envelopes</a></p>
+  <p class="hook">Smallest tail per length; binary search the slot.</p>
+</article>
+<article class="pc" id="lcs-edit-distance">
+  <h3><a href="lessons/lcs-edit-distance.html">LCS &amp; edit distance</a></h3>
+  <p class="sig"><b>If you see:</b> "two strings", "common subsequence", "minimum edits / operations", "transform one into the other"</p>
+  <p class="idea">Fill a table where dp[i][j] compares the first i letters of one string with the first j of the other; each cell looks up, left and diagonal.</p>
+  <pre class="code"><span class="k">int</span> minDistance(String a, String b) {
+  <span class="k">int</span> m = a.length(), n = b.length();
+  <span class="k">int</span>[][] dp = <span class="k">new</span> <span class="k">int</span>[m + 1][n + 1];             <span class="c">// first i of a vs first j of b</span>
+  <span class="k">for</span> (<span class="k">int</span> i = 0; i &lt;= m; i++) dp[i][0] = i;
+  <span class="k">for</span> (<span class="k">int</span> j = 0; j &lt;= n; j++) dp[0][j] = j;
+  <span class="k">for</span> (<span class="k">int</span> i = 1; i &lt;= m; i++)
+    <span class="k">for</span> (<span class="k">int</span> j = 1; j &lt;= n; j++)
+      dp[i][j] = a.charAt(i - 1) == b.charAt(j - 1) ? dp[i - 1][j - 1]
+          : 1 + Math.min(dp[i - 1][j - 1], Math.min(dp[i - 1][j], dp[i][j - 1]));
+  <span class="k">return</span> dp[m][n];
+}
+<span class="c">// LCS: borders 0; match → diagonal + 1, else max(up, left)</span></pre>
+  <p class="cx"><b>Cost:</b> O(m × n) time, O(m × n) space (O(n) with two rows).</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/longest-common-subsequence/" target="_blank" rel="noopener">Longest Common Subsequence</a> · <a href="https://leetcode.com/problems/edit-distance/" target="_blank" rel="noopener">Edit Distance</a> · <a href="https://leetcode.com/problems/delete-operation-for-two-strings/" target="_blank" rel="noopener">Delete Operation for Two Strings</a></p>
+  <p class="hook">Two strings → 2D table, diagonal means "use both letters".</p>
+</article>
+<article class="pc" id="knapsack">
+  <h3><a href="lessons/knapsack.html">Knapsack (0/1)</a></h3>
+  <p class="sig"><b>If you see:</b> "pick a subset with sum / weight limit", "partition into equal halves", "target sum with + and −", each item once</p>
+  <p class="idea">dp[s] = can I make total s; for each item, update s from high to low so the item is used at most once.</p>
+  <pre class="code"><span class="k">boolean</span> canPartition(<span class="k">int</span>[] nums) {
+  <span class="k">int</span> sum = 0;
+  <span class="k">for</span> (<span class="k">int</span> x : nums) sum += x;
+  <span class="k">if</span> (sum % 2 == 1) <span class="k">return</span> <span class="k">false</span>;
+  <span class="k">boolean</span>[] dp = <span class="k">new</span> <span class="k">boolean</span>[sum / 2 + 1];        <span class="c">// dp[s]: some items make s</span>
+  dp[0] = <span class="k">true</span>;
+  <span class="k">for</span> (<span class="k">int</span> x : nums)
+    <span class="k">for</span> (<span class="k">int</span> s = sum / 2; s &gt;= x; s--)            <span class="c">// backwards: each item once</span>
+      dp[s] = dp[s] || dp[s - x];
+  <span class="k">return</span> dp[sum / 2];
+}</pre>
+  <p class="cx"><b>Cost:</b> O(n × target) time, O(target) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/partition-equal-subset-sum/" target="_blank" rel="noopener">Partition Equal Subset Sum</a> · <a href="https://leetcode.com/problems/target-sum/" target="_blank" rel="noopener">Target Sum</a> · <a href="https://leetcode.com/problems/last-stone-weight-ii/" target="_blank" rel="noopener">Last Stone Weight II</a></p>
+  <p class="hook">Take it or leave it; loop capacity backwards.</p>
+</article>
+<article class="pc" id="grid-dp">
+  <h3><a href="lessons/grid-dp.html">Grid DP</a></h3>
+  <p class="sig"><b>If you see:</b> "paths from top-left to bottom-right", "only right or down", "minimum path sum", "largest square"</p>
+  <p class="idea">Each cell's answer comes from the cell above and the cell to the left, so fill row by row.</p>
+  <pre class="code"><span class="k">int</span> uniquePaths(<span class="k">int</span> m, <span class="k">int</span> n) {
+  <span class="k">int</span>[] dp = <span class="k">new</span> <span class="k">int</span>[n];
+  Arrays.fill(dp, 1);                             <span class="c">// first row: one way each</span>
+  <span class="k">for</span> (<span class="k">int</span> r = 1; r &lt; m; r++)
+    <span class="k">for</span> (<span class="k">int</span> c = 1; c &lt; n; c++)
+      dp[c] += dp[c - 1];                         <span class="c">// from above + from left</span>
+  <span class="k">return</span> dp[n - 1];
+}</pre>
+  <p class="cx"><b>Cost:</b> O(m × n) time, O(n) space with one row.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/unique-paths/" target="_blank" rel="noopener">Unique Paths</a> · <a href="https://leetcode.com/problems/minimum-path-sum/" target="_blank" rel="noopener">Minimum Path Sum</a> · <a href="https://leetcode.com/problems/maximal-square/" target="_blank" rel="noopener">Maximal Square</a></p>
+  <p class="hook">Above + left; one row is enough.</p>
+</article>
+</div>
+</section>
+
+<section class="pgroup" id="g-greedy-intervals-and-bits">
+<h2>Greedy, intervals &amp; bits <span class="meta">3 patterns</span></h2>
+<div class="pgrid">
+<article class="pc" id="intervals">
+  <h3><a href="lessons/intervals.html">Intervals</a></h3>
+  <p class="sig"><b>If you see:</b> "meetings", "overlapping ranges", "merge", "insert interval", "minimum rooms", "remove fewest to stop overlap"</p>
+  <p class="idea">Sort by start; then each interval either overlaps the last kept one (merge by extending its end) or starts a new one.</p>
+  <pre class="code"><span class="k">int</span>[][] merge(<span class="k">int</span>[][] iv) {
+  Arrays.sort(iv, (a, b) -&gt; Integer.compare(a[0], b[0]));
+  List&lt;<span class="k">int</span>[]&gt; out = <span class="k">new</span> ArrayList&lt;&gt;();
+  <span class="k">for</span> (<span class="k">int</span>[] cur : iv) {
+    <span class="k">int</span>[] last = out.isEmpty() ? <span class="k">null</span> : out.get(out.size() - 1);
+    <span class="k">if</span> (last == <span class="k">null</span> || last[1] &lt; cur[0]) out.add(cur);   <span class="c">// no overlap</span>
+    <span class="k">else</span> last[1] = Math.max(last[1], cur[1]);             <span class="c">// extend</span>
+  }
+  <span class="k">return</span> out.toArray(<span class="k">new</span> <span class="k">int</span>[0][]);
+}
+<span class="c">// min rooms: sort by start, min-heap of end times, pop ends &lt;= start</span></pre>
+  <p class="cx"><b>Cost:</b> O(n log n) for the sort, O(n) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/merge-intervals/" target="_blank" rel="noopener">Merge Intervals</a> · <a href="https://leetcode.com/problems/insert-interval/" target="_blank" rel="noopener">Insert Interval</a> · <a href="https://leetcode.com/problems/non-overlapping-intervals/" target="_blank" rel="noopener">Non-overlapping Intervals</a></p>
+  <p class="hook">Sort by start, compare with the last kept end.</p>
+</article>
+<article class="pc" id="greedy">
+  <h3><a href="lessons/greedy.html">Greedy</a></h3>
+  <p class="sig"><b>If you see:</b> "minimum number of jumps / arrows / coins (canonical)", "can you reach", "earliest finish", one pass with a running best</p>
+  <p class="idea">Make the locally best choice when you can argue it never hurts later — e.g. keep the farthest index you can reach.</p>
+  <pre class="code"><span class="k">boolean</span> canJump(<span class="k">int</span>[] nums) {
+  <span class="k">int</span> reach = 0;                                  <span class="c">// farthest index reachable</span>
+  <span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; nums.length; i++) {
+    <span class="k">if</span> (i &gt; reach) <span class="k">return</span> <span class="k">false</span>;                  <span class="c">// stuck before i</span>
+    reach = Math.max(reach, i + nums[i]);
+  }
+  <span class="k">return</span> <span class="k">true</span>;
+}</pre>
+  <p class="cx"><b>Cost:</b> Usually O(n) or O(n log n) with a sort, O(1) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/jump-game/" target="_blank" rel="noopener">Jump Game</a> · <a href="https://leetcode.com/problems/jump-game-ii/" target="_blank" rel="noopener">Jump Game II</a> · <a href="https://leetcode.com/problems/gas-station/" target="_blank" rel="noopener">Gas Station</a></p>
+  <p class="hook">Greedy needs a reason: say why the local choice is safe.</p>
+</article>
+<article class="pc" id="bit-tricks">
+  <h3><a href="lessons/bit-tricks.html">Bit tricks</a></h3>
+  <p class="sig"><b>If you see:</b> "appears twice except one", "without extra space", "power of two", "count 1 bits", "subsets as masks"</p>
+  <p class="idea">XOR cancels pairs (a ^ a = 0), n &amp; (n − 1) removes the lowest 1-bit, and 1 &lt;&lt; i reaches bit i.</p>
+  <pre class="code"><span class="k">int</span> singleNumber(<span class="k">int</span>[] nums) {                    <span class="c">// pairs cancel out</span>
+  <span class="k">int</span> x = 0;
+  <span class="k">for</span> (<span class="k">int</span> v : nums) x ^= v;
+  <span class="k">return</span> x;
+}
+<span class="k">int</span> hammingWeight(<span class="k">int</span> n) {                        <span class="c">// count 1 bits</span>
+  <span class="k">int</span> c = 0;
+  <span class="k">while</span> (n != 0) { n &amp;= n - 1; c++; }             <span class="c">// drop the lowest 1</span>
+  <span class="k">return</span> c;
+}
+<span class="k">boolean</span> isPowerOfTwo(<span class="k">int</span> n) { <span class="k">return</span> n &gt; 0 &amp;&amp; (n &amp; (n - 1)) == 0; }
+<span class="k">boolean</span> hasBit(<span class="k">int</span> n, <span class="k">int</span> i) { <span class="k">return</span> ((n &gt;&gt; i) &amp; 1) == 1; }</pre>
+  <p class="cx"><b>Cost:</b> O(1) per trick, O(number of 1 bits) for counting.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/single-number/" target="_blank" rel="noopener">Single Number</a> · <a href="https://leetcode.com/problems/number-of-1-bits/" target="_blank" rel="noopener">Number of 1 Bits</a> · <a href="https://leetcode.com/problems/counting-bits/" target="_blank" rel="noopener">Counting Bits</a></p>
+  <p class="hook">XOR cancels, n &amp; (n−1) drops one.</p>
+</article>
+</div>
+</section>
+
+<section class="pgroup" id="g-maang-extras">
+<h2>MAANG extras <span class="meta">8 patterns</span></h2>
+<div class="pgrid">
+<article class="pc" id="strings-palindromes">
+  <h3><a href="lessons/strings-palindromes.html">Strings &amp; palindromes</a></h3>
+  <p class="sig"><b>If you see:</b> "palindrome", "longest palindromic substring", "count palindromes", "reads the same backwards"</p>
+  <p class="idea">Every palindrome has a centre; grow outward from each of the 2n − 1 centres while both ends match.</p>
+  <pre class="code">String longestPalindrome(String s) {
+  <span class="k">int</span> start = 0, len = 0;
+  <span class="k">for</span> (<span class="k">int</span> c = 0; c &lt; s.length(); c++)
+    <span class="k">for</span> (<span class="k">int</span> gap = 0; gap &lt; 2; gap++) {           <span class="c">// 0: centre c, 1: between c, c+1</span>
+      <span class="k">int</span> l = c, r = c + gap;
+      <span class="k">while</span> (l &gt;= 0 &amp;&amp; r &lt; s.length() &amp;&amp; s.charAt(l) == s.charAt(r)) { l--; r++; }
+      <span class="k">if</span> (r - l - 1 &gt; len) { len = r - l - 1; start = l + 1; }
+    }
+  <span class="k">return</span> s.substring(start, start + len);
+}</pre>
+  <p class="cx"><b>Cost:</b> O(n²) time, O(1) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/longest-palindromic-substring/" target="_blank" rel="noopener">Longest Palindromic Substring</a> · <a href="https://leetcode.com/problems/palindromic-substrings/" target="_blank" rel="noopener">Palindromic Substrings</a> · <a href="https://leetcode.com/problems/valid-palindrome-ii/" target="_blank" rel="noopener">Valid Palindrome II</a></p>
+  <p class="hook">2n − 1 centres, expand while equal.</p>
+</article>
+<article class="pc" id="matrix-traversal">
+  <h3><a href="lessons/matrix-traversal.html">Matrix traversal</a></h3>
+  <p class="sig"><b>If you see:</b> "spiral order", "rotate the image", "diagonal", "in place on a matrix", "set rows and columns"</p>
+  <p class="idea">Track four borders (top, bottom, left, right) and shrink one after walking it; rotate = transpose then reverse each row.</p>
+  <pre class="code">List&lt;Integer&gt; spiralOrder(<span class="k">int</span>[][] m) {
+  List&lt;Integer&gt; out = <span class="k">new</span> ArrayList&lt;&gt;();
+  <span class="k">int</span> top = 0, bot = m.length - 1, left = 0, right = m[0].length - 1;
+  <span class="k">while</span> (top &lt;= bot &amp;&amp; left &lt;= right) {
+    <span class="k">for</span> (<span class="k">int</span> c = left; c &lt;= right; c++) out.add(m[top][c]);
+    <span class="k">for</span> (<span class="k">int</span> r = ++top; r &lt;= bot; r++) out.add(m[r][right]);
+    right--;
+    <span class="k">if</span> (top &lt;= bot) { <span class="k">for</span> (<span class="k">int</span> c = right; c &gt;= left; c--) out.add(m[bot][c]); bot--; }
+    <span class="k">if</span> (left &lt;= right) { <span class="k">for</span> (<span class="k">int</span> r = bot; r &gt;= top; r--) out.add(m[r][left]); left++; }
+  }
+  <span class="k">return</span> out;
+}</pre>
+  <p class="cx"><b>Cost:</b> O(m × n) time, O(1) extra space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/spiral-matrix/" target="_blank" rel="noopener">Spiral Matrix</a> · <a href="https://leetcode.com/problems/rotate-image/" target="_blank" rel="noopener">Rotate Image</a> · <a href="https://leetcode.com/problems/set-matrix-zeroes/" target="_blank" rel="noopener">Set Matrix Zeroes</a></p>
+  <p class="hook">Walk a border, shrink it, check before the return trip.</p>
+</article>
+<article class="pc" id="monotonic-deque">
+  <h3><a href="lessons/monotonic-deque.html">Monotonic deque</a></h3>
+  <p class="sig"><b>If you see:</b> "maximum / minimum of every window of size k", "sliding window max", "best in the last k"</p>
+  <p class="idea">Keep indices in a deque with values decreasing; drop from the front when it leaves the window, from the back when a bigger value arrives.</p>
+  <pre class="code"><span class="k">int</span>[] maxSlidingWindow(<span class="k">int</span>[] a, <span class="k">int</span> k) {
+  <span class="k">int</span>[] res = <span class="k">new</span> <span class="k">int</span>[a.length - k + 1];
+  Deque&lt;Integer&gt; dq = <span class="k">new</span> ArrayDeque&lt;&gt;();         <span class="c">// indices, values decreasing</span>
+  <span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; a.length; i++) {
+    <span class="k">if</span> (!dq.isEmpty() &amp;&amp; dq.peekFirst() &lt;= i - k) dq.pollFirst();    <span class="c">// left window</span>
+    <span class="k">while</span> (!dq.isEmpty() &amp;&amp; a[dq.peekLast()] &lt;= a[i]) dq.pollLast(); <span class="c">// useless now</span>
+    dq.offerLast(i);
+    <span class="k">if</span> (i &gt;= k - 1) res[i - k + 1] = a[dq.peekFirst()];             <span class="c">// front = max</span>
+  }
+  <span class="k">return</span> res;
+}</pre>
+  <p class="cx"><b>Cost:</b> O(n) time, O(k) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/sliding-window-maximum/" target="_blank" rel="noopener">Sliding Window Maximum</a> · <a href="https://leetcode.com/problems/shortest-subarray-with-sum-at-least-k/" target="_blank" rel="noopener">Shortest Subarray with Sum at Least K</a> · <a href="https://leetcode.com/problems/constrained-subsequence-sum/" target="_blank" rel="noopener">Constrained Subsequence Sum</a></p>
+  <p class="hook">Front is the max; back throws out the hopeless.</p>
+</article>
+<article class="pc" id="shortest-paths-advanced">
+  <h3><a href="lessons/shortest-paths-advanced.html">Shortest paths, advanced</a></h3>
+  <p class="sig"><b>If you see:</b> "at most K stops / edges", "negative weights", "weights 0 or 1", "all pairs", small n</p>
+  <p class="idea">Bellman-Ford relaxes every edge once per allowed hop (copy the array each round for "at most K"); 0-1 BFS uses a deque; Floyd-Warshall does all pairs.</p>
+  <pre class="code"><span class="k">int</span> findCheapestPrice(<span class="k">int</span> n, <span class="k">int</span>[][] flights, <span class="k">int</span> src, <span class="k">int</span> dst, <span class="k">int</span> k) {
+  <span class="k">int</span> INF = Integer.MAX_VALUE; <span class="k">int</span>[] dist = <span class="k">new</span> <span class="k">int</span>[n];
+  Arrays.fill(dist, INF); dist[src] = 0;
+  <span class="k">for</span> (<span class="k">int</span> i = 0; i &lt;= k; i++) {                  <span class="c">// k stops = k + 1 flights</span>
+    <span class="k">int</span>[] next = dist.clone();                    <span class="c">// use last round only</span>
+    <span class="k">for</span> (<span class="k">int</span>[] f : flights)                       <span class="c">// f = {from, to, price}</span>
+      <span class="k">if</span> (dist[f[0]] != INF &amp;&amp; dist[f[0]] + f[2] &lt; next[f[1]])
+        next[f[1]] = dist[f[0]] + f[2];
+    dist = next;
+  }
+  <span class="k">return</span> dist[dst] == INF ? -1 : dist[dst];
+}</pre>
+  <p class="cx"><b>Cost:</b> Bellman-Ford O(K × E); 0-1 BFS O(V + E); Floyd-Warshall O(V³).</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/cheapest-flights-within-k-stops/" target="_blank" rel="noopener">Cheapest Flights Within K Stops</a> · <a href="https://leetcode.com/problems/minimum-cost-to-make-at-least-one-valid-path-in-a-grid/" target="_blank" rel="noopener">Minimum Cost to Make at Least One Valid Path in a Grid</a> · <a href="https://leetcode.com/problems/find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance/" target="_blank" rel="noopener">Find the City With the Smallest Number of Neighbors</a></p>
+  <p class="hook">Limit on edges → Bellman-Ford with a copy per round.</p>
+</article>
+<article class="pc" id="segment-tree-fenwick">
+  <h3><a href="lessons/segment-tree-fenwick.html">Segment tree &amp; Fenwick</a></h3>
+  <p class="sig"><b>If you see:</b> "update a value AND query range sums, many times", "count smaller before me", "range min with updates"</p>
+  <p class="idea">A Fenwick tree stores partial sums at power-of-two jumps, so both point update and prefix sum walk only log n cells.</p>
+  <pre class="code"><span class="k">class</span> Fenwick {                                   <span class="c">// indexes 1..n</span>
+  <span class="k">int</span>[] t; Fenwick(<span class="k">int</span> n) { t = <span class="k">new</span> <span class="k">int</span>[n + 1]; }
+  <span class="k">void</span> add(<span class="k">int</span> i, <span class="k">int</span> delta) {
+    <span class="k">for</span> (; i &lt; t.length; i += i &amp; -i) t[i] += delta;
+  }
+  <span class="k">int</span> sum(<span class="k">int</span> i) {                                <span class="c">// a[1] + ... + a[i]</span>
+    <span class="k">int</span> s = 0;
+    <span class="k">for</span> (; i &gt; 0; i -= i &amp; -i) s += t[i];
+    <span class="k">return</span> s;
+  }
+  <span class="k">int</span> range(<span class="k">int</span> l, <span class="k">int</span> r) { <span class="k">return</span> sum(r) - sum(l - 1); }
+}</pre>
+  <p class="cx"><b>Cost:</b> O(log n) per update and query, O(n) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/range-sum-query-mutable/" target="_blank" rel="noopener">Range Sum Query - Mutable</a> · <a href="https://leetcode.com/problems/count-of-smaller-numbers-after-self/" target="_blank" rel="noopener">Count of Smaller Numbers After Self</a> · <a href="https://leetcode.com/problems/create-sorted-array-through-instructions/" target="_blank" rel="noopener">Create Sorted Array through Instructions</a></p>
+  <p class="hook">i &amp; −i is the lowest bit: add climbs up, sum climbs down.</p>
+</article>
+<article class="pc" id="dp-advanced">
+  <h3><a href="lessons/dp-advanced.html">DP, advanced</a></h3>
+  <p class="sig"><b>If you see:</b> "burst / merge / cut a range", "subset of n ≤ 20 items", "holding vs not holding", "cooldown"</p>
+  <p class="idea">When 1D/2D tables are not enough: interval DP (solve short ranges first), bitmask DP (a subset stored as an int), state-machine DP (one value per state).</p>
+  <pre class="code"><span class="k">int</span> maxCoins(<span class="k">int</span>[] nums) {                        <span class="c">// Burst Balloons</span>
+  <span class="k">int</span> n = nums.length + 2; <span class="k">int</span>[] a = <span class="k">new</span> <span class="k">int</span>[n];
+  a[0] = a[n - 1] = 1; <span class="k">for</span> (<span class="k">int</span> i = 1; i &lt; n - 1; i++) a[i] = nums[i - 1];
+  <span class="k">int</span>[][] dp = <span class="k">new</span> <span class="k">int</span>[n][n];                     <span class="c">// best for balloons in (l, r)</span>
+  <span class="k">for</span> (<span class="k">int</span> gap = 2; gap &lt; n; gap++)               <span class="c">// short ranges first</span>
+    <span class="k">for</span> (<span class="k">int</span> l = 0; l + gap &lt; n; l++) {
+      <span class="k">int</span> r = l + gap;
+      <span class="k">for</span> (<span class="k">int</span> k = l + 1; k &lt; r; k++)             <span class="c">// k = LAST balloon burst</span>
+        dp[l][r] = Math.max(dp[l][r], dp[l][k] + a[l] * a[k] * a[r] + dp[k][r]);
+    }
+  <span class="k">return</span> dp[0][n - 1];
+}</pre>
+  <p class="cx"><b>Cost:</b> Interval DP O(n³); bitmask DP O(2^n × n); state machine O(n).</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/burst-balloons/" target="_blank" rel="noopener">Burst Balloons</a> · <a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-cooldown/" target="_blank" rel="noopener">Best Time to Buy and Sell Stock with Cooldown</a> · <a href="https://leetcode.com/problems/partition-to-k-equal-sum-subsets/" target="_blank" rel="noopener">Partition to K Equal Sum Subsets</a></p>
+  <p class="hook">Range problems: pick what happens LAST.</p>
+</article>
+<article class="pc" id="advanced-graphs">
+  <h3><a href="lessons/advanced-graphs.html">Advanced graphs</a></h3>
+  <p class="sig"><b>If you see:</b> "critical connection", "bridge", "two colours / two teams", "use every edge once", "strongly connected"</p>
+  <p class="idea">DFS with discovery time and "lowest reachable time" finds bridges; BFS 2-colouring checks bipartite; Hierholzer builds an Euler path.</p>
+  <pre class="code"><span class="k">int</span> timer; <span class="k">int</span>[] tin, low;                        <span class="c">// caller: new int[n] each</span>
+List&lt;List&lt;Integer&gt;&gt; bridges = <span class="k">new</span> ArrayList&lt;&gt;();
+<span class="k">void</span> dfs(List&lt;List&lt;Integer&gt;&gt; g, <span class="k">int</span> u, <span class="k">int</span> parent) {   <span class="c">// start: dfs(g, 0, -1)</span>
+  tin[u] = low[u] = ++timer;
+  <span class="k">for</span> (<span class="k">int</span> v : g.get(u)) {
+    <span class="k">if</span> (v == parent) <span class="k">continue</span>;
+    <span class="k">if</span> (tin[v] == 0) {                            <span class="c">// tree edge</span>
+      dfs(g, v, u);
+      low[u] = Math.min(low[u], low[v]);
+      <span class="k">if</span> (low[v] &gt; tin[u]) bridges.add(List.of(u, v)); <span class="c">// v can't climb above u</span>
+    } <span class="k">else</span> low[u] = Math.min(low[u], tin[v]);     <span class="c">// back edge</span>
+  } }</pre>
+  <p class="cx"><b>Cost:</b> O(V + E) time and space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/critical-connections-in-a-network/" target="_blank" rel="noopener">Critical Connections in a Network</a> · <a href="https://leetcode.com/problems/is-graph-bipartite/" target="_blank" rel="noopener">Is Graph Bipartite?</a> · <a href="https://leetcode.com/problems/reconstruct-itinerary/" target="_blank" rel="noopener">Reconstruct Itinerary</a></p>
+  <p class="hook">low[v] &gt; tin[u] → the edge u–v is a bridge.</p>
+</article>
+<article class="pc" id="design-patterns-dsa">
+  <h3><a href="lessons/design-patterns-dsa.html">Design problems</a></h3>
+  <p class="sig"><b>If you see:</b> "design a class that supports…", "in O(1)", "getRandom", "timestamp", "hit counter", "twitter feed"</p>
+  <p class="idea">List the operations and their required speed, then combine structures: map + array, map + linked list, map + heap, map + sorted map.</p>
+  <pre class="code"><span class="k">class</span> RandomizedSet {
+  List&lt;Integer&gt; vals = <span class="k">new</span> ArrayList&lt;&gt;(); Map&lt;Integer, Integer&gt; pos = <span class="k">new</span> HashMap&lt;&gt;();
+  Random rnd = <span class="k">new</span> Random();
+  <span class="k">public</span> <span class="k">boolean</span> insert(<span class="k">int</span> x) { <span class="k">if</span> (pos.containsKey(x)) <span class="k">return</span> <span class="k">false</span>;
+    pos.put(x, vals.size()); vals.add(x); <span class="k">return</span> <span class="k">true</span>; }
+  <span class="k">public</span> <span class="k">boolean</span> remove(<span class="k">int</span> x) {
+    Integer i = pos.remove(x); <span class="k">if</span> (i == <span class="k">null</span>) <span class="k">return</span> <span class="k">false</span>;
+    <span class="k">int</span> last = vals.remove(vals.size() - 1);      <span class="c">// pop the last value</span>
+    <span class="k">if</span> (i &lt; vals.size()) { vals.set(i, last); pos.put(last, i); } <span class="c">// fill the hole</span>
+    <span class="k">return</span> <span class="k">true</span>; }
+  <span class="k">public</span> <span class="k">int</span> getRandom() { <span class="k">return</span> vals.get(rnd.nextInt(vals.size())); }
+}</pre>
+  <p class="cx"><b>Cost:</b> O(1) average per operation, O(n) space.</p>
+  <p class="lc"><b>Classics:</b> <a href="https://leetcode.com/problems/insert-delete-getrandom-o1/" target="_blank" rel="noopener">Insert Delete GetRandom O(1)</a> · <a href="https://leetcode.com/problems/time-based-key-value-store/" target="_blank" rel="noopener">Time Based Key-Value Store</a> · <a href="https://leetcode.com/problems/design-twitter/" target="_blank" rel="noopener">Design Twitter</a></p>
+  <p class="hook">One structure per operation, a map to glue them.</p>
+</article>
+</div>
+</section>
+<p id="none" class="lede" hidden>No pattern matches that. Try a shorter word.</p>
+</section>
+
+<section id="drill">
+<h2>Pattern-spotting drill</h2>
+<p style="max-width:68ch">60 problems in plain words, the way an interviewer tells them. Name the pattern before you open the answer.</p>
+<div class="drillbar"><button id="shuffle" class="main" type="button">Shuffle</button><button id="toggle" type="button" aria-pressed="false">Show all answers</button></div>
+<div id="drill-list">
+<details class="quiz"><summary>Given a list of flights with prices, find the cheapest route from city A to city B with at most K stops.</summary>
+<p><b>Bellman-Ford with K + 1 rounds (or BFS by number of stops).</b> A limit on the number of edges breaks plain Dijkstra; relaxing all edges once per allowed flight respects it. <span class="meta">Lesson:</span> <a href="lessons/shortest-paths-advanced.html">Shortest paths, advanced</a></p></details>
+<details class="quiz"><summary>Given a set of distinct toppings, list every possible pizza (every subset).</summary>
+<p><b>Backtracking (subsets).</b> "All subsets" → include or skip each item, 2^n results. <span class="meta">Lesson:</span> <a href="lessons/backtracking.html">Backtracking</a></p></details>
+<details class="quiz"><summary>Return an array where each item is the product of all other items, without using division.</summary>
+<p><b>Prefix and suffix products (in place).</b> Product of all left times product of all right. <span class="meta">Lesson:</span> <a href="lessons/in-place-tricks.html">In-place tricks</a>, <a href="lessons/prefix-sum.html">Prefix sum</a></p></details>
+<details class="quiz"><summary>List every distinct order in which a playlist with repeated songs can be played.</summary>
+<p><b>Permutations with duplicate skip.</b> Sort, used[] array, skip a value equal to the previous unused one. <span class="meta">Lesson:</span> <a href="lessons/permutations.html">Permutations</a></p></details>
+<details class="quiz"><summary>Servers are connected by cables with travel times. How long until a signal from server k reaches every server?</summary>
+<p><b>Dijkstra.</b> Shortest paths from one source with non-negative weights; answer is the largest distance. <span class="meta">Lesson:</span> <a href="lessons/dijkstra.html">Dijkstra</a></p></details>
+<details class="quiz"><summary>Find the largest sum of any path between any two nodes in a binary tree (values can be negative).</summary>
+<p><b>Tree recursion with a global best.</b> Return the best one-sided path to the parent; update the answer with left + node + right. <span class="meta">Lesson:</span> <a href="lessons/tree-recursion.html">Tree recursion</a></p></details>
+<details class="quiz"><summary>For each number in a list, count how many smaller numbers come after it.</summary>
+<p><b>Merge sort counting (or Fenwick tree).</b> While merging, every right-side item placed before a left item is smaller and after it. <span class="meta">Lesson:</span> <a href="lessons/merge-sort.html">Merge sort</a>, <a href="lessons/segment-tree-fenwick.html">Segment tree &amp; Fenwick</a></p></details>
+<details class="quiz"><summary>Each array cell says how far you may jump from it. Can you reach the last cell?</summary>
+<p><b>Greedy (farthest reach).</b> Track the farthest reachable index in one pass. <span class="meta">Lesson:</span> <a href="lessons/greedy.html">Greedy</a></p></details>
+<details class="quiz"><summary>Courses have prerequisites. Return an order that takes them all, or say it is impossible.</summary>
+<p><b>Topological sort (Kahn's BFS).</b> Dependencies form a directed graph; "impossible" means a cycle. <span class="meta">Lesson:</span> <a href="lessons/topo-sort.html">Topological sort</a></p></details>
+<details class="quiz"><summary>Given today's meetings, how many meeting rooms are needed at minimum?</summary>
+<p><b>Intervals + min-heap of end times.</b> Sort by start; the heap tells you whether the earliest-ending room is free. <span class="meta">Lesson:</span> <a href="lessons/intervals.html">Intervals</a>, <a href="lessons/heap.html">Heap (priority queue)</a></p></details>
+<details class="quiz"><summary>An array of scores gets many updates, and many questions "what is the total from i to j?" mixed in.</summary>
+<p><b>Fenwick tree (or segment tree).</b> Both updates and range sums in O(log n); a plain prefix sum would need O(n) per update. <span class="meta">Lesson:</span> <a href="lessons/segment-tree-fenwick.html">Segment tree &amp; Fenwick</a></p></details>
+<details class="quiz"><summary>Buy and sell a stock many times, but after a sale you must wait one day. Find the best profit.</summary>
+<p><b>State-machine DP.</b> Three states per day — holding, just sold, resting — each from yesterday's states. <span class="meta">Lesson:</span> <a href="lessons/dp-advanced.html">DP, advanced</a></p></details>
+<details class="quiz"><summary>Find the length of the longest stretch of a string with no repeated character.</summary>
+<p><b>Sliding window + hash map.</b> Longest contiguous substring with a rule → grow right, shrink left when the rule breaks. <span class="meta">Lesson:</span> <a href="lessons/sliding-window.html">Sliding window</a></p></details>
+<details class="quiz"><summary>Check whether a string of brackets ( ) [ ] { } is properly nested.</summary>
+<p><b>Stack.</b> Most recent opened must close first. <span class="meta">Lesson:</span> <a href="lessons/stack-basics.html">Stacks &amp; queues</a></p></details>
+<details class="quiz"><summary>Reverse a linked list in blocks of k nodes, leaving a short final block as it is.</summary>
+<p><b>Linked list reversal (in groups).</b> The prev/curr/next flip, applied k nodes at a time with a dummy head. <span class="meta">Lesson:</span> <a href="lessons/linked-list-reverse.html">Reverse a linked list</a></p></details>
+<details class="quiz"><summary>A warehouse grid has walls and several robots. For every empty cell, find the distance to the nearest robot.</summary>
+<p><b>Multi-source BFS.</b> Nearest of many starts → put all robots in the queue first. <span class="meta">Lesson:</span> <a href="lessons/multi-source-bfs.html">Multi-source BFS</a></p></details>
+<details class="quiz"><summary>In a family tree, find the closest shared ancestor of two people.</summary>
+<p><b>Lowest common ancestor.</b> Where the paths to the two nodes split. <span class="meta">Lesson:</span> <a href="lessons/lca.html">Lowest common ancestor</a></p></details>
+<details class="quiz"><summary>Return the values of a company org chart (a tree) floor by floor, top to bottom.</summary>
+<p><b>Tree BFS (level order).</b> Level by level → queue, one level per round. <span class="meta">Lesson:</span> <a href="lessons/tree-bfs.html">Level order (tree BFS)</a></p></details>
+<details class="quiz"><summary>A sorted dictionary from an unknown alphabet is given. Work out the order of its letters.</summary>
+<p><b>Topological sort.</b> Each adjacent word pair gives one "a before b" edge; order the letters. <span class="meta">Lesson:</span> <a href="lessons/topo-sort.html">Topological sort</a></p></details>
+<details class="quiz"><summary>Your solution is O(n²) and n can be 100,000. Will it pass, and what should you aim for?</summary>
+<p><b>Big-O budgeting.</b> 10^10 steps is far over ~10^8 per second; aim for O(n log n) or O(n). <span class="meta">Lesson:</span> <a href="lessons/big-o.html">Big-O</a></p></details>
+<details class="quiz"><summary>A printer must finish jobs of different sizes in H hours. Find the slowest pages-per-hour speed that still finishes.</summary>
+<p><b>Binary search on the answer.</b> "Minimum speed such that…" — check a speed in O(n), halve the range. <span class="meta">Lesson:</span> <a href="lessons/binary-search-answer.html">Binary search on the answer</a></p></details>
+<details class="quiz"><summary>From a list of version numbers over time, find the longest strictly increasing sequence (not necessarily consecutive).</summary>
+<p><b>Longest increasing subsequence.</b> Subsequence + increasing → tails array with binary search. <span class="meta">Lesson:</span> <a href="lessons/lis.html">Longest increasing subsequence</a></p></details>
+<details class="quiz"><summary>Design a cache with a fixed size that throws out the least recently used item. get and put must be O(1).</summary>
+<p><b>LRU cache: hash map + doubly linked list.</b> Map finds the node in O(1); the list moves it to "most recent" in O(1). <span class="meta">Lesson:</span> <a href="lessons/lru-cache.html">LRU cache</a></p></details>
+<details class="quiz"><summary>Rebuild a binary tree given its preorder and inorder listings.</summary>
+<p><b>Tree traversals.</b> Preorder's first value is the root; its place in inorder splits left from right. <span class="meta">Lesson:</span> <a href="lessons/tree-traversals.html">Tree traversals</a></p></details>
+<details class="quiz"><summary>Vertical lines of different heights: pick two that, with the x-axis, hold the most water.</summary>
+<p><b>Two pointers from both ends.</b> Moving the shorter line inward is the only move that might help. <span class="meta">Lesson:</span> <a href="lessons/two-pointers.html">Two pointers</a></p></details>
+<details class="quiz"><summary>Compute x to the power n for n up to 2 billion, faster than multiplying n times.</summary>
+<p><b>Recursion (fast power).</b> x^n = (x^(n/2))² — halve n each call, O(log n). <span class="meta">Lesson:</span> <a href="lessons/recursion.html">Recursion</a></p></details>
+<details class="quiz"><summary>Merge k sorted log files into one sorted stream.</summary>
+<p><b>Merge lists + min-heap.</b> The heap always gives the smallest current head out of k. <span class="meta">Lesson:</span> <a href="lessons/merge-lists.html">Merge lists</a>, <a href="lessons/heap.html">Heap (priority queue)</a></p></details>
+<details class="quiz"><summary>Each user account lists several emails. Merge accounts that share any email.</summary>
+<p><b>Union-find (or graph DFS).</b> Grouping things that are connected through shared items. <span class="meta">Lesson:</span> <a href="lessons/union-find.html">Union-find</a></p></details>
+<details class="quiz"><summary>Design a set with insert, remove and getRandom, all in O(1) average.</summary>
+<p><b>Design: hash map + array.</b> The array gives random access; the map gives positions so removal swaps with the last. <span class="meta">Lesson:</span> <a href="lessons/design-patterns-dsa.html">Design problems</a></p></details>
+<details class="quiz"><summary>Connect all office buildings with network cable using the least total length.</summary>
+<p><b>Minimum spanning tree (Kruskal / Prim).</b> Connect everyone, no cycles, minimum total cost. <span class="meta">Lesson:</span> <a href="lessons/mst.html">Minimum spanning tree</a></p></details>
+<details class="quiz"><summary>Versions 1..n were released; after some version all are broken. With isBad(v), find the first bad version in the fewest calls.</summary>
+<p><b>Binary search (lower bound).</b> Good…good bad…bad is sorted; find the first true. <span class="meta">Lesson:</span> <a href="lessons/binary-search.html">Binary search</a></p></details>
+<details class="quiz"><summary>For each day of stock prices, find how many days you wait until a higher price.</summary>
+<p><b>Monotonic stack.</b> "Next greater element" for every position in O(n). <span class="meta">Lesson:</span> <a href="lessons/monotonic-stack.html">Monotonic stack</a></p></details>
+<details class="quiz"><summary>Count how many contiguous subarrays add up to exactly K. Numbers can be negative.</summary>
+<p><b>Prefix sum + hash map.</b> Negatives break the sliding window; count earlier prefix sums equal to "now − K". <span class="meta">Lesson:</span> <a href="lessons/prefix-sum.html">Prefix sum</a></p></details>
+<details class="quiz"><summary>Print the numbers of an m × n matrix in clockwise spiral order.</summary>
+<p><b>Matrix traversal with four borders.</b> Walk a border, shrink it, repeat. <span class="meta">Lesson:</span> <a href="lessons/matrix-traversal.html">Matrix traversal</a></p></details>
+<details class="quiz"><summary>Find every cable in a data-centre network whose cut would split the network in two.</summary>
+<p><b>Bridges (Tarjan low-link).</b> An edge u–v is a bridge when v's subtree cannot reach above u. <span class="meta">Lesson:</span> <a href="lessons/advanced-graphs.html">Advanced graphs</a></p></details>
+<details class="quiz"><summary>A vending machine must return change using the fewest coins from given denominations.</summary>
+<p><b>Coin change (unbounded DP).</b> Fewest items with unlimited supply → dp over amounts. Greedy fails for some coin sets. <span class="meta">Lesson:</span> <a href="lessons/coin-change.html">Coin change</a></p></details>
+<details class="quiz"><summary>What is the fewest single-letter inserts, deletes or replacements to turn one word into another?</summary>
+<p><b>Edit distance (2D DP).</b> Two strings + minimum operations → table over prefixes of both. <span class="meta">Lesson:</span> <a href="lessons/lcs-edit-distance.html">LCS &amp; edit distance</a></p></details>
+<details class="quiz"><summary>You can climb 1 or 2 steps at a time. In how many ways can you reach step n?</summary>
+<p><b>DP intro (Fibonacci-style).</b> Ways(n) = ways(n − 1) + ways(n − 2): overlapping subproblems. <span class="meta">Lesson:</span> <a href="lessons/dp-intro.html">DP intro (1D)</a></p></details>
+<details class="quiz"><summary>Find all words from a dictionary that can be traced on a letter grid by moving to neighbours.</summary>
+<p><b>Trie + backtracking on the grid.</b> The trie stops a DFS path as soon as no word has that prefix. <span class="meta">Lesson:</span> <a href="lessons/trie.html">Trie (prefix tree)</a>, <a href="lessons/backtracking.html">Backtracking</a></p></details>
+<details class="quiz"><summary>Find the kth largest number in an unsorted array, faster than sorting on average.</summary>
+<p><b>Quickselect (or a heap of size k).</b> Partition puts the pivot in its final place; recurse into one side only. <span class="meta">Lesson:</span> <a href="lessons/quick-sort.html">Quick sort &amp; quickselect</a>, <a href="lessons/top-k.html">Top K</a></p></details>
+<details class="quiz"><summary>Return every way to cut a string into pieces that are all palindromes.</summary>
+<p><b>Backtracking (+ palindrome check).</b> "Every way" → choose a cut, explore the rest, undo. <span class="meta">Lesson:</span> <a href="lessons/backtracking.html">Backtracking</a>, <a href="lessons/strings-palindromes.html">Strings &amp; palindromes</a></p></details>
+<details class="quiz"><summary>Daily profit can be negative. Find the best total profit over any run of consecutive days.</summary>
+<p><b>Kadane.</b> Maximum-sum contiguous subarray: extend or restart. <span class="meta">Lesson:</span> <a href="lessons/kadane.html">Kadane</a></p></details>
+<details class="quiz"><summary>An array of n + 1 numbers holds values 1..n. Find the repeated number without changing the array, in O(1) space.</summary>
+<p><b>Fast &amp; slow pointers (Floyd).</b> Treat value as "next index": the duplicate is the start of a cycle. <span class="meta">Lesson:</span> <a href="lessons/fast-slow-pointers.html">Fast &amp; slow pointers</a></p></details>
+<details class="quiz"><summary>A satellite image is a grid of land and water. Count the separate pieces of land.</summary>
+<p><b>Grid DFS / BFS (islands).</b> Connected regions in a grid → flood each one and count. <span class="meta">Lesson:</span> <a href="lessons/grid-bfs-dfs.html">Grids (BFS / DFS)</a></p></details>
+<details class="quiz"><summary>Find the longest part of a DNA string that reads the same backwards.</summary>
+<p><b>Expand around centre.</b> Longest palindromic substring → grow from each of 2n − 1 centres. <span class="meta">Lesson:</span> <a href="lessons/strings-palindromes.html">Strings &amp; palindromes</a></p></details>
+<details class="quiz"><summary>Numbers arrive one at a time from a sensor. After each one, report the median so far.</summary>
+<p><b>Two heaps.</b> Running median → max-heap for the low half, min-heap for the high half. <span class="meta">Lesson:</span> <a href="lessons/two-heaps.html">Two heaps</a></p></details>
+<details class="quiz"><summary>A sorted list of server IDs was rotated at an unknown point. Find a given ID in O(log n).</summary>
+<p><b>Binary search on a rotated array.</b> One half around mid is always sorted — check whether the target lies in it. <span class="meta">Lesson:</span> <a href="lessons/rotated-array.html">Rotated sorted array</a></p></details>
+<details class="quiz"><summary>Packages with weights must ship in the given order within D days. Find the smallest ship capacity that works.</summary>
+<p><b>Binary search on the answer.</b> "Smallest capacity such that…" with a yes/no check that flips once. <span class="meta">Lesson:</span> <a href="lessons/binary-search-answer.html">Binary search on the answer</a></p></details>
+<details class="quiz"><summary>Every ID in a log appears twice except one. Find it with O(1) extra memory.</summary>
+<p><b>Bit trick: XOR everything.</b> a ^ a = 0, so pairs cancel and the single one is left. <span class="meta">Lesson:</span> <a href="lessons/bit-tricks.html">Bit tricks</a></p></details>
+<details class="quiz"><summary>Calendar entries have start and end times. Merge all entries that overlap.</summary>
+<p><b>Intervals: sort by start, merge.</b> Once sorted, only the last kept interval can overlap the next one. <span class="meta">Lesson:</span> <a href="lessons/intervals.html">Intervals</a></p></details>
+<details class="quiz"><summary>Check whether a binary tree is a valid binary search tree.</summary>
+<p><b>BST with (low, high) bounds.</b> Each node must fit the range set by all its ancestors, not just its parent. <span class="meta">Lesson:</span> <a href="lessons/bst.html">Binary search tree</a></p></details>
+<details class="quiz"><summary>Place n security guards on an n × n board so no two share a row, column or diagonal. Count the ways.</summary>
+<p><b>Backtracking (N-Queens).</b> One per row; column and diagonal sets make each check O(1). <span class="meta">Lesson:</span> <a href="lessons/n-queens.html">N-Queens</a></p></details>
+<details class="quiz"><summary>A robot moves only right or down on a grid with some blocked cells. Count its paths to the bottom-right.</summary>
+<p><b>Grid DP.</b> Each cell = paths from above + paths from the left (0 if blocked). <span class="meta">Lesson:</span> <a href="lessons/grid-dp.html">Grid DP</a></p></details>
+<details class="quiz"><summary>Group a list of product names into groups that are anagrams of each other.</summary>
+<p><b>Hashing (sorted word or letter count as key).</b> Same letters → same key → same bucket. <span class="meta">Lesson:</span> <a href="lessons/arrays-hashing.html">Arrays &amp; hashing</a></p></details>
+<details class="quiz"><summary>Can a list of job durations be split between two workers so both work exactly the same total?</summary>
+<p><b>0/1 knapsack (subset sum).</b> Pick a subset summing to total / 2, each job used once. <span class="meta">Lesson:</span> <a href="lessons/knapsack.html">Knapsack (0/1)</a></p></details>
+<details class="quiz"><summary>A delivery app knows where every driver is. Return the k drivers closest to a restaurant.</summary>
+<p><b>Top K (max-heap of size k) or quickselect.</b> "k closest" = keep only k candidates, throwing out the farthest. <span class="meta">Lesson:</span> <a href="lessons/top-k.html">Top K</a>, <a href="lessons/quick-sort.html">Quick sort &amp; quickselect</a></p></details>
+<details class="quiz"><summary>An array has only 0s, 1s and 2s. Sort it in one pass with no extra memory.</summary>
+<p><b>Dutch national flag (in-place, three pointers).</b> Three values → three regions maintained by lo, mid, hi. <span class="meta">Lesson:</span> <a href="lessons/in-place-tricks.html">In-place tricks</a></p></details>
+<details class="quiz"><summary>As a user types in a search box, show all saved words starting with what they typed.</summary>
+<p><b>Trie.</b> Prefix lookups across many words. <span class="meta">Lesson:</span> <a href="lessons/trie.html">Trie (prefix tree)</a></p></details>
+<details class="quiz"><summary>Change "hit" into "cog" one letter at a time, every step a real word. Find the fewest steps.</summary>
+<p><b>BFS on an implicit graph.</b> Words are nodes, one-letter changes are edges; fewest steps = BFS. <span class="meta">Lesson:</span> <a href="lessons/graph-basics.html">Graph basics</a></p></details>
+<details class="quiz"><summary>For each window of k consecutive minutes, report the highest CPU reading.</summary>
+<p><b>Monotonic deque.</b> Max of every sliding window in O(n). <span class="meta">Lesson:</span> <a href="lessons/monotonic-deque.html">Monotonic deque</a></p></details>
+</div>
+</section>
+<nav class="pager"><a href="index.html">← All lessons</a><a href="#patterns">Back to the top ↑</a></nav>
+</main>
+<script>
+(function () {
+  var top = document.querySelector('.top'), bar = document.querySelector('.filter');
+  function fit() { bar.style.top = top.offsetHeight + 'px'; }
+  fit(); window.addEventListener('resize', fit);
+
+  var cards = [].slice.call(document.querySelectorAll('.pc'));
+  var groups = [].slice.call(document.querySelectorAll('.pgroup'));
+  var text = cards.map(function (c) { return c.textContent.toLowerCase(); });
+  var q = document.getElementById('q'), count = document.getElementById('count'), none = document.getElementById('none');
+  function filter() {
+    var words = q.value.toLowerCase().trim().split(/\s+/).filter(Boolean), shown = 0;
+    cards.forEach(function (c, i) {
+      var ok = words.every(function (w) { return text[i].indexOf(w) >= 0; });
+      c.hidden = !ok; if (ok) shown++;
+    });
+    groups.forEach(function (g) { g.hidden = !g.querySelector('.pc:not([hidden])'); });
+    count.textContent = shown + ' / ' + cards.length;
+    none.hidden = shown > 0;
+  }
+  q.addEventListener('input', filter); filter();
+
+  var list = document.getElementById('drill-list'), toggle = document.getElementById('toggle');
+  document.getElementById('shuffle').addEventListener('click', function () {
+    var items = [].slice.call(list.children);
+    for (var i = items.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = items[i]; items[i] = items[j]; items[j] = t; }
+    items.forEach(function (d) { d.open = false; list.appendChild(d); });
+    toggle.textContent = 'Show all answers'; toggle.setAttribute('aria-pressed', 'false');
+  });
+  toggle.addEventListener('click', function () {
+    var open = toggle.getAttribute('aria-pressed') !== 'true';
+    [].forEach.call(list.children, function (d) { d.open = open; });
+    toggle.textContent = open ? 'Hide all answers' : 'Show all answers';
+    toggle.setAttribute('aria-pressed', String(open));
+  });
+})();
+</script>
+</body>
+</html>

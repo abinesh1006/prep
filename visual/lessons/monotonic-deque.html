@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monotonic Deque</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>MAANG extras</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 50 · MAANG extras</div>
+<h1>Monotonic Deque</h1>
+<p class="lede">A double-ended queue that keeps its values in falling (or rising) order, so the best value of a moving window is always waiting at the front.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="sliding-window.html">Sliding window</a>, <a href="monotonic-stack.html">Monotonic stack</a>, <a href="prefix-sum.html">Prefix sum</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"<b>Maximum</b> (or minimum) of every window of size k", "max minus min in a window ≤ limit", "<b>shortest subarray</b> with sum at least K" when numbers can be <b>negative</b>, or a DP where <code>dp[i]</code> depends on the best <code>dp[j]</code> for <code>j</code> in the last k positions.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>A <b>deque</b> (say "deck", double-ended queue) lets you add and remove at both ends in O(1). In Java: <code>ArrayDeque</code> with <code>offerLast</code>, <code>pollLast</code>, <code>peekFirst</code>, <code>pollFirst</code>.</p>
+<p>For the window maximum, we store <b>indices</b> in the deque, with their values <b>falling</b> from front to back. When a new number arrives, every smaller number at the back is useless: the new number is bigger <i>and</i> stays in the window longer, so those smaller ones can never be the maximum again. Pop them.</p>
+<p>The front is the biggest number still in the window. If its index has slid out of the window (index ≤ i − k), pop it from the front.</p>
+<p>Each index is pushed once and popped at most once, so the whole scan is <b>O(n)</b> — compared with O(n·k) for scanning every window, or O(n log k) with a heap.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A queue of job applicants where a stronger, younger applicant arrives: everyone weaker <i>and</i> older standing behind in line just goes home — they will never be picked while the newcomer is around. The person at the front is the best one, until they retire (leave the window).</p></div>
+
+<h2>Watch it work</h2>
+<h3>1. Sliding Window Maximum (k = 3)</h3>
+<div id="demo1"></div>
+<script>
+(() => {
+  const a = [1, 3, -1, -3, 5, 3, 6, 7], k = 3, n = a.length;
+  const r = Viz.recorder();
+  const dq = [], ans = [];
+  const panels = (i, am, dm, extra = '') => [
+    { type: 'array', id: 'a', label: 'nums', values: a, window: i >= 0 ? [Math.max(0, i - k + 1), i] : null, pointers: i >= 0 ? { i } : {}, marks: am },
+    { type: 'stack', id: 'dq', label: 'deque: index:value (front → back, values falling)', kind: 'queue', items: dq.map(j => ({ id: 'q' + j, val: `${j}:${a[j]}` })), marks: dm },
+    { type: 'text', id: 'o', text: `answer = [${ans.join(', ')}]${extra}` }];
+  r.step(panels(-1, {}, {}), [4], 'The deque will hold <b>indices</b> whose values fall from front to back. The front is always the window maximum.');
+  for (let i = 0; i < n; i++) {
+    if (dq.length && dq[0] <= i - k) {
+      const old = dq[0];
+      r.step(panels(i, { [old]: 'dim' }, { 0: 'bad' }), [6, 7], `Index ${old} (value ${a[old]}) is at the front but has slid out of the window [${i - k + 1}..${i}]. Pop it from the <b>front</b>.`);
+      dq.shift();
+    }
+    const popped = [];
+    while (dq.length && a[dq[dq.length - 1]] <= a[i]) popped.push(dq.pop());
+    if (popped.length) {
+      dq.push(...popped.reverse());
+      const dm = {}; for (let q = dq.length - popped.length; q < dq.length; q++) dm[q] = 'bad';
+      r.step(panels(i, { [i]: 'active' }, dm), [8, 9], `New value ${a[i]} is ≥ ${popped.map(j => a[j]).join(' and ')} at the back. Those are smaller <i>and</i> leave the window sooner, so they can never be a maximum again. Pop from the <b>back</b>.`);
+      dq.splice(dq.length - popped.length);
+    }
+    dq.push(i);
+    let say = `Push index ${i} (value ${a[i]}) at the back.`;
+    const am = { [i]: 'active' };
+    if (i >= k - 1) {
+      ans.push(a[dq[0]]); am[dq[0]] = 'done';
+      say += ` The window [${i - k + 1}..${i}] is full: its max is the front, <b>${a[dq[0]]}</b>.`;
+    } else say += ' The window is not full yet.';
+    r.step(panels(i, am, i >= k - 1 ? { 0: 'done', [dq.length - 1]: 'active' } : { [dq.length - 1]: 'active' }), i >= k - 1 ? [10, 11] : [10], say);
+  }
+  r.step(panels(-1, {}, {}), [13], `Done: <b>[${ans.join(', ')}]</b>. Every index entered and left the deque at most once → O(n).`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Sliding window maximum', code:
+`int[] maxSlidingWindow(int[] nums, int k) {
+    int n = nums.length;
+    int[] ans = new int[n - k + 1];
+    Deque<Integer> dq = new ArrayDeque<>(); // indices
+    for (int i = 0; i < n; i++) {
+        if (!dq.isEmpty() && dq.peekFirst() <= i - k)
+            dq.pollFirst();               // front left the window
+        while (!dq.isEmpty() && nums[dq.peekLast()] <= nums[i])
+            dq.pollLast();                // smaller: can never win
+        dq.offerLast(i);
+        if (i >= k - 1) ans[i - k + 1] = nums[dq.peekFirst()];
+    }
+    return ans;
+}` });
+})();
+</script>
+
+<h3>2. Shortest Subarray with Sum at Least K (negatives allowed)</h3>
+<p>Plain sliding window breaks when numbers can be negative (growing the window can make the sum smaller). Instead use <b>prefix sums</b> <code>P</code>: the sum of <code>nums[i..j−1]</code> is <code>P[j] − P[i]</code>. We want the closest <code>i</code> before <code>j</code> with <code>P[j] − P[i] ≥ K</code>. Keep start indices in a deque with <b>rising</b> P values. Here <code>nums = [2, −1, 2, 3]</code>, <b>K = 4</b>.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const a = [2, -1, 2, 3], K = 4, n = a.length;
+  const P = [0]; for (const x of a) P.push(P[P.length - 1] + x);
+  const r = Viz.recorder();
+  const dq = []; let best = Infinity;
+  const panels = (j, pm, dm) => [
+    { type: 'array', id: 'a', label: 'nums', values: a },
+    { type: 'array', id: 'P', label: 'prefix P (P[j] = sum of first j numbers)', values: P, pointers: j >= 0 ? { j } : {}, marks: pm },
+    { type: 'stack', id: 'dq', label: 'deque: start index:P (P rising)', kind: 'queue', items: dq.map(q => ({ id: 'q' + q, val: `${q}:${P[q]}` })), marks: dm },
+    { type: 'vars', id: 'v', vars: { K, best: best === Infinity ? '∞' : best }, marks: { best: best === Infinity ? '' : 'done' } }];
+  r.step(panels(-1, {}, {}), [3, 4], `Prefix sums: P = [${P.join(', ')}]. Sum of nums[i..j−1] = P[j] − P[i]. For each end j, find the nearest start i with P[j] − P[i] ≥ ${K}.`);
+  for (let j = 0; j <= n; j++) {
+    while (dq.length && P[j] - P[dq[0]] >= K) {
+      const i = dq[0];
+      best = Math.min(best, j - i);
+      r.step(panels(j, { [j]: 'active', [i]: 'done' }, { 0: 'done' }), [7, 8],
+        `P[${j}] − P[${i}] = ${P[j]} − ${P[i]} = ${P[j] - P[i]} ≥ ${K}: subarray of length ${j - i}, best = ${best}. Any later j would only be longer with start ${i}, so pop it from the <b>front</b>.`);
+      dq.shift();
+    }
+    if (dq.length && P[j] - P[dq[0]] < K) r.step(panels(j, { [j]: 'active', [dq[0]]: 'compare' }, { 0: 'compare' }), [7],
+      `End j = ${j}: P[${j}] − P[${dq[0]}] = ${P[j] - P[dq[0]]} &lt; ${K}. Not enough yet, nothing to record.`);
+    const popped = [];
+    while (dq.length && P[j] <= P[dq[dq.length - 1]]) popped.push(dq.pop());
+    if (popped.length) {
+      dq.push(...popped.reverse());
+      const dm = {}; for (let q = dq.length - popped.length; q < dq.length; q++) dm[q] = 'bad';
+      r.step(panels(j, { [j]: 'active' }, dm), [9, 10],
+        `P[${j}] = ${P[j]} is ≤ P[${popped.join(', ')}] at the back. Start ${j} gives a <i>bigger</i> sum <i>and</i> a <i>shorter</i> subarray than start ${popped.join(', ')}, so pop from the <b>back</b>.`);
+      dq.splice(dq.length - popped.length);
+    }
+    dq.push(j);
+    r.step(panels(j, { [j]: 'active' }, { [dq.length - 1]: 'active' }), [11], `Push start index ${j} (P = ${P[j]}) at the back. P values in the deque stay rising.`);
+  }
+  r.step(panels(-1, {}, {}), [13], `Done. Shortest length = <b>${best}</b> (the subarray [2, 3]). Each index enters and leaves the deque once → O(n).`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Shortest subarray sum at least K', code:
+`int shortestSubarray(int[] nums, int k) {
+    int n = nums.length, best = n + 1;
+    long[] P = new long[n + 1];             // prefix sums
+    for (int i = 0; i < n; i++) P[i + 1] = P[i] + nums[i];
+    Deque<Integer> dq = new ArrayDeque<>(); // starts, P rising
+    for (int j = 0; j <= n; j++) {
+        while (!dq.isEmpty() && P[j] - P[dq.peekFirst()] >= k)
+            best = Math.min(best, j - dq.pollFirst()); // record
+        while (!dq.isEmpty() && P[j] <= P[dq.peekLast()])
+            dq.pollLast();                  // worse start: drop
+        dq.offerLast(j);
+    }
+    return best <= n ? best : -1;
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"An element that is smaller than a newer element can never be the window maximum again, because the newer one is bigger and leaves later — so dropping it loses nothing. Every index is pushed and popped at most once, which gives O(n)." For the K problem: "a later start with a smaller-or-equal prefix sum is better in every way, and once a start has produced an answer, later ends can only make it longer."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">Deque</span>&lt;Integer&gt; dq = <span class="k">new</span> <span class="k">ArrayDeque</span>&lt;&gt;();   <span class="c">// indices</span>
+<span class="k">for</span> (<span class="k">int</span> i = <span class="n">0</span>; i &lt; n; i++) {
+    <span class="k">if</span> (!dq.isEmpty() &amp;&amp; dq.peekFirst() &lt;= i - k) dq.pollFirst(); <span class="c">// expired</span>
+    <span class="k">while</span> (!dq.isEmpty() &amp;&amp; worse(dq.peekLast(), i)) dq.pollLast(); <span class="c">// useless</span>
+    dq.offerLast(i);
+    <span class="k">if</span> (i &gt;= k - <span class="n">1</span>) use(dq.peekFirst());    <span class="c">// front = best</span>
+}</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Front = best, and leaves when too old. Back = newest; it kicks out everyone worse before it joins.</b> Store indices, not values.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Storing values instead of indices — then you cannot tell when the front has left the window.</li>
+  <li>Using <code>&lt;</code> instead of <code>&lt;=</code> when popping the back: duplicates pile up (still correct, but slower to reason about).</li>
+  <li>Using a plain sliding window for "sum ≥ K" with negative numbers — it gives wrong answers; use prefix sums + deque.</li>
+  <li>Using <code>Stack</code> or <code>LinkedList</code> — <code>ArrayDeque</code> is the fast, standard choice.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/sliding-window-maximum/">239. Sliding Window Maximum</a> — animation 1.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-continuous-subarray-with-absolute-diff-less-than-or-equal-to-limit/">1438. Longest Subarray with Abs Diff ≤ Limit</a> — two deques: one max, one min.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/jump-game-vi/">1696. Jump Game VI</a> — DP, best of the last k values from a deque.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/constrained-subsequence-sum/">1425. Constrained Subsequence Sum</a> — same DP + deque idea.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/shortest-subarray-with-sum-at-least-k/">862. Shortest Subarray with Sum at Least K</a> — animation 2.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/max-value-of-equation/">1499. Max Value of Equation</a> — deque of best <code>y − x</code> within distance k.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Why is the sliding window maximum O(n) even though there is a while loop inside the for loop?</summary>
+<p>Each index is pushed exactly once and popped at most once, so across the whole run the while loop does at most n pops in total.</p></details>
+<details class="quiz"><summary>For the window minimum, what changes?</summary>
+<p>Keep values rising from front to back: pop the back while it is ≥ the new value.</p></details>
+<details class="quiz"><summary>Why can we pop the front in the "sum ≥ K" problem after recording it?</summary>
+<p>That start already gave its shortest possible answer with the current end j; any later end would make the subarray longer, so it is no longer useful.</p></details>
+
+<nav class="pager"><a href="matrix-traversal.html">← Matrix traversal</a><a href="shortest-paths-advanced.html">Advanced shortest paths →</a></nav>
+</main>
+</body>
+</html>

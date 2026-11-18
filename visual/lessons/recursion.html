@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recursion</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Recursion &amp; trees</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 26 · Recursion &amp; trees</div>
+<h1>Recursion</h1>
+<p class="lede">A function that solves a big problem by calling itself on a smaller copy of the same problem, until the problem is so small the answer is obvious.</p>
+<p class="meta">Time to learn: about 3 hours (take your time — every tree, graph, backtracking and DP lesson builds on this one) · Prerequisites: <a href="big-o.html">Big-O</a>, <a href="stack-basics.html">Stack basics</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>The problem is <b>made of smaller copies of itself</b>: a tree ("for every node..."), a folder inside a folder, a nested list, "all the ways to...", "split in half and solve each half", or a formula that uses its own earlier values like <code>n! = n × (n−1)!</code> or <code>fib(n) = fib(n−1) + fib(n−2)</code>.</p></div>
+
+<h2>The idea in plain words</h2>
+<p><b>Recursion</b> = a function that calls itself. That sounds like it would go on forever, so every recursive function has two parts:</p>
+<ul>
+  <li><b>Base case</b> — the smallest version of the problem, answered directly with no more calls. Example: <code>1! = 1</code>. This is the "stop" sign.</li>
+  <li><b>Recursive step</b> — make the problem a bit smaller, call yourself on the smaller one, and use its answer. Example: <code>4! = 4 × 3!</code>.</li>
+</ul>
+<p>Here is the key trick, called <b>"trust the recursion"</b>. When you write <code>fact(4)</code>, do not try to follow <code>fact(3)</code>, <code>fact(2)</code>, <code>fact(1)</code> in your head. Just <i>assume</i> <code>fact(3)</code> correctly returns 6. Then your only job is one small step: <code>4 × 6 = 24</code>. If the base case is right and each step is right, the whole thing is right (this is the same logic as falling dominoes).</p>
+<p>A real-life version: you sit in a dark cinema and want to know your row number. You ask the person in front: "what row are you in?" They do not know either, so they ask the person in front of them, and so on. The person in row 1 can see the screen and says "1" (base case). Each person adds 1 to the answer they hear and passes it back. Nobody had to count the whole cinema.</p>
+<p>How does the computer remember who is waiting? It keeps a <b>call stack</b> — a pile of paused calls (a stack = last in, first out, like a pile of plates). Each call is one <b>frame</b> on the pile, holding its own copy of the variables. A new call goes on top; when it returns, it is removed and the call under it continues from where it paused.</p>
+<p>Cost: <b>time</b> = number of calls × work per call. <b>Extra space</b> = the deepest the pile ever gets (the recursion <b>depth</b>), because every waiting frame uses memory.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p><b>Russian dolls.</b> To find the tiny solid doll, you open the big doll and find a smaller doll inside — the same problem, just smaller. You keep opening until you reach the tiny doll that does not open (the base case). Then you close them back up in reverse order: the last doll opened is the first one closed. That "reverse order on the way back" is exactly the call stack. Two mirrors facing each other show the same picture getting smaller and smaller — but a mirror has no base case, which is why it goes on forever. Your code must not.</p></div>
+
+<h2>Watch it work</h2>
+<h3>1. Factorial: going down, then coming back up</h3>
+<p>Compute <code>fact(4) = 4 × 3 × 2 × 1</code>. Colours: <b>yellow</b> = the call running right now, <b>blue</b> = paused, waiting for an answer from below, <b>green</b> = finished (the small label under it is what it returned), faded = not called yet.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const r = Viz.recorder();
+  const ns = [4, 3, 2, 1], nodes = {}, marks = {}, badges = {}, stack = [];
+  ns.forEach((n, i) => { nodes['f' + n] = { val: `f(${n})`, left: null, right: i < 3 ? 'f' + ns[i + 1] : null }; marks['f' + n] = 'dim'; });
+  const snap = (line, say) => r.step([
+    { type: 'tree', id: 't', label: 'calls: each circle is one call of fact(n)', root: 'f4', nodes, marks, badges },
+    { type: 'stack', id: 's', label: 'call stack (newest on the right = top)', items: stack.map(f => ({ id: f.id, val: f.text })),
+      marks: stack.length ? { [stack.length - 1]: 'active' } : {} }
+  ], line, say);
+  function fact(n) {
+    const id = 'f' + n;
+    stack.push({ id, text: `fact(${n})  n=${n}` });
+    marks[id] = 'active';
+    if (n === 1) {
+      snap([2], `<b>fact(1)</b> is the <b>base case</b>: 1! is simply 1. No more calls — this is the tiny doll that does not open.`);
+      badges[id] = '= 1'; marks[id] = 'done';
+      snap([2], `fact(1) <b>returns 1</b>. Its frame is about to leave the stack, and the call below it wakes up.`);
+      stack.pop(); return 1;
+    }
+    snap([3], n === 4
+      ? `We call <b>fact(4)</b>. A frame for it goes on the call stack. 4 is not 1, so it needs <b>fact(3)</b> first and <b>pauses</b> on line 3.`
+      : `<b>fact(${n})</b> starts with its own n = ${n} (each frame has its own copy of n). ${n} is not 1, so it calls fact(${n - 1}) and pauses.`);
+    marks[id] = 'compare';
+    const s = fact(n - 1);
+    marks[id] = 'active';
+    const res = n * s;
+    badges[id] = '= ' + res;
+    snap([4], `Back in <b>fact(${n})</b>: it was paused waiting, and fact(${n - 1}) just answered <b>${s}</b>. Now it does its one small step: ${n} × ${s} = <b>${res}</b>.`);
+    marks[id] = 'done';
+    stack.pop();
+    return res;
+  }
+  const ans = fact(4);
+  snap([4], `The stack is empty again. <b>fact(4) = ${ans}</b>. Notice the shape: calls went <b>down</b> to the base case, then answers came back <b>up</b> in reverse order. Depth 4 → 4 frames of extra space.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Factorial call stack', code:
+`int fact(int n) {
+    if (n == 1) return 1;         // base case: smallest doll
+    int smaller = fact(n - 1);    // trust it: gives (n-1)!
+    return n * smaller;           // my one small step
+}` });
+})();
+</script>
+
+<h3>2. Fibonacci: one call can make two calls (a tree of calls)</h3>
+<p><code>fib(n) = fib(n−1) + fib(n−2)</code>, with <code>fib(0) = 0</code> and <code>fib(1) = 1</code>. Now each call makes <b>two</b> calls, so the calls form a <b>tree</b>. The left child is the <code>fib(n−1)</code> call, the right child is the <code>fib(n−2)</code> call. The stack only ever holds one path from the top call down to the running call.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const r = Viz.recorder();
+  const nodes = {}, marks = {}, badges = {}, stack = [];
+  // build the full call tree first so the picture does not jump around
+  (function build(id, n) {
+    nodes[id] = { val: `f(${n})`, left: n > 1 ? id + 'L' : null, right: n > 1 ? id + 'R' : null };
+    marks[id] = 'dim';
+    if (n > 1) { build(id + 'L', n - 1); build(id + 'R', n - 2); }
+  })('c', 4);
+  let calls = 0;
+  const snap = (line, say) => r.step([
+    { type: 'tree', id: 't', label: 'call tree for fib(4)', root: 'c', nodes, marks, badges },
+    { type: 'stack', id: 's', label: 'call stack (top on the right)', items: stack.map(f => ({ id: f.id, val: f.text })),
+      marks: stack.length ? { [stack.length - 1]: 'active' } : {} },
+    { type: 'vars', id: 'v', vars: { 'calls so far': calls, 'stack depth': stack.length } }
+  ], line, say);
+  function fib(id, n) {
+    calls++;
+    stack.push({ id, text: `fib(${n})` });
+    marks[id] = 'active';
+    if (n <= 1) {
+      badges[id] = '= ' + n; marks[id] = 'done';
+      snap([2], `<b>fib(${n})</b> is a base case, so it returns <b>${n}</b> straight away — no more calls.`);
+      stack.pop(); return n;
+    }
+    snap([3], id === 'c'
+      ? `Call <b>fib(4)</b>. It is not a base case, so first it asks the <b>left</b> child: fib(3). fib(4) pauses.`
+      : `<b>fib(${n})</b> starts. Not a base case → it calls fib(${n - 1}) first (left) and pauses. The stack is now ${stack.length} deep.`);
+    marks[id] = 'compare';
+    const a = fib(id + 'L', n - 1);
+    marks[id] = 'active';
+    snap([4], `Back in <b>fib(${n})</b> with a = ${a}. The left side is finished; now it calls the <b>right</b> side: fib(${n - 2}).`);
+    marks[id] = 'compare';
+    const b = fib(id + 'R', n - 2);
+    marks[id] = 'active'; badges[id] = '= ' + (a + b);
+    snap([5], `fib(${n}) has both answers: a + b = ${a} + ${b} = <b>${a + b}</b>. It returns and its frame leaves the stack.`);
+    marks[id] = 'done';
+    stack.pop(); return a + b;
+  }
+  const ans = fib('c', 4);
+  snap([5], `<b>fib(4) = ${ans}</b>. It took <b>${calls} calls</b>, but the stack was never deeper than 4. Look: f(2) was computed <b>twice</b> — that waste grows to about 2ⁿ calls for big n, which is why DP stores answers.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Fibonacci call tree', code:
+`int fib(int n) {
+    if (n <= 1) return n;      // base cases: fib(0)=0, fib(1)=1
+    int a = fib(n - 1);        // left call (trust it)
+    int b = fib(n - 2);        // right call (trust it)
+    return a + b;              // combine the two answers
+}` });
+})();
+</script>
+
+<h3>3. "Trust the recursion": sum of an array</h3>
+<p>Sum <code>[3, 1, 4, 2]</code> by recursion. Read the function as a sentence: "the sum from index i to the end = <b>nums[i]</b> + the sum from i+1 to the end". The shaded box is the "smaller doll" each call hands to the next one. While writing the code, you only think about <b>one</b> call and <b>trust</b> the shaded part.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const a = [3, 1, 4, 2];
+  const r = Viz.recorder();
+  const stack = [];
+  const snap = (i, marks, line, say, extra = {}) => r.step([
+    { type: 'array', id: 'a', label: 'nums', values: a, pointers: i < a.length ? { i } : {}, window: i + 1 <= a.length - 1 ? [i + 1, a.length - 1] : undefined, marks },
+    { type: 'stack', id: 's', label: 'call stack', items: stack.map(f => ({ id: f.id, val: f.text })), marks: stack.length ? { [stack.length - 1]: 'active' } : {} },
+    { type: 'vars', id: 'v', vars: extra }
+  ], line, say);
+  function sum(i) {
+    stack.push({ id: 'c' + i, text: `sum(${i})` });
+    if (i === a.length) {
+      snap(i, Object.fromEntries(a.map((_, k) => [k, 'dim'])), [2], `<b>sum(${i})</b>: i is past the end, so there is nothing left to add. Base case: return <b>0</b>.`, { 'sum(4)': 0 });
+      stack.pop(); return 0;
+    }
+    snap(i, { [i]: 'active' }, [3], i === 0
+      ? `<b>sum(0)</b>: my job is only nums[0] = 3 plus "the sum of the shaded rest". I do not add the rest myself — I <b>trust</b> sum(1) to do it.`
+      : `<b>sum(${i})</b>: same tiny job one doll smaller — nums[${i}] = ${a[i]} plus whatever sum(${i + 1}) returns for the shaded part.`);
+    const rest = sum(i + 1);
+    const res = a[i] + rest;
+    snap(i, Object.fromEntries(a.map((_, k) => [k, k > i ? 'done' : k === i ? 'active' : ''])), [3],
+      `sum(${i + 1}) answered <b>${rest}</b> ${i + 1 < a.length ? '(the sum of the green part)' : '(nothing was left to add)'}. sum(${i}) returns ${a[i]} + ${rest} = <b>${res}</b>.`, { [`sum(${i})`]: `${a[i]} + ${rest} = ${res}` });
+    stack.pop(); return res;
+  }
+  const ans = sum(0);
+  snap(a.length, Object.fromEntries(a.map((_, k) => [k, 'done'])), [3], `Answer: <b>${ans}</b>. Each call did one addition. 5 calls (4 numbers + the empty base case), depth 5 → O(n) time and O(n) stack space.`, { answer: ans });
+  Viz.mount('#demo3', { frames: r.frames, title: 'Recursive array sum', code:
+`int sum(int[] nums, int i) {
+    if (i == nums.length) return 0;          // empty: base case
+    return nums[i] + sum(nums, i + 1);       // me + trusted rest
+}
+// call it as sum(nums, 0)` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"If the base case returns the right answer, and each call returns the right answer <i>assuming</i> the smaller call does, then by induction (falling dominoes) every call is right. Every call must move closer to the base case, or it never stops. Time is calls × work per call; space is the maximum depth of the call stack."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">Result</span> solve(<span class="k">Problem</span> p) {
+    <span class="k">if</span> (p is tiny) <span class="k">return</span> directAnswer;   <span class="c">// 1. base case first</span>
+    <span class="k">Result</span> sub = solve(smaller(p));         <span class="c">// 2. trust the smaller call</span>
+    <span class="k">return</span> combine(p, sub);                 <span class="c">// 3. one small step of my own</span>
+}</code></pre>
+<p>Before writing any recursive function, say these three lines out loud: "What is the smallest input and its answer? How do I make the input smaller? Given the smaller answer, how do I build mine?"</p>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Base case first. Shrink the problem. Trust the call.</b> The stack goes down to the base case, then answers come back up in reverse order.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li><b>No base case</b>, or a base case that can be skipped (e.g. <code>if (n == 0)</code> but you call with <code>n − 2</code> from 1 → −1, −3, ...). Result: <code>StackOverflowError</code>.</li>
+  <li>The recursive call does not make the problem smaller (calling <code>f(n)</code> inside <code>f(n)</code>).</li>
+  <li>Calling the function but <b>ignoring its return value</b> — writing <code>fact(n - 1);</code> instead of <code>return n * fact(n - 1);</code>.</li>
+  <li>Tracing every call in your head while writing. Trace small inputs only when debugging; while writing, trust the call.</li>
+  <li>Forgetting the stack space: depth 100,000 (a long list or a skewed tree) overflows Java's default stack. Say "O(depth) extra space".</li>
+  <li>Exponential repeats like naive <code>fib</code>: the same sub-call is made many times. Fix with memoization (store answers) — see <a href="dp-intro.html">DP intro</a>.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/fibonacci-number/">509. Fibonacci Number</a> — exactly animation 2; then add a memo array.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/power-of-two/">231. Power of Two</a> — base case n == 1, step n / 2.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/reverse-linked-list/">206. Reverse Linked List</a> — trust reverse(head.next), then fix one pointer.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/merge-two-sorted-lists/">21. Merge Two Sorted Lists</a> — pick the smaller head, trust the merge of the rest.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/powx-n/">50. Pow(x, n)</a> — x^n = (x^(n/2))², depth log n.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/k-th-symbol-in-grammar/">779. K-th Symbol in Grammar</a> — answer for row n comes from row n−1.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>What two parts must every recursive function have?</summary>
+<p>A base case (answered directly, no more calls) and a recursive step that calls itself on a strictly smaller input and uses that answer.</p></details>
+<details class="quiz"><summary>fact(5) is called. How many frames are on the stack at the deepest moment?</summary>
+<p>5: fact(5), fact(4), fact(3), fact(2), fact(1). So the extra space is O(n).</p></details>
+<details class="quiz"><summary>Why is naive fib(n) slow, even though each call does O(1) work?</summary>
+<p>Each call makes two calls, so the call tree has about 2ⁿ nodes, and the same values (like fib(2)) are recomputed again and again. Storing each answer once (memoization) makes it O(n).</p></details>
+<details class="quiz"><summary>What does "trust the recursion" mean when you write the code?</summary>
+<p>Assume the call on the smaller input already returns the correct answer, and only write the one step that turns that answer into yours. Do not trace the whole call tree while writing.</p></details>
+<details class="quiz"><summary>What happens with <code>int f(int n) { return n + f(n - 1); }</code>?</summary>
+<p>There is no base case, so it calls itself forever (n goes 3, 2, 1, 0, −1, ...) until the stack runs out: <code>StackOverflowError</code>. Add <code>if (n == 0) return 0;</code>.</p></details>
+
+<nav class="pager"><a href="bit-tricks.html">← Bit tricks</a><a href="tree-traversals.html">Tree traversals →</a></nav>
+</main>
+</body>
+</html>

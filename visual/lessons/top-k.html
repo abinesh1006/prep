@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Top K Elements</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Heaps</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 20 · Heaps</div>
+<h1>Top K Elements</h1>
+<p class="lede">To keep the k biggest things, hold them in a min-heap of size k: the weakest winner sits on top, ready to be kicked out by anyone better.</p>
+<p class="meta">Time to learn: about 1–2 hours · Prerequisites: <a href="heap.html">Heaps</a>, <a href="arrays-hashing.html">Arrays and hashing</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"<b>k largest</b>", "<b>kth largest</b>", "k smallest", "<b>k most frequent</b>", "k closest points", "top k words". A number k much smaller than n is the giveaway.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>You want the 3 largest of <code>[3, 2, 1, 5, 6, 4, 8]</code>. Sorting everything costs O(n log n) and does far more work than needed.</p>
+<p>Instead keep a small "winners" group of at most k = 3 numbers, stored in a <b>min-heap</b>. The top of a min-heap is its smallest member — the <b>weakest winner</b>.</p>
+<ul>
+  <li>Each new number joins the group.</li>
+  <li>If the group now has 4 members, kick out the weakest (poll the min).</li>
+  <li>At the end, the group holds the 3 largest, and its top is the <b>3rd largest</b>.</li>
+</ul>
+<p>The heap never grows past k, so each step costs O(log k). Total <b>O(n log k)</b> — with n = 1,000,000 and k = 10 that is far cheaper than sorting.</p>
+<p>It feels backwards: <b>largest → min-heap</b>, smallest → max-heap. The heap's top must be the one you would throw out.</p>
+<p>For <b>most frequent</b>, first count with a hash map, then pick the top k counts — either with the same size-k heap, or with <b>buckets</b>: an array where <code>bucket[f]</code> lists the numbers seen f times. Walking buckets from the highest f down gives O(n).</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A talent show with 3 chairs for finalists. When a new act beats the weakest finalist, the weakest one leaves their chair. You only ever need to know who the weakest finalist is — that is the top of the min-heap.</p></div>
+
+<h2>Watch it work</h2>
+<p>Kth Largest with <b>k = 3</b> on <code>[3, 2, 1, 5, 6, 4, 8]</code>. The heap is drawn smallest-first, so the left-most box is its top.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const a = [3, 2, 1, 5, 6, 4, 8], k = 3;
+  const r = Viz.recorder();
+  let heap = [];
+  const seen = i => Object.fromEntries([...Array(i).keys()].map(j => [j, 'visited']));
+  const P = (i, am, hm = {}, vars = {}) => [
+    { type: 'array', id: 'a', label: 'nums', values: a, pointers: i == null ? {} : { i }, marks: am },
+    { type: 'stack', id: 'h', label: 'min-heap of the k winners (top = weakest, left)', items: heap.map(v => ({ id: 'h' + v, val: v })), kind: 'heap', marks: hm },
+    { type: 'vars', id: 'v', vars: { k, size: heap.length, ...vars } }];
+  r.step(P(null, {}), [2], 'Empty winners group. It may hold at most <b>k = 3</b> numbers.');
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i];
+    heap.push(x); heap.sort((p, q) => p - q);
+    r.step(P(i, { ...seen(i), [i]: 'active' }, { [heap.indexOf(x)]: 'active' }), [4],
+      heap.length <= k ? `${x} joins. The group has ${heap.length} ≤ ${k} members, so nobody has to leave.`
+        : `${x} joins. Now there are ${heap.length} members — one too many.`);
+    if (heap.length > k) {
+      r.step(P(i, { ...seen(i), [i]: 'active' }, { 0: 'bad' }), [5],
+        `Kick out the weakest: the top of the min-heap, <b>${heap[0]}</b>. ${heap[0] === x ? `That is ${x} itself — it was not good enough to be a winner.` : `${heap[0]} cannot be among the 3 largest any more: 3 numbers bigger than it are already here.`}`);
+      heap.shift();
+    }
+  }
+  r.step(P(null, Object.fromEntries(a.map((v, j) => [j, heap.includes(v) ? 'done' : 'dim'])), { 0: 'done' }, { answer: heap[0] }), [7],
+    `All numbers seen. The group is the 3 largest (${heap.join(', ')}) and its weakest member, the top, is the <b>3rd largest: ${heap[0]}</b>.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Kth largest with a size-k min-heap', code:
+`int findKthLargest(int[] nums, int k) {
+    PriorityQueue<Integer> heap = new PriorityQueue<>(); // min
+    for (int x : nums) {
+        heap.offer(x);                     // join the winners
+        if (heap.size() > k) heap.poll();  // drop the weakest
+    }
+    return heap.peek();     // weakest winner = kth largest
+}` });
+})();
+</script>
+
+<h3>Top K Frequent Elements (count, then buckets)</h3>
+<p><code>[1, 1, 1, 2, 2, 3]</code>, <b>k = 2</b>. Count each number, put numbers into buckets by count, then read buckets from the most frequent down.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const nums = [1, 1, 1, 2, 2, 3], k = 2;
+  const r = Viz.recorder();
+  const count = new Map();
+  const bucket = Array.from({ length: nums.length + 1 }, () => []);
+  const ans = [];
+  const seen = i => Object.fromEntries([...Array(i).keys()].map(j => [j, 'visited']));
+  const cm = () => [...count].map(([v, c]) => ({ id: 'c' + v, val: `${v}→${c}` }));
+  const P = (i, nm, cmarks = {}, bm = {}, bp = {}) => [
+    { type: 'array', id: 'n', label: 'nums', values: nums, pointers: i == null ? {} : { i }, marks: nm },
+    { type: 'stack', id: 'c', label: 'count map (number → times)', items: cm(), kind: 'set', marks: cmarks },
+    { type: 'array', id: 'b', label: 'bucket[f] = numbers seen f times', values: bucket.map(b => b.length ? b.join(',') : '·'), marks: bm, pointers: bp },
+    { type: 'stack', id: 'r', label: 'answer', items: ans.map(v => ({ id: 'r' + v, val: v })), kind: 'set' }];
+  r.step(P(null, {}), [2], 'Step 1: count how many times each number appears with a hash map.');
+  for (let i = 0; i < nums.length; i++) {
+    const x = nums[i];
+    count.set(x, (count.get(x) || 0) + 1);
+    const idx = [...count.keys()].indexOf(x);
+    r.step(P(i, { ...seen(i), [i]: 'active' }, { [idx]: 'active' }), [3], `See ${x}: its count becomes <b>${count.get(x)}</b>.`);
+  }
+  let j = 0;
+  for (const [v, c] of count) {
+    bucket[c].push(v);
+    r.step(P(null, {}, { [j]: 'compare' }, { [c]: 'active' }), [6, 7, 8],
+      `Step 2: ${v} was seen ${c} time${c > 1 ? 's' : ''}, so it goes into <b>bucket[${c}]</b>. The index <i>is</i> the frequency, so no sorting is needed.`);
+    j++;
+  }
+  for (let f = nums.length; f > 0 && ans.length < k; f--) {
+    if (!bucket[f].length) {
+      r.step(P(null, {}, {}, { [f]: 'dim' }, { f }), [11, 12], `Step 3: walk from the highest frequency down. bucket[${f}] is empty — nobody appears ${f} times.`);
+      continue;
+    }
+    for (const x of bucket[f]) if (ans.length < k) ans.push(x);
+    r.step(P(null, {}, {}, { [f]: 'done' }, { f }), [12, 13],
+      `bucket[${f}] has <b>${bucket[f].join(', ')}</b>. Take ${bucket[f].length > 1 ? 'them' : 'it'} into the answer (${ans.length} of ${k}).`);
+  }
+  r.step(P(null, {}, {}, {}), [14], `We have k = ${k} numbers. Answer: <b>[${ans.join(', ')}]</b>. Counting O(n) + buckets O(n) = O(n) total.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Top k frequent with buckets', code:
+`int[] topKFrequent(int[] nums, int k) {
+    Map<Integer, Integer> cnt = new HashMap<>();
+    for (int x : nums) cnt.merge(x, 1, Integer::sum);
+    List<Integer>[] bucket = new List[nums.length + 1];
+    for (var e : cnt.entrySet()) {
+        int f = e.getValue();             // seen f times
+        if (bucket[f] == null) bucket[f] = new ArrayList<>();
+        bucket[f].add(e.getKey());
+    }
+    int[] ans = new int[k]; int n = 0;
+    for (int f = nums.length; f > 0 && n < k; f--)
+        if (bucket[f] != null)            // most frequent first
+            for (int x : bucket[f]) if (n < k) ans[n++] = x;
+    return ans;
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"A min-heap of size k always holds the k largest seen so far, and its root is the smallest of them. Any new number that is not bigger than the root cannot be in the top k, so polling it loses nothing. Each step is O(log k), so the whole pass is O(n log k)."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// k LARGEST -&gt; min-heap of size k (flip the comparator for k smallest)</span>
+PriorityQueue&lt;T&gt; heap = <span class="k">new</span> PriorityQueue&lt;&gt;(byScoreAscending);
+<span class="k">for</span> (T x : items) {
+    heap.offer(x);
+    <span class="k">if</span> (heap.size() &gt; k) heap.poll();   <span class="c">// drop the weakest</span>
+}
+<span class="c">// heap now holds the k best; heap.peek() is the kth best</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Top k largest → min-heap of size k. Top k smallest → max-heap of size k.</b> The top is the one you would throw out. Frequencies → count map first, then heap or buckets.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Using a max-heap of all n items and polling k times: O(n + k log n) is fine, but O(n) memory — the size-k heap uses O(k).</li>
+  <li>Checking <code>size() &gt; k</code> <b>before</b> offering: then the newcomer never gets compared.</li>
+  <li>Top K Frequent: putting raw numbers in the heap instead of comparing by <b>count</b> (<code>(a, b) -&gt; cnt.get(a) - cnt.get(b)</code>).</li>
+  <li>Bucket array of size n instead of n + 1 — a number can appear n times.</li>
+  <li>Expecting the heap to come out sorted when you iterate it. Poll it if you need order.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/kth-largest-element-in-a-stream/">703. Kth Largest Element in a Stream</a> — the first animation, kept as a class.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/kth-largest-element-in-an-array/">215. Kth Largest Element in an Array</a> — size-k min-heap (or quickselect).</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/top-k-frequent-elements/">347. Top K Frequent Elements</a> — the second animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/k-closest-points-to-origin/">973. K Closest Points to Origin</a> — k smallest distances → max-heap of size k.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/top-k-frequent-words/">692. Top K Frequent Words</a> — tie-break alphabetically in the comparator.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-k-closest-elements/">658. Find K Closest Elements</a> — heap works; binary search on the window is faster.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/sliding-window-maximum/">239. Sliding Window Maximum</a> — heap with lazy removal, or a monotonic deque.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>You need the 5 <b>smallest</b> distances. Min-heap or max-heap, and of what size?</summary>
+<p>A max-heap of size 5. Its top is the largest of the 5 smallest — the one to throw out when a closer point arrives.</p></details>
+<details class="quiz"><summary>What is the time complexity of the size-k heap approach, and why is it better than sorting when k is small?</summary>
+<p>O(n log k). log k is tiny when k is small (log 10 ≈ 3), while sorting is O(n log n).</p></details>
+<details class="quiz"><summary>Why can the bucket approach for Top K Frequent be O(n)?</summary>
+<p>Frequencies are between 1 and n, so they can be array indices. Reading buckets from n down to 1 replaces sorting.</p></details>
+
+<nav class="pager"><a href="heap.html">← Heaps</a><a href="two-heaps.html">Two heaps →</a></nav>
+</main>
+</body>
+</html>

@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LRU Cache</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Linked lists</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 16 · Linked lists</div>
+<h1>LRU Cache</h1>
+<p class="lede">A HashMap finds any item in O(1); a doubly linked list keeps items in "most recently used" order and can move or drop any item in O(1). Together they make every get and put O(1).</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="arrays-hashing.html">Arrays and hashing</a>, <a href="linked-list-reverse.html">Reverse a linked list</a>, <a href="merge-lists.html">Merge sorted lists</a> (dummy nodes)</p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"Design a cache", "<b>least recently used</b>", "evict the oldest", "<b>O(1)</b> get and put", "move to front on access", "keep the last k distinct items". Whenever you need both fast lookup by key <b>and</b> a changing order, pair a map with a linked list.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>A cache with <b>capacity 2</b> can remember two key → value pairs. When a third arrives, it must forget one: the <b>least recently used</b> (LRU) — the one nobody has read or written for the longest time.</p>
+<ul>
+  <li>We need an <b>order</b> from most recent to least recent. Every <code>get</code> or <code>put</code> of a key moves it to the front. Eviction removes from the back.</li>
+  <li>An array would need shifting (O(n)) to move an item to the front. A <b>doubly linked list</b> — each node has a <code>next</code> arrow <i>and</i> a <code>prev</code> arrow — can unhook any node and re-hook it at the front by changing 6 arrows: O(1).</li>
+  <li>But finding the node for key 7 in a list means walking it (O(n)). So a <b>HashMap</b> stores key → node, and jumps straight to it.</li>
+  <li>Two fake nodes, <b>head</b> (H) and <b>tail</b> (T), sit at both ends forever. The real front is <code>head.next</code>, the LRU is <code>tail.prev</code>, and no operation ever has to check for null.</li>
+</ul>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A desk with room for only a few files, stacked with the one you touched last on top. When you use a file you pull it out and put it on top. When a new file arrives and the desk is full, the bottom file goes back to the archive. Your index cards (the HashMap) tell you exactly where each file is in the stack, so you never search.</p></div>
+
+<h2>Watch it work</h2>
+<p>First, the pointer surgery for one <b>get(1)</b>: order is 3, 2, 1 (1 is least recent). Node 1 is unhooked and re-hooked right after H. Each arrow is one line of code. Upper arrows are <code>next</code>, lower arrows are <code>prev</code>; the small chip is the stored value.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const val = { 1: 'A', 2: 'B', 3: 'C' };
+  const nxt = { H: '3', 3: '2', 2: '1', 1: 'T' };
+  const prv = { T: '1', 1: '2', 2: '3', 3: 'H' };
+  const r = Viz.recorder();
+  const X = (i, n) => 380 + (i - (n - 1) / 2) * 140;
+  const pan = (order, lifted, liftX, marks = {}, em = {}, extra = []) => {
+    const pos = {}; order.forEach((id, i) => pos[id] = [X(i, order.length), 50]);
+    if (lifted) pos[lifted] = [liftX, 150];
+    const ids = Object.keys(pos);
+    const edges = [];
+    for (const a of ids) {
+      if (nxt[a] && pos[nxt[a]]) edges.push({ a, b: nxt[a], dir: true, bend: 20 });
+      if (prv[a] && pos[prv[a]]) edges.push({ a, b: prv[a], dir: true, bend: 20 });
+    }
+    return [{ type: 'graph', id: 'g', label: 'doubly linked list: most recent → least recent', h: 190,
+      nodes: ids.map(id => ({ id, x: pos[id][0], y: pos[id][1], label: id })), edges,
+      badges: Object.fromEntries(ids.filter(id => val[id]).map(id => [id, val[id]])), marks: { H: 'dim', T: 'dim', ...marks }, edgeMarks: em },
+      { type: 'stack', id: 'm', kind: 'set', label: 'HashMap key → node', items: ['1', '2', '3'].map(k => ({ id: 'k' + k, val: `${k} → node ${k}` })), marks: {} }, ...extra];
+  };
+  const line = ['H', '3', '2', '1', 'T'];
+  r.step(pan(line), [11], 'Cache holds 3, 2, 1 (front = most recent). <b>H</b> and <b>T</b> are fake end nodes. Now someone calls <b>get(1)</b>.');
+  r.step(pan(line, null, 0, { 1: 'compare' }), [11], 'The HashMap gives node 1 instantly — no walking. Its value is <b>A</b>. Because it was just used, it must move to the front.');
+  nxt['2'] = 'T';
+  r.step(pan(['H', '3', '2', 'T'], '1', 590, { 1: 'active' }, { '2-T': 'active' }), [1, 2], '<b>remove(1)</b>, step 1: n.prev.next = n.next. Node 2 now skips over 1 and points forward to T.');
+  prv['T'] = '2';
+  r.step(pan(['H', '3', '2', 'T'], '1', 590, { 1: 'active' }, { 'T-2': 'active' }), [3], 'Step 2: n.next.prev = n.prev. T points back to 2. The list no longer reaches node 1 (node 1 still has its old arrows, but nobody points to it).');
+  prv['1'] = 'H';
+  r.step(pan(['H', '3', '2', 'T'], '1', 170, { 1: 'active' }, { '1-H': 'active' }), [5, 6], '<b>addFront(1)</b>: node 1 should sit between H and 3. First its own back arrow: n.prev = head.');
+  nxt['1'] = '3';
+  r.step(pan(['H', '3', '2', 'T'], '1', 170, { 1: 'active' }, { '1-3': 'active' }), [7], 'n.next = head.next: node 1 points forward to 3, the old front.');
+  prv['3'] = '1';
+  r.step(pan(['H', '3', '2', 'T'], '1', 170, { 1: 'active' }, { '3-1': 'active' }), [8], 'head.next.prev = n: node 3 now points back to 1.');
+  nxt['H'] = '1';
+  r.step(pan(['H', '3', '2', 'T'], '1', 170, { 1: 'active' }, { 'H-1': 'active' }), [9], 'head.next = n: H points forward to 1. Node 1 is now the front.');
+  r.step(pan(['H', '1', '3', '2', 'T'], null, 0, { 1: 'done', 2: 'compare' }), [11], 'Order is now 1, 3, 2. get(1) returns <b>A</b>. Node 2 at tail.prev is the next to be evicted. Six arrows changed — O(1), whatever the cache size.');
+  Viz.mount('#demo1', { frames: r.frames, title: 'Move a node to the front', code:
+`void remove(Node n) {        // unhook n
+    n.prev.next = n.next;
+    n.next.prev = n.prev;
+}
+void addFront(Node n) {      // just after head
+    n.prev = head;
+    n.next = head.next;
+    head.next.prev = n;
+    head.next = n;
+}
+// get(k): n = map.get(k); remove(n); addFront(n);` });
+})();
+</script>
+
+<p>Now a full sequence with <b>capacity 2</b>: put(1,A), put(2,B), get(1), put(3,C), get(2), put(4,D), get(3), get(4).</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const cap = 2;
+  let order = []; // keys, most recent first
+  const vals = {};
+  const r = Viz.recorder();
+  const X = (i, n) => 380 + (i - (n - 1) / 2) * 140;
+  const pan = (op, res, marks = {}, gone = null) => {
+    const line = ['H', ...order, 'T'];
+    const ids = gone ? [...line.slice(0, -1), gone, 'T'] : line;
+    const pos = Object.fromEntries(ids.map((id, i) => [id, X(i, ids.length)]));
+    const edges = [];
+    for (let i = 0; i + 1 < line.length; i++) { edges.push({ a: line[i], b: line[i + 1], dir: true, bend: 20 }); edges.push({ a: line[i + 1], b: line[i], dir: true, bend: 20 }); }
+    return [{ type: 'graph', id: 'g', label: 'most recent → least recent', h: 90,
+      nodes: ids.map(id => ({ id, x: pos[id], y: 50, label: id })), edges,
+      badges: Object.fromEntries(ids.filter(id => vals[id]).map(id => [id, vals[id]])), marks: { H: 'dim', T: 'dim', ...marks } },
+      { type: 'stack', id: 'm', kind: 'set', label: 'HashMap', items: Object.keys(vals).filter(k => order.includes(k)).map(k => ({ id: 'k' + k, val: `${k} → node` })), marks: {} },
+      { type: 'vars', id: 'v', vars: { op, result: res, size: `${order.length} / ${cap}` }, marks: { result: res === '-1' ? 'bad' : res === '—' ? '' : 'done' } }];
+  };
+  r.step(pan('new LRUCache(2)', '—'), [3, 4], 'Empty cache: only the fake nodes H and T, pointing at each other. Capacity 2.');
+  const ops = [['put', '1', 'A'], ['put', '2', 'B'], ['get', '1'], ['put', '3', 'C'], ['get', '2'], ['put', '4', 'D'], ['get', '3'], ['get', '4']];
+  for (const [kind, k, v] of ops) {
+    if (kind === 'get') {
+      if (!order.includes(k)) {
+        r.step(pan(`get(${k})`, '-1'), [6, 7], `get(${k}): the map has no key ${k} (it was evicted earlier). Return <b>−1</b>; nothing moves.`);
+        continue;
+      }
+      r.step(pan(`get(${k})`, '…', { [k]: 'compare' }), [6], `get(${k}): the map jumps straight to node ${k}.`);
+      order = [k, ...order.filter(x => x !== k)];
+      r.step(pan(`get(${k})`, vals[k], { [k]: 'done' }), [8, 9], `Move node ${k} to the front (it was just used) and return <b>${vals[k]}</b>. ${order.length > 1 ? `Least recent is now ${order[order.length - 1]}.` : ''}`);
+    } else {
+      if (order.length === cap && !order.includes(k)) {
+        const lru = order[order.length - 1];
+        r.step(pan(`put(${k},${v})`, '—', { [lru]: 'bad' }), [14, 15], `put(${k},${v}): the cache is full (${cap}/${cap}). The least recently used is <b>tail.prev = node ${lru}</b>.`);
+        order = order.slice(0, -1);
+        r.step(pan(`put(${k},${v})`, '—', { [lru]: 'bad' }, lru), [16], `Evict it: unhook node ${lru} from the list and delete key ${lru} from the map. Room for one more.`);
+        delete vals[lru];
+      }
+      vals[k] = v;
+      order = [k, ...order.filter(x => x !== k)];
+      r.step(pan(`put(${k},${v})`, '—', { [k]: 'active' }), [18, 19], `Create node ${k} with value ${v}, store it in the map, and add it right after H: it is the most recent.`);
+    }
+  }
+  r.step(pan('done', '—', { [order[0]]: 'done' }), [5, 11], `Final order: ${order.join(', ')}. Every get and put did a map lookup plus a few arrow changes: <b>O(1)</b> each.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'LRU cache get, put and evict', code:
+`class LRUCache {
+  Map<Integer, Node> map = new HashMap<>();
+  Node head = new Node(), tail = new Node();
+  int cap; // ctor: head.next = tail; tail.prev = head
+  int get(int key) {
+    Node n = map.get(key);
+    if (n == null) return -1;   // miss
+    remove(n); addFront(n);     // now most recent
+    return n.val;
+  }
+  void put(int key, int val) {
+    Node n = map.get(key);
+    if (n != null) remove(n);   // update: re-add
+    else if (map.size() == cap) {
+      Node lru = tail.prev;     // least recent
+      remove(lru); map.remove(lru.key);
+    }
+    n = new Node(key, val);
+    map.put(key, n); addFront(n);
+  }
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"The HashMap turns 'find the node for this key' into O(1). The doubly linked list keeps usage order, and because each node knows its prev and next, unhooking it or adding it after the head is a constant number of pointer changes. Sentinel head and tail remove every null check. So get and put are both O(1)."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">class</span> Node { <span class="k">int</span> key, val; Node prev, next; }
+<span class="c">// head &lt;-&gt; ... most recent ... least recent ... &lt;-&gt; tail</span>
+remove(n):   n.prev.next = n.next; n.next.prev = n.prev;
+addFront(n): n.prev = head; n.next = head.next;
+             head.next.prev = n; head.next = n;
+get: miss → -1; hit → remove, addFront, return val
+put: exists → remove; full → evict tail.prev (and map key); add new at front</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Map for "where", list for "when".</b> Use → move to front. Full → drop tail.prev. Sentinels H and T, and store the <b>key</b> in the node so eviction can delete it from the map.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Not storing the key inside the node — when evicting <code>tail.prev</code> you cannot remove it from the map.</li>
+  <li>Forgetting that <code>get</code> also counts as "use" and must move the node to the front.</li>
+  <li>On <code>put</code> of an existing key, evicting anyway (the size did not grow) or forgetting to update the value.</li>
+  <li>Wrong order inside <code>addFront</code>: set <code>head.next = n</code> last, or you lose the old front.</li>
+  <li>In Java you may mention <code>LinkedHashMap(cap, 0.75f, true)</code> with <code>removeEldestEntry</code>, but interviewers want the hand-built version.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/design-hashmap/">706. Design HashMap</a> — warm-up: buckets of linked lists.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/design-linked-list/">707. Design Linked List</a> — practise sentinels and pointer updates.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/lru-cache/">146. LRU Cache</a> — the animations above.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/design-browser-history/">1472. Design Browser History</a> — doubly linked list of pages.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/all-oone-data-structure/">432. All O`one Data Structure</a> — map + doubly linked list of count buckets.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/lfu-cache/">460. LFU Cache</a> — one LRU list per frequency, plus a min-frequency pointer.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Why a doubly linked list and not a singly linked one?</summary>
+<p>To unhook a node you must change its previous node's next. A singly linked list cannot reach the previous node in O(1); <code>prev</code> gives it directly.</p></details>
+<details class="quiz"><summary>What do the sentinel head and tail buy you?</summary>
+<p>Every real node always has a non-null prev and next, so remove and addFront need no "is this the first/last node?" checks, even on an empty cache.</p></details>
+<details class="quiz"><summary>Capacity 2: put(1), put(2), get(1), put(3). Which key is evicted?</summary>
+<p>Key 2. get(1) made 1 the most recent, so 2 was the least recently used when 3 arrived.</p></details>
+
+<nav class="pager"><a href="merge-lists.html">← Merge sorted lists</a><a href="stack-basics.html">Stack basics →</a></nav>
+</main>
+</body>
+</html>

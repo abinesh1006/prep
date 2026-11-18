@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LCS and Edit Distance</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Dynamic programming</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 45 · Dynamic programming</div>
+<h1>LCS &amp; Edit Distance</h1>
+<p class="lede">Two strings → one 2D table: cell (i, j) answers the question for the first i letters of one string and the first j letters of the other.</p>
+<p class="meta">Time to learn: about 3 hours · Prerequisites: <a href="dp-intro.html">DP intro</a>, <a href="lis.html">LIS</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p><b>Two strings</b> (or two arrays) and a question about how they line up: "longest <b>common subsequence</b>", "minimum <b>operations to convert</b> word1 into word2", "minimum deletions to make them equal", "is s an interleaving of a and b", "distinct subsequences".</p></div>
+
+<h2>The idea in plain words</h2>
+<p><b>LCS</b> (longest common subsequence): the longest sequence of letters that appears in both strings in the same order, gaps allowed. For "ace" and "abcde" it is "ace", length 3.</p>
+<p>Let <code>dp[i][j]</code> = LCS of the first i letters of a and the first j letters of b. Row 0 and column 0 mean "empty string", so they are all 0. Then look at the <b>last letters</b> of the two prefixes:</p>
+<ul>
+  <li><b>Same letter</b> → it belongs to the LCS: <code>dp[i][j] = dp[i−1][j−1] + 1</code> (from the cell diagonally up-left, ↖).</li>
+  <li><b>Different</b> → at least one of them is not used. Drop a's letter (cell above, ↑) or b's letter (cell to the left, ←), whichever gives more.</li>
+</ul>
+<p>Every cell needs only the cell above, to the left and up-left, so we fill row by row, left to right. Remembering which arrow won lets us walk back from the bottom-right corner and read off the actual LCS.</p>
+<p><b>Edit distance</b> uses the same table with a different question: the fewest single-letter operations to turn word1 into word2. The three neighbours are the three operations: ↖ <b>replace</b> (or free if the letters match), ↑ <b>delete</b> a letter of word1, ← <b>insert</b> a letter of word2. Take the cheapest + 1.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Comparing two versions of a document, like a "track changes" view: you want to keep as much as possible in common (LCS) and use the fewest edits (edit distance). The table is you reading both versions with one finger each; each cell is "how far have both fingers got".</p></div>
+
+<h2>Watch it work</h2>
+<h3>1. LCS of "ace" and "abcde"</h3>
+<p>Each cell shows the arrow it came from and its value. Blue = cells it looks at, yellow = being filled.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const a = 'ace', b = 'abcde', m = a.length, n = b.length, r = Viz.recorder();
+  const dp = [...Array(m + 1)].map(() => Array(n + 1).fill(0));
+  const arrow = [...Array(m + 1)].map(() => Array(n + 1).fill(''));
+  const cells = (upto) => dp.map((row, i) => row.map((v, j) => {
+    if (i === 0 || j === 0) return 0;
+    if (i * (n + 1) + j > upto) return '';
+    return arrow[i][j] + v;
+  }));
+  const grid = (upto, marks, vars, line, say) => r.step([
+    { type: 'grid', id: 'g', label: 'dp[i][j] = LCS of a[0..i) and b[0..j)', cells: cells(upto), marks,
+      rowLabels: ['""', ...a], colLabels: ['""', ...b] },
+    { type: 'vars', id: 'v', vars }], line, say);
+  grid(-1, {}, { a: '"ace"', b: '"abcde"' }, [3], 'Row 0 and column 0 stand for an <b>empty</b> prefix: the LCS with an empty string is 0. Now fill row by row.');
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+    const k = i * (n + 1) + j;
+    if (a[i - 1] === b[j - 1]) {
+      dp[i][j] = dp[i - 1][j - 1] + 1; arrow[i][j] = '↖';
+      grid(k, { [`${i - 1},${j - 1}`]: 'compare', [`${i},${j}`]: 'active' }, { [`a[${i - 1}]`]: a[i - 1], [`b[${j - 1}]`]: b[j - 1], match: 'yes' }, [6, 7],
+        `'${a[i - 1]}' = '${b[j - 1]}' → a <b>match</b>. Take the LCS without both letters (↖ = ${dp[i - 1][j - 1]}) and add 1: <b>${dp[i][j]}</b>.`);
+    } else {
+      const up = dp[i - 1][j], left = dp[i][j - 1];
+      dp[i][j] = Math.max(up, left); arrow[i][j] = up >= left ? '↑' : '←';
+      grid(k, { [`${i - 1},${j}`]: up >= left ? 'done' : 'compare', [`${i},${j - 1}`]: up >= left ? 'compare' : 'done', [`${i},${j}`]: 'active' },
+        { [`a[${i - 1}]`]: a[i - 1], [`b[${j - 1}]`]: b[j - 1], 'up ↑': up, 'left ←': left }, [8, 9, 10],
+        `'${a[i - 1]}' ≠ '${b[j - 1]}'. Drop '${a[i - 1]}' (↑ = ${up}) or drop '${b[j - 1]}' (← = ${left}); keep the bigger: <b>${dp[i][j]}</b>${up === left ? ' (tie — we pick ↑)' : ''}.`);
+    }
+  }
+  const full = (m + 1) * (n + 1);
+  let i = m, j = n; const pathMarks = {}, lcs = [];
+  grid(full, { [`${i},${j}`]: 'active' }, { LCS: dp[m][n] }, [11], `Table full: <b>dp[3][5] = ${dp[m][n]}</b>. To find the letters, start at the bottom-right corner and follow the arrows back.`);
+  while (i > 0 && j > 0) {
+    pathMarks[`${i},${j}`] = 'done';
+    const ar = arrow[i][j];
+    if (ar === '↖') lcs.unshift(a[i - 1]);
+    grid(full, { ...pathMarks, [`${i},${j}`]: 'active' }, { 'letters found': lcs.join('') || '—' }, [ar === '↖' ? 7 : 9],
+      ar === '↖' ? `Cell (${i},${j}) came from ↖: '${a[i - 1]}' is in the LCS. Step diagonally.` : `Cell (${i},${j}) came from ${ar}: '${ar === '↑' ? a[i - 1] : b[j - 1]}' was dropped here. Step ${ar === '↑' ? 'up' : 'left'}.`);
+    if (ar === '↖') { i--; j--; } else if (ar === '↑') i--; else j--;
+  }
+  grid(full, pathMarks, { LCS: `"${lcs.join('')}"` }, [11], `Reached the edge. Reading the ↖ cells gives <b>"${lcs.join('')}"</b>, length ${lcs.length}. Time and memory O(m × n).`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'LCS table', code:
+`int lcs(String a, String b) {
+    int m = a.length(), n = b.length();
+    int[][] dp = new int[m + 1][n + 1]; // row/col 0 = ""
+    for (int i = 1; i <= m; i++)
+        for (int j = 1; j <= n; j++)
+            if (a.charAt(i - 1) == b.charAt(j - 1))
+                dp[i][j] = dp[i - 1][j - 1] + 1; // ↖ match
+            else
+                dp[i][j] = Math.max(dp[i - 1][j], // ↑
+                                    dp[i][j - 1]); // ←
+    return dp[m][n];
+}` });
+})();
+</script>
+
+<h3>2. Edit distance: "horse" → "ros"</h3>
+<p>Row i = first i letters of "horse", column j = first j letters of "ros". Each neighbour is one operation:</p>
+<ul>
+  <li><b>↖ replace</b> word1's letter with word2's (cost 1, or 0 if they already match),</li>
+  <li><b>↑ delete</b> word1's letter (cost 1),</li>
+  <li><b>← insert</b> word2's letter (cost 1).</li>
+</ul>
+<div id="demo2"></div>
+<script>
+(() => {
+  const a = 'horse', b = 'ros', m = a.length, n = b.length, r = Viz.recorder();
+  const dp = [...Array(m + 1)].map(() => Array(n + 1).fill(''));
+  const op = [...Array(m + 1)].map(() => Array(n + 1).fill(''));
+  const grid = (marks, vars, line, say) => r.step([
+    { type: 'grid', id: 'g', label: 'dp[i][j] = edits: horse[0..i) → ros[0..j)', cells: dp.map(row => [...row]), marks,
+      rowLabels: ['""', ...a], colLabels: ['""', ...b] },
+    { type: 'vars', id: 'v', vars }], line, say);
+  grid({}, { word1: '"horse"', word2: '"ros"' }, [3], 'Empty table. dp[i][j] = fewest edits to turn the first i letters of "horse" into the first j letters of "ros".');
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  const edge = {}; for (let i = 0; i <= m; i++) edge[`${i},0`] = 'visited'; for (let j = 0; j <= n; j++) edge[`0,${j}`] = 'visited';
+  grid(edge, { 'column 0': 'delete all', 'row 0': 'insert all' }, [4, 5], 'Edges: turning i letters into "" takes <b>i deletes</b> (column 0); turning "" into j letters takes <b>j inserts</b> (row 0).');
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+    const d = dp[i - 1][j - 1], up = dp[i - 1][j], left = dp[i][j - 1];
+    if (a[i - 1] === b[j - 1]) {
+      dp[i][j] = d; op[i][j] = 'match';
+      grid({ [`${i - 1},${j - 1}`]: 'done', [`${i},${j}`]: 'active' }, { [`'${a[i - 1]}' vs '${b[j - 1]}'`]: 'same', '↖ free': d }, [8, 9],
+        `'${a[i - 1]}' = '${b[j - 1]}': the last letters already match, so no edit is needed for them. Copy ↖: <b>${d}</b>.`);
+    } else {
+      const best = Math.min(d, up, left);
+      dp[i][j] = best + 1; op[i][j] = best === d ? 'replace' : best === up ? 'delete' : 'insert';
+      const pick = op[i][j] === 'replace' ? `${i - 1},${j - 1}` : op[i][j] === 'delete' ? `${i - 1},${j}` : `${i},${j - 1}`;
+      const mk = { [`${i - 1},${j - 1}`]: 'compare', [`${i - 1},${j}`]: 'compare', [`${i},${j - 1}`]: 'compare', [`${i},${j}`]: 'active' }; mk[pick] = 'done';
+      grid(mk, { '↖ replace': d + 1, '↑ delete': up + 1, '← insert': left + 1 }, [10, 11, 12, 13],
+        `'${a[i - 1]}' ≠ '${b[j - 1]}'. Replace: ${d}+1, delete '${a[i - 1]}': ${up}+1, insert '${b[j - 1]}': ${left}+1. Cheapest is <b>${op[i][j]}</b> → <b>${dp[i][j]}</b>.`);
+    }
+  }
+  // walk back
+  let i = m, j = n; const pm = {}, ops = [];
+  while (i > 0 || j > 0) {
+    pm[`${i},${j}`] = 'done';
+    if (i > 0 && j > 0 && op[i][j] === 'match') { i--; j--; }
+    else if (i > 0 && j > 0 && op[i][j] === 'replace') { ops.unshift(`replace '${a[i - 1]}' with '${b[j - 1]}'`); i--; j--; }
+    else if (i > 0 && (j === 0 || op[i][j] === 'delete')) { ops.unshift(`delete '${a[i - 1]}'`); i--; }
+    else { ops.unshift(`insert '${b[j - 1]}'`); j--; }
+  }
+  pm['0,0'] = 'done';
+  grid(pm, { answer: dp[m][n] }, [14], `Answer <b>dp[5][3] = ${dp[m][n]}</b>. Walking back from the corner (green) gives the edits: ${ops.join(', ')}. horse → rorse → rose → ros.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Edit distance table', code:
+`int minDistance(String a, String b) {
+    int m = a.length(), n = b.length();
+    int[][] dp = new int[m + 1][n + 1];
+    for (int i = 0; i <= m; i++) dp[i][0] = i; // deletes
+    for (int j = 0; j <= n; j++) dp[0][j] = j; // inserts
+    for (int i = 1; i <= m; i++)
+        for (int j = 1; j <= n; j++)
+            if (a.charAt(i - 1) == b.charAt(j - 1))
+                dp[i][j] = dp[i - 1][j - 1];   // free
+            else dp[i][j] = 1 + Math.min(
+                dp[i - 1][j - 1],              // replace
+                Math.min(dp[i - 1][j],         // delete
+                         dp[i][j - 1]));       // insert
+    return dp[m][n];
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"Any alignment of two prefixes ends in one of three ways: both last letters are used together, or the last letter of one string is left out. Each case reduces to a smaller pair of prefixes that is already in the table, so taking the best of those cases is optimal. The table has (m+1)(n+1) cells with O(1) work each."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">int</span>[][] dp = <span class="k">new int</span>[m + <span class="n">1</span>][n + <span class="n">1</span>];        <span class="c">// +1: row/col 0 = empty prefix</span>
+<span class="c">// fill row 0 and column 0 (base cases)</span>
+<span class="k">for</span> (<span class="k">int</span> i = <span class="n">1</span>; i &lt;= m; i++)
+    <span class="k">for</span> (<span class="k">int</span> j = <span class="n">1</span>; j &lt;= n; j++)
+        <span class="k">if</span> (a.charAt(i-<span class="n">1</span>) == b.charAt(j-<span class="n">1</span>)) dp[i][j] = f(dp[i-<span class="n">1</span>][j-<span class="n">1</span>]);      <span class="c">// ↖</span>
+        <span class="k">else</span> dp[i][j] = g(dp[i-<span class="n">1</span>][j-<span class="n">1</span>], dp[i-<span class="n">1</span>][j], dp[i][j-<span class="n">1</span>]); <span class="c">// ↖ ↑ ←</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Two strings → (m+1) × (n+1) table, look at the last letters.</b> ↖ match/replace, ↑ delete, ← insert.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Off-by-one: dp[i][j] is about the first i letters, so the letter is <code>charAt(i − 1)</code>.</li>
+  <li>Forgetting the base row and column in edit distance (they are 0..m and 0..n, not 0).</li>
+  <li>Confusing subsequence (gaps allowed — LCS) with substring (no gaps — reset to 0 on a mismatch).</li>
+  <li>Memory: only the previous row is needed; two rows of length n + 1 are enough when you do not need to walk back.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-common-subsequence/">1143. Longest Common Subsequence</a> — the first animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/delete-operation-for-two-strings/">583. Delete Operation for Two Strings</a> — m + n − 2 × LCS.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/edit-distance/">72. Edit Distance</a> — the second animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-palindromic-subsequence/">516. Longest Palindromic Subsequence</a> — LCS of s and reverse(s).</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/interleaving-string/">97. Interleaving String</a> — boolean table, take the next letter from a or b.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/distinct-subsequences/">115. Distinct Subsequences</a> — count: on a match, add ↖ and ↑.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Why is the table (m+1) × (n+1) and not m × n?</summary>
+<p>Row 0 and column 0 stand for the empty prefix. They hold the base cases, so the recurrence never has to check for index −1.</p></details>
+<details class="quiz"><summary>In edit distance, which neighbour means "insert"?</summary>
+<p>The left one, dp[i][j−1]: we already turned a[0..i) into b[0..j−1), then insert b's letter j−1 at the end.</p></details>
+<details class="quiz"><summary>What is the edit distance from "abc" to ""?</summary>
+<p>3 — delete every letter. That is the base column: dp[3][0] = 3.</p></details>
+
+<nav class="pager"><a href="lis.html">← Longest increasing subsequence</a><a href="knapsack.html">Knapsack →</a></nav>
+</main>
+</body>
+</html>

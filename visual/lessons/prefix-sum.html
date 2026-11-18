@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prefix Sum</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Arrays</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 4 · Arrays</div>
+<h1>Prefix Sum</h1>
+<p class="lede">Add up the array once from the left into a "running total" array; after that, the sum of any stretch is one subtraction.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="arrays-hashing.html">Arrays and hashing</a>, <a href="big-o.html">Big-O</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"<b>Sum of a range</b> l..r", <b>many range queries</b> on an array that does not change, "number of <b>subarrays with sum = k</b>", "subarray sum divisible by k", "equal number of 0s and 1s", "<b>pivot index</b>" — especially when the numbers can be <b>negative</b> (where a sliding window fails).</p></div>
+
+<h2>The idea in plain words</h2>
+<p>Take <code>nums = [3, 1, 4, 1, 5, 9, 2]</code>. Build <code>pre</code> where <code>pre[i]</code> = sum of the first i numbers: <code>pre = [0, 3, 4, 8, 9, 14, 23, 25]</code>. It has one extra slot at the start, <code>pre[0] = 0</code> (the sum of nothing).</p>
+<p>The sum of <code>nums[2..4]</code> (4 + 1 + 5 = 10) is "everything up to index 4" minus "everything before index 2": <code>pre[5] − pre[2] = 14 − 4 = 10</code>. One subtraction, no loop.</p>
+<p>Building <code>pre</code> costs O(n) once. Each query afterwards is O(1). With 10,000 queries on 10,000 numbers that is 20,000 steps instead of up to 100 million.</p>
+<p>The deeper trick: a subarray sums to k exactly when <b>two prefix sums differ by k</b>. So while walking, ask a hash map "how many earlier prefix sums equal <i>current − k</i>?" That counts subarrays in one pass — even with negative numbers.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A car's odometer. To know how far you drove between the 2nd and 5th petrol station, you do not re-drive the road — you read the odometer at both stations and subtract. The prefix array is the odometer reading at every station.</p></div>
+
+<h2>Watch it work</h2>
+<p><b>Build the prefix array.</b> Each slot is the previous slot plus one number.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const a = [3, 1, 4, 1, 5, 9, 2], n = a.length;
+  const pre = Array(n + 1).fill('');
+  pre[0] = 0;
+  const r = Viz.recorder();
+  const P = (i, mk = {}, pk = {}) => [
+    { type: 'array', id: 'a', label: 'nums', values: a, pointers: i == null ? {} : { i }, marks: mk },
+    { type: 'array', id: 'p', label: 'pre (one extra slot at the start)', values: [...pre], marks: pk }];
+  r.step(P(null, {}, { 0: 'done' }), [3], '<b>pre[0] = 0</b>: the sum of zero numbers. This extra slot makes every formula work without special cases.');
+  for (let i = 0; i < n; i++) {
+    pre[i + 1] = pre[i] + a[i];
+    r.step(P(i, { [i]: 'active' }, { ...Object.fromEntries([...Array(i + 1).keys()].map(x => [x, 'visited'])), [i]: 'compare', [i + 1]: 'active' }), [4, 5],
+      `pre[${i + 1}] = pre[${i}] + nums[${i}] = ${pre[i]} + ${a[i]} = <b>${pre[i + 1]}</b> — the sum of the first ${i + 1} number${i ? 's' : ''}.`);
+  }
+  r.step(P(null, {}, Object.fromEntries(pre.map((_, x) => [x, 'done']))), [6],
+    `Built in one pass, <b>O(n)</b>. Note pre has n + 1 = ${n + 1} slots, and pre[${n}] = ${pre[n]} is the total of the whole array.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Build prefix sums', code:
+`int[] buildPrefix(int[] nums) {
+    int n = nums.length;
+    int[] pre = new int[n + 1]; // pre[0]=0
+    for (int i = 0; i < n; i++)
+        pre[i + 1] = pre[i] + nums[i];
+    return pre;
+}
+// sum of nums[l..r], both included
+int rangeSum(int[] pre, int l, int r) {
+    return pre[r + 1] - pre[l];
+}` });
+})();
+</script>
+
+<p><b>Range sum in O(1).</b> Three questions, each answered with one subtraction.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const a = [3, 1, 4, 1, 5, 9, 2], n = a.length;
+  const pre = [0]; for (const x of a) pre.push(pre[pre.length - 1] + x);
+  const r = Viz.recorder();
+  const P = (win, mk, pk, vars) => [
+    { type: 'array', id: 'a', label: 'nums', values: a, window: win, marks: mk },
+    { type: 'array', id: 'p', label: 'pre', values: pre, marks: pk },
+    { type: 'vars', id: 'v', vars }];
+  r.step(P(null, {}, {}, { queries: 3 }), [8], 'The prefix array is ready. Now answer "sum of nums[l..r]" questions without adding anything up.');
+  for (const [l, rr] of [[2, 4], [0, 3], [3, 6]]) {
+    const range = Object.fromEntries([...Array(rr - l + 1)].map((_, d) => [l + d, 'compare']));
+    const ans = pre[rr + 1] - pre[l];
+    r.step(P([l, rr], range, {}, { l, r: rr, slow: a.slice(l, rr + 1).join(' + ') }), [8, 9],
+      `Question: sum of nums[${l}..${rr}]. The slow way adds ${rr - l + 1} numbers: ${a.slice(l, rr + 1).join(' + ')}.`);
+    r.step(P([l, rr], range, { [rr + 1]: 'active', [l]: 'bad' }, { 'pre[r + 1]': pre[rr + 1], 'pre[l]': pre[l] }), [10],
+      `pre[${rr + 1}] = ${pre[rr + 1]} is the sum of everything up to index ${rr}. pre[${l}] = ${pre[l]} is the part <i>before</i> index ${l} that we do not want${l === 0 ? ' (nothing, so 0)' : ''}.`);
+    r.step(P([l, rr], Object.fromEntries(Object.keys(range).map(k => [k, 'done'])), { [rr + 1]: 'done', [l]: 'done' }, { answer: `${pre[rr + 1]} − ${pre[l]} = ${ans}` }), [10],
+      `Subtract: <b>${ans}</b>. One step, however long the range.`);
+  }
+  r.step(P(null, {}, {}, { build: 'O(n)', 'each query': 'O(1)' }), [9, 10], 'Pay O(n) once to build, then every query is O(1). That is the whole pattern.');
+  Viz.mount('#demo2', { frames: r.frames, title: 'Range sum queries', code:
+`int[] buildPrefix(int[] nums) {
+    int n = nums.length;
+    int[] pre = new int[n + 1]; // pre[0]=0
+    for (int i = 0; i < n; i++)
+        pre[i + 1] = pre[i] + nums[i];
+    return pre;
+}
+// sum of nums[l..r], both included
+int rangeSum(int[] pre, int l, int r) {
+    return pre[r + 1] - pre[l];
+}` });
+})();
+</script>
+
+<p><b>Subarray Sum Equals K</b> (k = 3) on <code>[1, 2, 1, −1, 2, 1]</code>. The map counts how many times each prefix sum has appeared so far.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const a = [1, 2, 1, -1, 2, 1], k = 3;
+  const count = new Map([[0, 1]]);
+  const where = new Map([[0, [0]]]); // prefix sum -> list of prefix positions (to draw the subarrays)
+  const r = Viz.recorder();
+  let sum = 0, ans = 0;
+  const mapP = hot => ({ type: 'stack', id: 'm', label: 'count (prefix sum : times seen)', kind: 'set',
+    items: [...count].map(([s, c]) => ({ id: 's' + s, val: `${s} : ${c}` })), marks: hot == null ? {} : { [[...count.keys()].indexOf(hot)]: count.has(hot) ? 'done' : 'bad' } });
+  const arr = (j, win, marks) => ({ type: 'array', id: 'a', label: 'nums', values: a, pointers: j == null ? {} : { j }, window: win, marks });
+  r.step([arr(null, null, {}), mapP(), { type: 'vars', id: 'v', vars: { k, sum, ans } }], [4, 5],
+    'Start with <b>count = {0 : 1}</b>: the empty prefix (sum 0) has been seen once. It lets a subarray that starts at index 0 be counted.');
+  a.forEach((x, j) => {
+    sum += x;
+    const need = sum - k, c = count.get(need) || 0;
+    ans += c;
+    const starts = (where.get(need) || []);
+    const marks = {}; for (const p of starts) for (let t = p; t <= j; t++) marks[t] = 'done';
+    marks[j] = c ? 'done' : 'active';
+    r.step([arr(j, c ? [starts[0], j] : null, marks), mapP(need), { type: 'vars', id: 'v', vars: { k, sum, 'sum − k': need, ans }, marks: { ans: c ? 'done' : '', 'sum − k': c ? 'done' : 'bad' } }], [7, 10],
+      `Add ${x}: prefix sum is <b>${sum}</b>. A subarray ending here sums to ${k} if an earlier prefix was ${sum} − ${k} = <b>${need}</b>. ` +
+      (c ? `Seen ${c} time${c > 1 ? 's' : ''} → ${starts.map(p => `[${a.slice(p, j + 1).join(', ')}]`).join(' and ')}. ans = ${ans}.` : `Never seen, so no subarray ends here.`));
+    count.set(sum, (count.get(sum) || 0) + 1);
+    where.set(sum, [...(where.get(sum) || []), j + 1]);
+    r.step([arr(j, null, { [j]: 'visited' }), mapP(), { type: 'vars', id: 'v', vars: { k, sum, ans } }], [11],
+      `Record prefix sum ${sum} in the map (now seen ${count.get(sum)} time${count.get(sum) > 1 ? 's' : ''}) so later positions can use it.`);
+  });
+  r.step([arr(null, null, {}), mapP(), { type: 'vars', id: 'v', vars: { answer: ans }, marks: { answer: 'done' } }], [13],
+    `Answer: <b>${ans}</b> subarrays sum to ${k}. One pass, O(n) time, O(n) map. A sliding window would fail here because of the −1.`);
+  Viz.mount('#demo3', { frames: r.frames, title: 'Subarray sum equals k', code:
+`int subarraySum(int[] nums, int k) {
+    Map<Integer, Integer> count =
+        new HashMap<>();
+    count.put(0, 1);    // empty prefix
+    int sum = 0, ans = 0;
+    for (int x : nums) {
+        sum += x;   // prefix sum so far
+        // an earlier prefix of sum - k
+        // means a subarray summing to k
+        ans += count.getOrDefault(sum-k,0);
+        count.merge(sum, 1, Integer::sum);
+    }
+    return ans;
+}` });
+})();
+</script>
+
+<h2>Why it works (the one sentence to say in an interview)</h2>
+<p>"The sum of nums[l..r] is pre[r+1] − pre[l], so a subarray ending at j sums to k exactly when some earlier prefix equals pre[j+1] − k; counting earlier prefixes in a hash map gives every such subarray in one O(n) pass."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// Range queries</span>
+<span class="k">int</span>[] pre = <span class="k">new int</span>[n + <span class="n">1</span>];
+<span class="k">for</span> (<span class="k">int</span> i = <span class="n">0</span>; i &lt; n; i++) pre[i + <span class="n">1</span>] = pre[i] + a[i];
+sum(l..r) = pre[r + <span class="n">1</span>] - pre[l];
+
+<span class="c">// Count subarrays with sum k</span>
+count.put(<span class="n">0</span>, <span class="n">1</span>);
+<span class="k">for</span> (<span class="k">int</span> x : a) {
+    sum += x;
+    ans += count.getOrDefault(sum - k, <span class="n">0</span>);   <span class="c">// look back first</span>
+    count.merge(sum, <span class="n">1</span>, Integer::sum);      <span class="c">// then record</span>
+}</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Range sum = pre[r+1] − pre[l]. Subarray = difference of two prefixes.</b> Seed the map with {0 : 1}; look back first, then record.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Forgetting <code>count.put(0, 1)</code> — subarrays that start at index 0 are never counted.</li>
+  <li>Recording the current sum <b>before</b> looking up <code>sum − k</code>: with k = 0 every position counts itself.</li>
+  <li>Off-by-one: with the n + 1 array it is <code>pre[r + 1] − pre[l]</code>, not <code>pre[r] − pre[l]</code>.</li>
+  <li>Overflow: sums of 10<sup>5</sup> numbers up to 10<sup>9</sup> need <code>long</code>.</li>
+  <li>Reaching for a sliding window when numbers can be negative — prefix sums + map is the right tool.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/running-sum-of-1d-array/">1480. Running Sum of 1d Array</a> — just build the prefix array.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/range-sum-query-immutable/">303. Range Sum Query – Immutable</a> — the second animation.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/find-pivot-index/">724. Find Pivot Index</a> — left sum = total − left − nums[i].</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/subarray-sum-equals-k/">560. Subarray Sum Equals K</a> — the third animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/continuous-subarray-sum/">523. Continuous Subarray Sum</a> — store prefix mod k → first index.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/contiguous-array/">525. Contiguous Array</a> — treat 0 as −1, find equal prefix sums.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/range-sum-query-2d-immutable/">304. Range Sum Query 2D</a> — prefix sums on a grid.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Why does pre have n + 1 slots instead of n?</summary>
+<p>pre[0] = 0 stands for "sum of nothing", so a range that starts at index 0 is pre[r+1] − pre[0] with no special case.</p></details>
+<details class="quiz"><summary>Why do we seed the map with {0 : 1}?</summary>
+<p>A subarray from index 0 to j has sum pre[j+1] − 0. The 0 must already be "seen" for it to be counted.</p></details>
+<details class="quiz"><summary>The array has negative numbers and you need the count of subarrays with sum k. Window or prefix sum?</summary>
+<p>Prefix sum + hash map. Negatives mean growing a window can shrink its sum, so the window logic breaks.</p></details>
+
+<nav class="pager"><a href="sliding-window.html">← Sliding window</a><a href="kadane.html">Kadane →</a></nav>
+</main>
+</body>
+</html>

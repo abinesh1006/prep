@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0/1 Knapsack</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Dynamic programming</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 46 · Dynamic programming</div>
+<h1>0/1 Knapsack</h1>
+<p class="lede">For each item, decide take it or leave it, for every possible bag size — and when you squeeze the table into one row, loop the capacity backwards.</p>
+<p class="meta">Time to learn: about 3 hours · Prerequisites: <a href="dp-intro.html">DP intro</a>, <a href="coin-change.html">Coin change</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>A list of items, each usable <b>at most once</b>, and a limit (weight, budget, target sum): "maximum value within capacity", "can you pick a <b>subset</b> that sums to exactly T", "<b>partition</b> into two equal halves", "number of ways to assign + and − to reach target". If items may be reused, it is coin change (unbounded) instead.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>A bag holds 4 kg. Items: 1 kg worth 15, 3 kg worth 20, 4 kg worth 30. Greedy by value takes the 4 kg item (30), but 1 kg + 3 kg gives 35.</p>
+<p>Let <code>dp[i][c]</code> = the best value using only the first i items with a bag of size c. For item i (weight w, value v) there are only two choices:</p>
+<ul>
+  <li><b>Leave it</b>: <code>dp[i−1][c]</code> — the best without it, same bag.</li>
+  <li><b>Take it</b> (only if w ≤ c): <code>v + dp[i−1][c−w]</code> — its value plus the best of the <b>earlier</b> items in the space left over.</li>
+</ul>
+<p>Both read from row i−1, the row above. So we only ever need one previous row — and we can even overwrite a single row in place. The catch: <code>dp[c−w]</code> must still hold the <b>old</b> (row i−1) value when we use it. If we loop c upwards, dp[c−w] was already updated for this item, so the item gets used twice. Looping c <b>downwards</b> reads only cells not yet touched in this round.</p>
+<p><b>Partition Equal Subset Sum</b> is the same with true/false: can some subset add up to exactly half of the total?</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Packing a suitcase for a trip, item by item from a pile: for each item you ask "is my best packing better with this in, or without it?" — and to answer "with it", you look at the best packing of the earlier items in a smaller suitcase. You cannot pack the same jacket twice.</p></div>
+
+<h2>Watch it work</h2>
+<h3>1. The 2D table</h3>
+<p>Rows = how many items are allowed, columns = bag size. Blue = the cells this one reads; green = the choice that won.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const w = [1, 3, 4], v = [15, 20, 30], C = 4, n = w.length, r = Viz.recorder();
+  const dp = [...Array(n + 1)].map((_, i) => Array(C + 1).fill(i === 0 ? 0 : ''));
+  const grid = (marks, vars, line, say) => r.step([
+    { type: 'grid', id: 'g', label: 'dp[i][c] = best value, first i items, bag size c', cells: dp.map(x => [...x]), marks,
+      rowLabels: ['none', 'w1 $15', 'w3 $20', 'w4 $30'], colLabels: [0, 1, 2, 3, 4], cell: 54 },
+    { type: 'vars', id: 'v', vars }], line, say);
+  grid(Object.fromEntries([...Array(C + 1)].map((_, c) => [`0,${c}`, 'visited'])), { capacity: C }, [3],
+    'Row 0 = no items allowed: the best value is 0 for every bag size.');
+  for (let i = 1; i <= n; i++) for (let c = 0; c <= C; c++) {
+    const wi = w[i - 1], vi = v[i - 1], skip = dp[i - 1][c];
+    if (wi > c) {
+      dp[i][c] = skip;
+      grid({ [`${i - 1},${c}`]: 'done', [`${i},${c}`]: 'active' }, { item: `w${wi} $${vi}`, c, leave: skip, take: 'too heavy' }, [6, 7],
+        `Item ${i} weighs ${wi} kg but the bag is only ${c} kg → it cannot go in. Copy the cell above: <b>${skip}</b>.`);
+    } else {
+      const take = vi + dp[i - 1][c - wi];
+      dp[i][c] = Math.max(skip, take);
+      grid({ [`${i - 1},${c}`]: skip >= take ? 'done' : 'compare', [`${i - 1},${c - wi}`]: take > skip ? 'done' : 'compare', [`${i},${c}`]: 'active' },
+        { item: `w${wi} $${vi}`, c, leave: skip, take: `${vi} + ${dp[i - 1][c - wi]} = ${take}` }, [6, 8, 9],
+        `Bag ${c}, item ${i}: leave it → ${skip}; take it → $${vi} + best of earlier items in ${c} − ${wi} = ${c - wi} kg (${dp[i - 1][c - wi]}) = ${take}. ${take > skip ? '<b>Take</b>' : '<b>Leave</b>'} → <b>${dp[i][c]}</b>.`);
+    }
+  }
+  const pm = {}, took = []; let c = C;
+  for (let i = n; i >= 1; i--) { pm[`${i},${c}`] = 'done'; if (dp[i][c] !== dp[i - 1][c]) { took.unshift(i); c -= w[i - 1]; } }
+  pm[`0,${c}`] = 'done';
+  grid(pm, { answer: dp[n][C], items: took.map(i => `w${w[i - 1]}`).join(' + ') }, [12],
+    `Answer <b>dp[3][4] = ${dp[n][C]}</b>. Walking up: where a cell differs from the one above, that item was taken — items ${took.join(' and ')} (1 kg + 3 kg = $15 + $20). O(n × C) time.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Knapsack 2D table', code:
+`int knapsack(int[] w, int[] v, int C) {
+    int n = w.length;
+    int[][] dp = new int[n + 1][C + 1]; // row 0 = no items
+    for (int i = 1; i <= n; i++)
+        for (int c = 0; c <= C; c++) {
+            dp[i][c] = dp[i - 1][c];             // leave it
+            if (w[i - 1] <= c)                   // fits?
+                dp[i][c] = Math.max(dp[i][c],
+                    v[i - 1] + dp[i - 1][c - w[i - 1]]); // take
+        }
+    // answer in the bottom-right cell
+    return dp[n][C];
+}` });
+})();
+</script>
+
+<h3>2. One row: why capacity must loop backwards</h3>
+<p>Keep a single row <code>dp[c]</code> and update it item by item. Watch the first item only (1 kg, $15), which we may take <b>once</b>. First the wrong way (forwards), then the right way (backwards).</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const C = 4, wt = 1, val = 15, r = Viz.recorder();
+  let dp = Array(C + 1).fill(0);
+  const row = (m, ptr, label) => ({ type: 'array', id: 'dp', label, values: [...dp], marks: m, pointers: ptr });
+  r.step([row({}, {}, 'dp[c] (one row), before item 1'), { type: 'vars', id: 'v', vars: { item: '1 kg, $15', direction: '—' } }], [1],
+    'One row of 5 cells, all 0 (no items yet). Now apply the item: dp[c] = max(dp[c], 15 + dp[c − 1]).');
+  for (let c = wt; c <= C; c++) {
+    const old = dp[c]; dp[c] = Math.max(dp[c], val + dp[c - wt]);
+    r.step([row({ [c - wt]: c - wt > 0 ? 'bad' : 'compare', [c]: 'active' }, { 'c-1': c - wt, c }, 'FORWARDS c = 1 → 4 (bug)'),
+      { type: 'vars', id: 'v', vars: { direction: 'forwards', [`dp[${c}]`]: `max(${old}, 15 + ${dp[c - wt]}) = ${dp[c]}` } }], [3],
+      c === 1 ? 'c = 1: 15 + dp[0] = 15. Fine so far.'
+        : `c = ${c}: reads dp[${c - 1}] = ${dp[c - 1]} — but that cell was <b>already updated for this same item</b> (red). So ${dp[c]} means "the 1 kg item taken ${dp[c] / 15} times".`);
+  }
+  r.step([row(Object.fromEntries([1, 2, 3, 4].map(c => [c, 'bad'])), {}, 'FORWARDS result: wrong'), { type: 'vars', id: 'v', vars: { 'dp[4]': 60, truth: 15 }, marks: { 'dp[4]': 'bad' } }], [3],
+    'Forwards gives dp[4] = <b>60</b> — four copies of a single item. That is the <b>unbounded</b> (coin-change) answer, not 0/1 knapsack.');
+  dp = Array(C + 1).fill(0);
+  r.step([row({}, {}, 'dp[c], reset'), { type: 'vars', id: 'v', vars: { direction: 'backwards' } }], [4], 'Reset and loop <b>backwards</b>, c = 4 down to 1.');
+  for (let c = C; c >= wt; c--) {
+    const old = dp[c]; dp[c] = Math.max(dp[c], val + dp[c - wt]);
+    r.step([row({ [c - wt]: 'compare', [c]: 'active', ...Object.fromEntries([...Array(C - c)].map((_, k) => [C - k, 'done'])) }, { 'c-1': c - wt, c }, 'BACKWARDS c = 4 → 1 (correct)'),
+      { type: 'vars', id: 'v', vars: { direction: 'backwards', [`dp[${c}]`]: `max(${old}, 15 + ${dp[c - wt]}) = ${dp[c]}` } }], [4, 5],
+      `c = ${c}: reads dp[${c - 1}] = ${dp[c - 1]}, which is to the <b>left</b> and not touched yet in this round — it still means "without this item". dp[${c}] = <b>${dp[c]}</b>.`);
+  }
+  r.step([row(Object.fromEntries([1, 2, 3, 4].map(c => [c, 'done'])), {}, 'BACKWARDS result: correct'), { type: 'vars', id: 'v', vars: { 'dp[4]': dp[C] }, marks: { 'dp[4]': 'done' } }], [7],
+    'Backwards: every bag of 1–4 kg holds the item <b>once</b>, value 15. Rule: <b>0/1 → capacity backwards; unlimited → forwards</b>.');
+  Viz.mount('#demo2', { frames: r.frames, title: 'Forwards bug vs backwards', code:
+`int[] dp = new int[C + 1];
+for (int i = 0; i < n; i++) {
+    // WRONG for 0/1: for (int c = w[i]; c <= C; c++)
+    for (int c = C; c >= w[i]; c--)       // backwards!
+        dp[c] = Math.max(dp[c], v[i] + dp[c - w[i]]);
+}
+return dp[C];` });
+})();
+</script>
+
+<h3>3. Partition Equal Subset Sum</h3>
+<p><code>[1, 2, 3, 4]</code> adds up to 10. Can we split it into two groups of 5? That is: is there a subset with sum <b>5</b>? <code>dp[s]</code> = true if some of the numbers seen so far add up to exactly s. Same backwards loop, with OR instead of max.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const nums = [1, 2, 3, 4], target = 5, r = Viz.recorder();
+  const dp = Array(target + 1).fill(false); dp[0] = true;
+  const step = (i, m, ptr, vars, line, say) => r.step([
+    { type: 'array', id: 'n', label: 'nums', values: nums, marks: Object.fromEntries(nums.map((_, k) => [k, k === i ? 'active' : k < i ? 'visited' : ''])) },
+    { type: 'array', id: 'dp', label: 'dp[s] = can some numbers make sum s?', values: dp.map(b => b ? 'T' : 'F'),
+      marks: Object.assign(Object.fromEntries(dp.map((b, k) => [k, b ? 'done' : ''])), m), pointers: ptr },
+    { type: 'vars', id: 'v', vars }], line, say);
+  step(-1, {}, {}, { total: 10, target }, [2, 3, 4], 'Total 10 is even, so the target is 10 / 2 = <b>5</b>. dp[0] = T: the empty group makes 0.');
+  let done = false;
+  nums.forEach((x, i) => {
+    if (done) return;
+    for (let s = target; s >= x; s--) {
+      const was = dp[s]; dp[s] = dp[s] || dp[s - x];
+      step(i, { [s - x]: 'compare', [s]: 'active' }, { 's-x': s - x, s }, { x, [`dp[${s}]`]: `${was ? 'T' : 'F'} || dp[${s - x}]=${dp[s - x] ? 'T' : 'F'} → ${dp[s] ? 'T' : 'F'}` }, [6, 7],
+        !was && dp[s] ? `Number ${x}, sum ${s}: sum ${s - x} was reachable before, add ${x} → <b>sum ${s} is reachable</b>.`
+          : was ? `Number ${x}, sum ${s}: already reachable without ${x}. Stays T.`
+          : `Number ${x}, sum ${s}: sum ${s - x} is not reachable yet, so ${s} is not either.`);
+      if (dp[target]) { done = true; break; }
+    }
+  });
+  step(-1, { [target]: 'done' }, {}, { answer: dp[target] }, [9],
+    `<b>dp[5] = T</b> → yes, it can be split: {2, 3} and {1, 4}. We could stop the moment dp[target] became true. O(n × target).`);
+  Viz.mount('#demo3', { frames: r.frames, title: 'Partition equal subset sum', code:
+`boolean canPartition(int[] nums) {
+    int total = Arrays.stream(nums).sum();
+    if (total % 2 == 1) return false;    // odd: impossible
+    int target = total / 2;
+    boolean[] dp = new boolean[target + 1]; dp[0] = true;
+    for (int x : nums)
+        for (int s = target; s >= x; s--) dp[s] |= dp[s - x];
+    // backwards: each number used at most once
+    return dp[target];
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"For each item the best answer either excludes it — the previous row — or includes it once — its value plus the previous row at the reduced capacity. Both only look at the previous row, so one array updated from high capacity to low keeps the previous-row values readable, which enforces 'at most once'."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">int</span>[] dp = <span class="k">new int</span>[C + <span class="n">1</span>];
+<span class="k">for</span> (<span class="k">int</span> i = <span class="n">0</span>; i &lt; n; i++)
+    <span class="k">for</span> (<span class="k">int</span> c = C; c &gt;= w[i]; c--)                 <span class="c">// BACKWARDS = each item once</span>
+        dp[c] = Math.max(dp[c], v[i] + dp[c - w[i]]);
+<span class="c">// subset sum: boolean dp, dp[0] = true, dp[s] |= dp[s - x]</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Take it or leave it. One row → capacity backwards.</b> Forwards = unlimited copies (coin change).</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Looping capacity forwards in the 1D version — silently turns 0/1 into unbounded.</li>
+  <li>Partition: forgetting the odd-total check, or using the full total as the target instead of half.</li>
+  <li>Target Sum (+/−): convert to subset sum (sum of the + group = (total + target) / 2) and check that it is a whole, non-negative number.</li>
+  <li>Using the 2D table when only the value is needed — fine, but say you could go to O(C) memory.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/partition-equal-subset-sum/">416. Partition Equal Subset Sum</a> — the third animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/target-sum/">494. Target Sum</a> — count subsets with a given sum.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/last-stone-weight-ii/">1049. Last Stone Weight II</a> — closest subset sum to half.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/ones-and-zeroes/">474. Ones and Zeroes</a> — two capacities, both loops backwards.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/profitable-schemes/">879. Profitable Schemes</a> — knapsack with a count and a cap on profit.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>In the 1D version, what goes wrong if c loops upwards?</summary>
+<p>dp[c − w] may already include the current item, so the item can be counted more than once — you get the unbounded knapsack answer.</p></details>
+<details class="quiz"><summary>[1, 5, 11, 5] — can it be partitioned?</summary>
+<p>Total 22, target 11: {11} and {1, 5, 5}. Yes.</p></details>
+<details class="quiz"><summary>Why does the 2D version not care about the loop direction?</summary>
+<p>It reads row i − 1 and writes row i, so reading never sees a value written for the same item.</p></details>
+
+<nav class="pager"><a href="lcs-edit-distance.html">← LCS &amp; edit distance</a><a href="grid-dp.html">Grid DP →</a></nav>
+</main>
+</body>
+</html>

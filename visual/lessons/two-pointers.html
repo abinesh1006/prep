@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Two Pointers</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Arrays</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 3 · Arrays</div>
+<h1>Two Pointers</h1>
+<p class="lede">Two fingers on the same array, moving towards each other (or in the same direction), so you check pairs in one pass instead of trying every pair.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="arrays-hashing.html">Arrays &amp; hashing</a>, <a href="big-o.html">Big-O</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>The array is <b>sorted</b> (or you may sort it) and the question asks about a <b>pair</b> or <b>triplet</b> — "two numbers that add up to", "closest sum", "remove duplicates in place", "is it a palindrome".</p></div>
+
+<h2>The idea in plain words</h2>
+<p>Suppose you must find two numbers in a sorted list that add up to 9. The slow way is to try every pair: first with second, first with third, and so on. With 10,000 numbers that is about 50 million pairs.</p>
+<p>The smart way: put your <b>left finger</b> on the smallest number and your <b>right finger</b> on the largest. Add them.</p>
+<ul>
+  <li>Sum too <b>small</b>? You need a bigger number. The only way to grow the sum is to move the left finger right.</li>
+  <li>Sum too <b>big</b>? You need a smaller number. Move the right finger left.</li>
+  <li>Sum exactly right? Done.</li>
+</ul>
+<p>Every step throws away one number for good, so you finish in at most <i>n</i> steps.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Two people stand at opposite ends of a line of kids sorted by height, looking for a pair whose heights add to exactly 2 metres. If the pair is too short, the person at the short end steps forward to a taller kid. If too tall, the person at the tall end steps forward to a shorter kid. They never need to go back.</p></div>
+
+<h2>Watch it work</h2>
+<p>Find two numbers that add up to <b>target = 9</b> in <code>[1, 2, 4, 5, 7, 11]</code>. Press ▶ or use the arrow keys to step.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const a = [1, 2, 4, 5, 7, 11], target = 9;
+  const r = Viz.recorder();
+  const arr = (l, rr, marks = {}) => ({ type: 'array', id: 'a', label: 'nums (sorted)', values: a, pointers: { l, r: rr }, marks });
+  let l = 0, rr = a.length - 1;
+  r.step([arr(l, rr, { [l]: 'compare', [rr]: 'compare' }), { type: 'vars', id: 'v', vars: { target, l, r: rr } }], [2],
+    'Start with <b>l</b> at the smallest number and <b>r</b> at the largest.');
+  while (l < rr) {
+    const sum = a[l] + a[rr];
+    const v = { type: 'vars', id: 'v', vars: { target, sum: `${a[l]} + ${a[rr]} = ${sum}` }, marks: { sum: sum === target ? 'done' : sum < target ? 'active' : 'bad' } };
+    if (sum === target) {
+      r.step([arr(l, rr, { [l]: 'done', [rr]: 'done' }), v], [5, 6], `${a[l]} + ${a[rr]} = <b>${sum}</b>. That is the target, so the answer is indices <b>[${l}, ${rr}]</b>.`);
+      break;
+    }
+    if (sum < target) {
+      r.step([arr(l, rr, { [l]: 'active', [rr]: 'compare' }), v], [5, 7], `${a[l]} + ${a[rr]} = ${sum} is <b>too small</b>. ${a[l]} can never be part of the answer (even with the biggest number it is too small), so move <b>l</b> right.`);
+      l++;
+    } else {
+      r.step([arr(l, rr, { [l]: 'compare', [rr]: 'bad' }), v], [5, 8], `${a[l]} + ${a[rr]} = ${sum} is <b>too big</b>. ${a[rr]} is too big even with the smallest number, so drop it: move <b>r</b> left.`);
+      rr--;
+    }
+    r.step([arr(l, rr, { [l]: 'compare', [rr]: 'compare' }), { type: 'vars', id: 'v', vars: { target, l, r: rr } }], [4], `Now <b>l = ${l}</b>, <b>r = ${rr}</b>. Check the new pair.`);
+  }
+  Viz.mount('#demo1', { frames: r.frames, title: 'Two pointers pair sum', code:
+`int[] twoSum(int[] nums, int target) {
+    int l = 0, r = nums.length - 1;   // two fingers at both ends
+    // stop when the fingers meet
+    while (l < r) {
+        int sum = nums[l] + nums[r];
+        if (sum == target) return new int[]{l, r};
+        else if (sum < target) l++;   // need bigger: move left finger
+        else r--;                     // need smaller: move right finger
+    }
+    return new int[]{-1, -1};         // no pair found
+}` });
+})();
+</script>
+
+<h2>Why it is correct (the one sentence to say in an interview)</h2>
+<p>"When the sum is too small, the left number cannot pair with <i>anything</i> — even the largest remaining number is not enough — so discarding it loses no answer. The same logic in reverse discards the right number when the sum is too big."</p>
+
+<h2>Second flavour: same direction (read / write pointers)</h2>
+<p>Both fingers start at the left. The <b>fast</b> finger reads every number; the <b>slow</b> finger marks where the next "keeper" should be written. Classic use: remove duplicates from a sorted array in place.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const a = [1, 1, 2, 2, 2, 3, 4, 4];
+  const r = Viz.recorder();
+  let w = 1;
+  const panel = (rd, marks) => ({ type: 'array', id: 'a', label: 'nums', values: [...a], pointers: { write: w, read: rd }, marks });
+  r.step([panel(1, { 0: 'done' })], [2], 'The first number is always kept. <b>write</b> = where the next unique number goes; <b>read</b> scans ahead.');
+  for (let rd = 1; rd < a.length; rd++) {
+    if (a[rd] !== a[w - 1]) {
+      r.step([panel(rd, Object.fromEntries([...Array(w).keys()].map(i => [i, 'done']).concat([[rd, 'active']])))], [4],
+        `${a[rd]} is different from the last kept number ${a[w - 1]} → copy it to position ${w}.`);
+      a[w] = a[rd]; w++;
+      r.step([panel(rd, Object.fromEntries([...Array(w).keys()].map(i => [i, 'done'])))], [5], `Kept. Move <b>write</b> to ${w}.`);
+    } else {
+      r.step([panel(rd, Object.fromEntries([...Array(w).keys()].map(i => [i, 'done']).concat([[rd, 'dim']])))], [3],
+        `${a[rd]} equals the last kept number → skip it.`);
+    }
+  }
+  r.step([panel(a.length - 1, Object.fromEntries([...Array(w).keys()].map(i => [i, 'done'])))], [8], `Done. The first <b>${w}</b> slots hold the unique numbers.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Remove duplicates', code:
+`int removeDuplicates(int[] nums) {
+    int write = 1;                          // nums[0] is always kept
+    for (int read = 1; read < nums.length; read++) {
+        if (nums[read] != nums[write - 1]) {
+            nums[write++] = nums[read];     // keep it
+        }
+    }
+    return write;                           // length of the unique part
+}` });
+})();
+</script>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// Opposite ends — sorted array, pair questions</span>
+<span class="k">int</span> l = <span class="n">0</span>, r = n - <span class="n">1</span>;
+<span class="k">while</span> (l &lt; r) {
+    <span class="k">if</span> (good(l, r)) <span class="k">return</span> ...;
+    <span class="k">else if</span> (needBigger) l++;
+    <span class="k">else</span> r--;
+}</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Sorted + pair → two pointers. Unsorted + pair → hash map.</b> Too small → left moves. Too big → right moves.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Using <code>l &lt;= r</code> — the same element would be used twice.</li>
+  <li>Using two pointers on an <b>unsorted</b> array. Sort first (O(n log n)) or use a hash map.</li>
+  <li>In 3Sum, forgetting to skip duplicates after a match — you return the same triplet twice.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/valid-palindrome/">125. Valid Palindrome</a> — pointers from both ends, skip non-letters.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/">167. Two Sum II</a> — exactly the animation above.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/3sum/">15. 3Sum</a> — fix one number, two pointers on the rest.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/container-with-most-water/">11. Container With Most Water</a> — move the shorter wall.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/trapping-rain-water/">42. Trapping Rain Water</a> — move the side with the smaller max.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>The array is not sorted and you need the original indices. Two pointers or hash map?</summary>
+<p>Hash map. Sorting would scramble the indices, and the hash map solves it in O(n) anyway.</p></details>
+<details class="quiz"><summary>Why is two pointers O(n) and not O(n²)?</summary>
+<p>Each step moves one pointer inward by one, and they meet after at most n moves. No pair is checked twice.</p></details>
+
+<nav class="pager"><a href="arrays-hashing.html">← Arrays and hashing</a><a href="sliding-window.html">Sliding window →</a></nav>
+</main>
+</body>
+</html>

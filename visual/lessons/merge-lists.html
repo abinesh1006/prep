@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Merge Sorted Lists</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Linked lists</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 15 · Linked lists</div>
+<h1>Merge Sorted Lists</h1>
+<p class="lede">Build the answer behind a dummy node: keep taking the smaller front node and hooking it onto the tail. For k lists, let a min-heap tell you which front is smallest.</p>
+<p class="meta">Time to learn: about 1.5 hours · Prerequisites: <a href="linked-list-reverse.html">Reverse a linked list</a>, <a href="merge-sort.html">Merge sort</a>, <a href="heap.html">Heap</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"<b>Merge</b> two / k <b>sorted</b> lists (or arrays)", "combine sorted streams", "sort a linked list", "k-th smallest across k sorted rows", "smallest range covering k lists". Sorted inputs + one sorted output = merge.</p></div>
+
+<h2>The idea in plain words</h2>
+<p><b>Two lists:</b> <code>1 → 2 → 4</code> and <code>1 → 3 → 4</code>. The smallest node of the answer is one of the two fronts. Take it, hook it to the answer, and the next front of that list moves up. Repeat. When one list runs out, hook the rest of the other list on in one go — it is already sorted.</p>
+<p>The <b>dummy node</b> is a fake first node (value doesn't matter). Without it, the very first hook is a special case ("the answer is empty, so this node becomes the head"). With it, every hook is the same: <code>tail.next = node; tail = node;</code>. At the end the real answer is <code>dummy.next</code>.</p>
+<p><b>K lists:</b> comparing k fronts each time costs k per node. Instead, put the k fronts into a <b>min-heap</b> (a structure that hands you its smallest item in O(log k)). Pop the smallest, hook it on, push that node's follower. Total O(N log k) for N nodes.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Several checkout queues where everyone is sorted by ticket number, merging into one exit door. A guard looks only at the person at the front of each queue and waves through the lowest ticket. With many queues, the guard keeps a little sorted notepad of just the front tickets (the heap) so he never has to scan all queues.</p></div>
+
+<h2>Watch it work</h2>
+<p><b>Merge Two Sorted Lists.</b> Top row: the answer growing behind the dummy D. Middle row: what is left of list 1. Bottom row: what is left of list 2.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const A = [1, 2, 4], Bv = [1, 3, 4];
+  const nodes = [{ id: 'd', val: 'D' }, ...A.map((v, i) => ({ id: 'a' + i, val: v })), ...Bv.map((v, i) => ({ id: 'b' + i, val: v }))];
+  const next = { d: null };
+  A.forEach((_, i) => next['a' + i] = i + 1 < A.length ? 'a' + (i + 1) : null);
+  Bv.forEach((_, i) => next['b' + i] = i + 1 < Bv.length ? 'b' + (i + 1) : null);
+  const val = Object.fromEntries(nodes.map(n => [n.id, n.val]));
+  const merged = ['d'];
+  let l1 = 'a0', l2 = 'b0', tail = 'd';
+  const r = Viz.recorder();
+  const chain = h => { const o = []; while (h && !merged.includes(h)) { o.push(h); h = next[h]; } return o; };
+  const nm = id => id === null ? 'null' : val[id];
+  const pan = (marks = {}, em = {}) => {
+    const pos = {}; const m = merged.length;
+    merged.forEach((id, i) => pos[id] = [i, 0]);
+    chain(l1).forEach((id, i) => pos[id] = [m + i, 1]);
+    chain(l2).forEach((id, i) => pos[id] = [m + i, 2]);
+    return [{ type: 'list', id: 'L', label: 'answer (row 1) · list 1 left (row 2) · list 2 left (row 3)', nodes, next: { ...next }, pos, pointers: { tail, l1, l2 },
+      marks: { d: 'dim', ...Object.fromEntries(merged.slice(1).map(id => [id, 'done'])), ...marks }, edgeMarks: em },
+      { type: 'vars', id: 'v', vars: { 'l1.val': nm(l1), 'l2.val': nm(l2), answer: merged.slice(1).map(nm).join(' → ') || '—' } }];
+  };
+  r.step(pan(), [2, 3], '<b>dummy</b> D is a fake head and <b>tail</b> points at it. Every node we take gets hooked onto tail, so there is no "empty answer" special case.');
+  while (l1 !== null && l2 !== null) {
+    const takeA = val[l1] <= val[l2];
+    r.step(pan({ [l1]: 'compare', [l2]: 'compare' }), [4, 5], `Compare the two fronts: list 1 has <b>${val[l1]}</b>, list 2 has <b>${val[l2]}</b>. ${takeA ? (val[l1] === val[l2] ? 'Equal: take list 1 first (≤ keeps it stable).' : `${val[l1]} is smaller.`) : `${val[l2]} is smaller.`}`);
+    const n = takeA ? l1 : l2;
+    next[tail] = n;
+    if (takeA) l1 = next[l1]; else l2 = next[l2];
+    merged.push(n);
+    const oldTail = tail; tail = n;
+    r.step(pan({ [n]: 'active' }, { [oldTail]: 'active' }), takeA ? [6, 10] : [8, 10], `Hook it on: tail.next = node ${val[n]}, advance ${takeA ? 'l1' : 'l2'} to ${takeA ? nm(l1) : nm(l2)}, then tail moves to the new node.`);
+  }
+  const rest = l1 !== null ? l1 : l2;
+  next[tail] = rest;
+  const restIds = chain(rest);
+  const lastTail = tail;
+  restIds.forEach(id => merged.push(id));
+  if (l1 !== null) l1 = null; else l2 = null;
+  r.step(pan(Object.fromEntries(restIds.map(id => [id, 'active'])), { [lastTail]: 'active' }), [12], `One list is empty. The other still has [${restIds.map(id => val[id]).join(', ')}], already sorted and not smaller than anything taken. Hook it on with <b>one</b> assignment.`);
+  r.step(pan(), [13], `Return <b>dummy.next</b>: ${merged.slice(1).map(nm).join(' → ')}. O(m + n) time, O(1) extra space — no new nodes, only re-hooked arrows.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Merge two sorted lists', code:
+`ListNode merge(ListNode l1, ListNode l2) {
+    ListNode dummy = new ListNode(0);
+    ListNode tail = dummy;
+    while (l1 != null && l2 != null) {
+        if (l1.val <= l2.val) {
+            tail.next = l1; l1 = l1.next;
+        } else {
+            tail.next = l2; l2 = l2.next;
+        }
+        tail = tail.next;   // new last node
+    }
+    tail.next = l1 != null ? l1 : l2;
+    return dummy.next;
+}` });
+})();
+</script>
+
+<p><b>Merge K Sorted Lists</b> with a min-heap: <code>[1, 4, 5]</code>, <code>[1, 3, 4]</code>, <code>[2, 6]</code>. The heap holds at most one node per list (shown smallest first; "1ᵇ" means the 1 from list b).</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const lists = { a: [1, 4, 5], b: [1, 3, 4], c: [2, 6] };
+  const sub = { a: 'ᵃ', b: 'ᵇ', c: 'ᶜ' };
+  const idx = { a: 0, b: 0, c: 0 };
+  let heap = []; // {v, l, i}
+  const out = [];
+  const r = Viz.recorder();
+  const lab = h => `${h.v}${sub[h.l]}`;
+  const sortH = () => heap.sort((x, y) => x.v - y.v || x.l.localeCompare(y.l));
+  const pan = (hm = {}, lm = {}) => [
+    ...Object.keys(lists).map(l => ({ type: 'stack', id: 'q' + l, kind: 'queue', label: `list ${l} (not yet in heap)`,
+      items: lists[l].slice(idx[l]).map((v, k) => ({ id: `${l}${idx[l] + k}`, val: v })), marks: lm[l] || {} })),
+    { type: 'stack', id: 'h', kind: 'heap', label: 'min-heap (smallest first)', items: heap.map(h => ({ id: `${h.l}${h.i}`, val: lab(h) })), marks: hm },
+    { type: 'stack', id: 'o', kind: 'set', label: 'answer', items: out.map(h => ({ id: `${h.l}${h.i}`, val: lab(h) })), marks: Object.fromEntries(out.map((_, k) => [k, 'done'])) }];
+  r.step(pan(), [2, 3, 4], 'Three sorted lists, an empty heap, an empty answer. The heap will always give us the smallest front in O(log k).');
+  for (const l of Object.keys(lists)) { heap.push({ v: lists[l][0], l, i: 0 }); idx[l] = 1; }
+  sortH();
+  r.step(pan(Object.fromEntries(heap.map((_, k) => [k, 'active']))), [5, 6], `Push the head of every list: ${heap.map(lab).join(', ')}. The heap has k = 3 items — never more.`);
+  while (heap.length) {
+    const top = heap.shift();
+    out.push(top);
+    r.step(pan({}, {}), [10, 11], `Poll the smallest: <b>${lab(top)}</b>. Hook it onto the answer's tail.`);
+    if (idx[top.l] < lists[top.l].length) {
+      const nx = { v: lists[top.l][idx[top.l]], l: top.l, i: idx[top.l] };
+      idx[top.l]++;
+      heap.push(nx); sortH();
+      r.step(pan({ [heap.indexOf(nx)]: 'active' }), [12, 13], `It came from list ${top.l}, so push its follower <b>${lab(nx)}</b>. Each list always has its current front in the heap.`);
+    } else if (heap.length) {
+      r.step(pan(), [12], `List ${top.l} is now empty (no follower), so nothing is pushed. The heap shrinks to ${heap.length}.`);
+    }
+  }
+  r.step(pan(), [15], `Heap empty: answer = <b>${out.map(h => h.v).join(' → ')}</b>. N = 8 nodes, each pushed and polled once at O(log k): <b>O(N log k)</b>.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Merge k lists with a heap', code:
+`ListNode mergeKLists(ListNode[] lists) {
+    PriorityQueue<ListNode> pq =
+        new PriorityQueue<>((x, y) ->
+            Integer.compare(x.val, y.val));
+    for (ListNode h : lists)
+        if (h != null) pq.add(h);
+    ListNode dummy = new ListNode(0);
+    ListNode tail = dummy;
+    while (!pq.isEmpty()) {
+        ListNode n = pq.poll(); // smallest
+        tail.next = n; tail = n;
+        if (n.next != null)
+            pq.add(n.next);     // follower
+    }
+    return dummy.next;
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"Every list is sorted, so the smallest remaining node overall is always one of the current fronts. Taking it never blocks a smaller node later. Two lists: compare the two fronts, O(m + n). K lists: a min-heap of the k fronts gives the smallest in O(log k), so O(N log k)."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code>ListNode dummy = <span class="k">new</span> ListNode(<span class="n">0</span>), tail = dummy;
+<span class="k">while</span> (a != <span class="k">null</span> &amp;&amp; b != <span class="k">null</span>) {
+    <span class="k">if</span> (a.val &lt;= b.val) { tail.next = a; a = a.next; }
+    <span class="k">else</span> { tail.next = b; b = b.next; }
+    tail = tail.next;
+}
+tail.next = (a != <span class="k">null</span>) ? a : b;
+<span class="k">return</span> dummy.next;
+<span class="c">// k lists: heap of fronts; poll, hook, push poll.next</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Dummy + tail, smaller front wins, hook the leftovers.</b> K lists: heap of fronts → O(N log k).</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Forgetting <code>tail = tail.next</code> — every node overwrites the same link.</li>
+  <li>Looping over the leftovers one by one — just one assignment <code>tail.next = rest</code>.</li>
+  <li>Comparator <code>a.val - b.val</code> can overflow for big negative/positive values; use <code>Integer.compare</code>.</li>
+  <li>Pushing null heads into the heap (empty lists) → NullPointerException.</li>
+  <li>Merging k lists one after another into a growing result: O(N·k). Use a heap or pair them up (divide and conquer).</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/merge-two-sorted-lists/">21. Merge Two Sorted Lists</a> — first animation.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/merge-sorted-array/">88. Merge Sorted Array</a> — same idea on arrays, fill from the back.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-list/">148. Sort List</a> — split at the middle, sort halves, merge two lists.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/kth-smallest-element-in-a-sorted-matrix/">378. Kth Smallest Element in a Sorted Matrix</a> — heap of row fronts, poll k times.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/merge-k-sorted-lists/">23. Merge K Sorted Lists</a> — second animation.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/smallest-range-covering-elements-from-k-lists/">632. Smallest Range Covering Elements from K Lists</a> — heap of fronts plus a running max.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>What does the dummy node save you from?</summary>
+<p>The special case of the first node: without it you must check "is the answer still empty?" before every hook. With it, <code>tail</code> always exists.</p></details>
+<details class="quiz"><summary>Why is the heap size never more than k?</summary>
+<p>It holds at most one node per list — the current front. Each poll is followed by at most one push from the same list.</p></details>
+<details class="quiz"><summary>Without a heap, how else can you merge k lists in O(N log k)?</summary>
+<p>Divide and conquer: merge lists in pairs (1+2, 3+4, …), then pairs of results, for log k rounds, each round O(N).</p></details>
+
+<nav class="pager"><a href="fast-slow-pointers.html">← Fast and slow pointers</a><a href="lru-cache.html">LRU cache →</a></nav>
+</main>
+</body>
+</html>

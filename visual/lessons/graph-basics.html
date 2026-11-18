@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Graph Basics</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Graphs</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 32 · Graphs</div>
+<h1>Graph Basics: DFS and BFS</h1>
+<p class="lede">A graph is dots (nodes) joined by lines (edges); you store it as "who are my neighbours" lists and walk it with DFS (go deep) or BFS (go wide), never stepping on the same node twice.</p>
+<p class="meta">Time to learn: about 3 hours · Prerequisites: <a href="stack-basics.html">Stack basics</a>, <a href="tree-bfs.html">Tree BFS</a>, <a href="recursion.html">Recursion</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>The input is <b>n nodes and a list of pairs</b> — "edges", "connections", "friends", "prerequisites", "flights", "roads" — or the question asks "can you <b>reach</b>", "how many <b>groups</b>", "fewest <b>steps</b>". Build an adjacency list, then DFS or BFS.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>Think of a map: <b>cities</b> are nodes and <b>roads</b> are edges. A tree is a graph too, but in a general graph there is no root, a city can have any number of roads, and roads can form loops (A → B → C → A).</p>
+<ul>
+  <li><b>Undirected</b>: a two-way road. If 0 connects to 1, then 1 connects to 0. (Friendships.)</li>
+  <li><b>Directed</b>: a one-way street, drawn with an arrow. 0 → 1 does not mean 1 → 0. (Course prerequisites, Twitter follows.)</li>
+  <li><b>Weighted</b>: every road has a number on it — kilometres, minutes, rupees. (Flight prices.)</li>
+</ul>
+<p>Problems usually hand you an <b>edge list</b> like <code>[[0,1],[0,2],[1,3]]</code>. That is awkward to search: to find 1's roads you must read the whole list. So the first thing you do is build an <b>adjacency list</b> — for every node, the list of its neighbours (adjacent = directly connected). Now "who are 1's neighbours?" is one lookup.</p>
+<p>Then you walk the graph. <b>DFS</b> (depth-first search) keeps going down one road until it hits a dead end, then backs up — it uses a <b>stack</b> (or recursion). <b>BFS</b> (breadth-first search) visits everything 1 road away, then 2 roads away, then 3 — it uses a <b>queue</b>, and that is why BFS finds the <b>fewest steps</b>.</p>
+<p>Because roads can loop, you keep a <b><code>visited</code></b> set: a node you have already seen is never entered again. With 6 nodes and 6 edges, each is touched about once, so the walk is O(V + E) — V = number of nodes, E = number of edges.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Exploring a city with no map. <b>DFS</b> is the stubborn tourist: take any street, keep walking until a dead end, then walk back to the last crossroads with an unexplored street. <b>BFS</b> is a drop of ink on a paper map: it spreads to every street one block away, then two blocks, then three. Both tourists carry a notebook of streets already walked — that notebook is <code>visited</code>.</p></div>
+
+<h2>Watch it work</h2>
+<p><b>1. From edge list to adjacency list.</b> 6 nodes, edges <code>[[0,1],[0,2],[1,3],[1,4],[2,4],[4,5]]</code>, undirected. Watch the map fill in: every edge is written <b>twice</b>, once in each direction. Press ▶ or use the arrow keys to step.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const N = [{ id: 0, x: 200, y: 50 }, { id: 1, x: 340, y: 50 }, { id: 2, x: 200, y: 170 },
+             { id: 3, x: 480, y: 50 }, { id: 4, x: 340, y: 170 }, { id: 5, x: 480, y: 170 }];
+  const E = [[0, 1], [0, 2], [1, 3], [1, 4], [2, 4], [4, 5]];
+  const adj = N.map(() => []);
+  const r = Viz.recorder();
+  let shown = 0;
+  const edgeList = (cur, marks = {}) => ({ type: 'array', id: 'el', label: 'edges (the input)', values: E.map(e => e.join('-')),
+    marks: { ...Object.fromEntries(E.slice(0, shown).map((_, i) => [i, 'done'])), ...(cur != null ? { [cur]: 'compare' } : {}), ...marks } });
+  const graph = (em = {}) => ({ type: 'graph', id: 'g', label: 'the map so far', h: 220, nodes: N,
+    edges: E.slice(0, shown).map(([a, b]) => ({ a, b })), edgeMarks: em });
+  const table = (hl = {}) => ({ type: 'grid', id: 'adj', label: 'adjacency list: node → neighbours', cell: 42,
+    rowLabels: N.map(n => n.id + ' →'), cells: adj.map(a => [...a, ...Array(3 - a.length).fill('')]), marks: hl });
+  r.step([edgeList(null), graph(), table()], [2, 3],
+    'The problem gives an <b>edge list</b>. We make one empty neighbour list per node. Nothing is connected yet.');
+  E.forEach(([u, v], i) => {
+    shown = i + 1;
+    adj[u].push(v);
+    r.step([edgeList(i), graph({ [`${u}-${v}`]: 'active' }), table({ [`${u},${adj[u].length - 1}`]: 'active' })], [4, 5],
+      `Edge <b>${u}-${v}</b>: there is a road from ${u} to ${v}, so write <b>${v}</b> in ${u}'s list.`);
+    adj[v].push(u);
+    r.step([edgeList(i), graph({ [`${u}-${v}`]: 'active' }), table({ [`${v},${adj[v].length - 1}`]: 'active' })], [6],
+      `The road is two-way (undirected), so also write <b>${u}</b> in ${v}'s list. Forget this line and you can only travel one way.`);
+  });
+  r.step([edgeList(null), graph(), table(Object.fromEntries(adj.flatMap((a, u) => a.map((_, c) => [`${u},${c}`, 'done']))))], [8],
+    'Done: 6 edges became 12 entries. Now "who are 4\'s neighbours?" is one lookup: <b>[1, 2, 5]</b>. Building took O(V + E).');
+  Viz.mount('#demo1', { frames: r.frames, title: 'Build adjacency list', code:
+`List<List<Integer>> build(int n, int[][] edges) {
+    List<List<Integer>> adj = new ArrayList<>();
+    for (int i = 0; i < n; i++) adj.add(new ArrayList<>());
+    for (int[] e : edges) {
+        adj.get(e[0]).add(e[1]);   // road u -> v
+        adj.get(e[1]).add(e[0]);   // and v -> u (two-way)
+    }
+    return adj;
+}` });
+})();
+</script>
+
+<p><b>2. DFS and BFS side by side on the same map.</b> Left copy: DFS with a <b>stack</b> (take the newest). Right copy: BFS with a <b>queue</b> (take the oldest). The small badge on a node is the order it was visited. Both start at node 0.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const P = { 0: [0, 0], 1: [1, 0], 2: [0, 1], 3: [2, 0], 4: [1, 1], 5: [2, 1] };
+  const E = [[0, 1], [0, 2], [1, 3], [1, 4], [2, 4], [4, 5]];
+  const adj = [0, 1, 2, 3, 4, 5].map(() => []);
+  for (const [a, b] of E) { adj[a].push(b); adj[b].push(a); }
+  const nodes = [];
+  for (const [pre, x0] of [['d', 80], ['b', 450]])
+    for (const id in P) nodes.push({ id: pre + id, label: id, x: x0 + P[id][0] * 110, y: 50 + P[id][1] * 110 });
+  const edges = ['d', 'b'].flatMap(pre => E.map(([a, b]) => ({ a: pre + a, b: pre + b })));
+  // record DFS events (mark when popped)
+  const dfsEv = [];
+  { const st = [0], seen = new Set(), order = [];
+    dfsEv.push({ c: [...st], order: [], say: 'DFS: push 0 on the stack.', line: [3] });
+    while (st.length) {
+      const u = st.pop();
+      if (seen.has(u)) { dfsEv.push({ c: [...st], order: [...order], cur: u, skip: true, say: `DFS: pop ${u} — already visited, skip it.`, line: [5, 6] }); continue; }
+      seen.add(u); order.push(u);
+      const pushed = adj[u].filter(v => !seen.has(v)); st.push(...pushed);
+      dfsEv.push({ c: [...st], order: [...order], cur: u, say: `DFS: pop <b>${u}</b> (newest), visit it, push ${pushed.length ? pushed.join(', ') : 'nothing'}.`, line: [5, 7, 9] });
+    } }
+  // record BFS events (mark when added)
+  const bfsEv = [];
+  { const q = [0], seen = new Set([0]), order = [];
+    bfsEv.push({ c: [...q], order: [], seen: [...seen], say: 'BFS: add 0 to the queue.', line: [14] });
+    while (q.length) {
+      const u = q.shift(); order.push(u);
+      const added = adj[u].filter(v => !seen.has(v)); added.forEach(v => { seen.add(v); q.push(v); });
+      bfsEv.push({ c: [...q], order: [...order], seen: [...seen], cur: u, say: `BFS: poll <b>${u}</b> (oldest), add ${added.length ? added.join(', ') : 'nothing new'}.`, line: [16, 18] });
+    } }
+  const r = Viz.recorder();
+  const T = Math.max(dfsEv.length, bfsEv.length);
+  for (let t = 0; t < T; t++) {
+    const d = dfsEv[Math.min(t, dfsEv.length - 1)], b = bfsEv[Math.min(t, bfsEv.length - 1)];
+    const marks = {}, badges = {};
+    d.order.forEach((u, i) => { marks['d' + u] = 'done'; badges['d' + u] = '#' + (i + 1); });
+    (b.seen || []).forEach(u => { marks['b' + u] = 'visited'; });
+    b.order.forEach((u, i) => { marks['b' + u] = 'done'; badges['b' + u] = '#' + (i + 1); });
+    if (d.cur != null && t < dfsEv.length) marks['d' + d.cur] = d.skip ? 'bad' : 'active';
+    if (b.cur != null && t < bfsEv.length) marks['b' + b.cur] = 'active';
+    const say = (t < dfsEv.length ? d.say : 'DFS: finished.') + ' &nbsp;|&nbsp; ' + (t < bfsEv.length ? b.say : 'BFS: finished.');
+    const line = [...(t < dfsEv.length ? d.line : []), ...(t < bfsEv.length ? b.line : [])];
+    r.step([
+      { type: 'graph', id: 'g', label: 'left: DFS with a stack · right: BFS with a queue', h: 200, nodes, edges, marks, badges },
+      { type: 'stack', id: 'st', label: 'DFS stack', items: d.c, kind: 'stack' },
+      { type: 'stack', id: 'q', label: 'BFS queue', items: b.c, kind: 'queue' },
+      { type: 'vars', id: 'v', vars: { 'DFS order': d.order.join(' ') || '-', 'BFS order': b.order.join(' ') || '-' } }
+    ], line, say);
+  }
+  r.step([
+    { type: 'graph', id: 'g', label: 'left: DFS with a stack · right: BFS with a queue', h: 200, nodes, edges,
+      marks: Object.fromEntries(nodes.map(n => [n.id, 'done'])),
+      badges: Object.fromEntries([...dfsEv.at(-1).order.map((u, i) => ['d' + u, '#' + (i + 1)]), ...bfsEv.at(-1).order.map((u, i) => ['b' + u, '#' + (i + 1)])]) },
+    { type: 'stack', id: 'st', label: 'DFS stack', items: [], kind: 'stack' },
+    { type: 'stack', id: 'q', label: 'BFS queue', items: [], kind: 'queue' },
+    { type: 'vars', id: 'v', vars: { 'DFS order': dfsEv.at(-1).order.join(' '), 'BFS order': bfsEv.at(-1).order.join(' ') }, marks: { 'DFS order': 'done', 'BFS order': 'done' } }
+  ], [10, 19], 'Both visited all 6 nodes. DFS dived 0 → 2 → 4 → 5 before coming back; BFS went in rings: 0, then {1, 2}, then {3, 4}, then 5. The <b>only</b> difference is stack vs queue.');
+  Viz.mount('#demo2', { frames: r.frames, title: 'DFS vs BFS', code:
+`void dfs(int s) {                     // seen[] is its own array
+    Deque<Integer> stack = new ArrayDeque<>();
+    stack.push(s);
+    while (!stack.isEmpty()) {
+        int u = stack.pop();          // take the NEWEST
+        if (seen[u]) continue;        // already visited: skip
+        seen[u] = true;               // visit u
+        for (int v : adj.get(u))
+            if (!seen[v]) stack.push(v);
+    }
+}
+void bfs(int s) {
+    Queue<Integer> q = new ArrayDeque<>();
+    q.add(s); seen[s] = true;
+    while (!q.isEmpty()) {
+        int u = q.poll();             // take the OLDEST
+        for (int v : adj.get(u))
+            if (!seen[v]) { seen[v] = true; q.add(v); }
+    }
+}` });
+})();
+</script>
+
+<p><b>3. Why we need <code>visited</code>.</b> A triangle 0 – 1 – 2 has a loop. First BFS <b>without</b> the visited check, then with it.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const nodes = [{ id: 0, x: 300, y: 50 }, { id: 1, x: 200, y: 180 }, { id: 2, x: 400, y: 180 }];
+  const edges = [{ a: 0, b: 1 }, { a: 1, b: 2 }, { a: 0, b: 2 }];
+  const adj = { 0: [1, 2], 1: [0, 2], 2: [0, 1] };
+  const r = Viz.recorder();
+  const g = (marks, badges, label) => ({ type: 'graph', id: 'g', label, h: 220, nodes, edges, marks, badges });
+  // phase 1: no visited
+  let q = [0]; const cnt = { 0: 0, 1: 0, 2: 0 };
+  r.step([g({}, {}, 'BFS WITHOUT visited'), { type: 'stack', id: 'q', label: 'queue', items: [...q], kind: 'queue' }, { type: 'vars', id: 'v', vars: { 'nodes polled': 0 } }],
+    [2], 'Start: queue = [0]. This time we will <b>not</b> remember who we have seen.');
+  let polled = 0;
+  for (let k = 0; k < 6; k++) {
+    const u = q.shift(); cnt[u]++; polled++;
+    q.push(...adj[u]);
+    const marks = Object.fromEntries(Object.entries(cnt).filter(([, c]) => c > 1).map(([n]) => [n, 'bad']));
+    marks[u] = cnt[u] > 1 ? 'bad' : 'active';
+    r.step([g(marks, Object.fromEntries(Object.entries(cnt).filter(([, c]) => c).map(([n, c]) => [n, '×' + c])), 'BFS WITHOUT visited'),
+      { type: 'stack', id: 'q', label: 'queue', items: q.slice(0, 8).concat(q.length > 8 ? ['…'] : []), kind: 'queue' },
+      { type: 'vars', id: 'v', vars: { 'nodes polled': polled, 'queue size': q.length }, marks: { 'queue size': q.length > 4 ? 'bad' : '' } }],
+      [4, 5], cnt[u] > 1
+        ? `Poll ${u} — we have been here <b>${cnt[u]} times</b> already. It adds its neighbours again. The queue only grows: ${q.length} items.`
+        : `Poll ${u}, add all its neighbours ${adj[u].join(', ')} — including the node we just came from.`);
+  }
+  r.step([g({ 0: 'bad', 1: 'bad', 2: 'bad' }, { 0: '×∞', 1: '×∞', 2: '×∞' }, 'BFS WITHOUT visited'),
+    { type: 'stack', id: 'q', label: 'queue', items: ['…', 'never', 'empties'], kind: 'queue' }, { type: 'vars', id: 'v', vars: { result: 'infinite loop' }, marks: { result: 'bad' } }],
+    [6], 'Around the loop forever: the program never ends (or runs out of memory). A loop in the graph needs a memory of where you have been.');
+  // phase 2: with visited
+  const seen = new Set([0]); q = [0]; const order = [];
+  r.step([g({ 0: 'visited' }, {}, 'BFS WITH visited'), { type: 'stack', id: 'q', label: 'queue', items: [...q], kind: 'queue' }, { type: 'vars', id: 'v', vars: { visited: '{0}' } }],
+    [2], 'Again, but now mark a node as <b>visited</b> the moment it joins the queue.');
+  while (q.length) {
+    const u = q.shift(); order.push(u);
+    const added = adj[u].filter(v => !seen.has(v)); added.forEach(v => { seen.add(v); q.push(v); });
+    const marks = Object.fromEntries([...seen].map(n => [n, 'visited'])); order.forEach(n => marks[n] = 'done'); marks[u] = 'active';
+    r.step([g(marks, Object.fromEntries(order.map((n, i) => [n, '#' + (i + 1)])), 'BFS WITH visited'),
+      { type: 'stack', id: 'q', label: 'queue', items: [...q], kind: 'queue' }, { type: 'vars', id: 'v', vars: { visited: '{' + [...seen].join(',') + '}' } }],
+      [4, 5, 6, 7], added.length ? `Poll ${u}. Neighbours ${added.join(', ')} are new: mark them visited and add them.` : `Poll ${u}. All its neighbours are already visited, so nothing is added.`);
+  }
+  r.step([g({ 0: 'done', 1: 'done', 2: 'done' }, { 0: '#1', 1: '#2', 2: '#3' }, 'BFS WITH visited'), { type: 'stack', id: 'q', label: 'queue', items: [], kind: 'queue' },
+    { type: 'vars', id: 'v', vars: { result: 'each node once' }, marks: { result: 'done' } }],
+    [3], 'Queue empty after exactly 3 polls. <b>visited</b> turns an endless walk into O(V + E).');
+  Viz.mount('#demo3', { frames: r.frames, title: 'Why visited', code:
+`Queue<Integer> q = new ArrayDeque<>();
+q.add(0); seen[0] = true;
+while (!q.isEmpty()) {
+    int u = q.poll();
+    for (int v : adj.get(u))
+        if (!seen[v]) {           // remove this check: loops forever
+            seen[v] = true; q.add(v);
+        }
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"Every node is marked visited the first time we reach it and is never processed again, and every edge is looked at once from each end, so the traversal is O(V + E). BFS processes nodes in order of distance from the start, so the first time it reaches a node is along a path with the fewest edges."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// 1. build</span>
+List&lt;List&lt;Integer&gt;&gt; adj = ...;   <span class="c">// n empty lists, add both directions</span>
+<span class="c">// 2. walk (BFS; swap Queue for a Stack and you get DFS)</span>
+<span class="k">boolean</span>[] seen = <span class="k">new boolean</span>[n];
+Queue&lt;Integer&gt; q = <span class="k">new</span> ArrayDeque&lt;&gt;();
+q.add(start); seen[start] = <span class="k">true</span>;
+<span class="k">while</span> (!q.isEmpty()) {
+    <span class="k">int</span> u = q.poll();
+    <span class="k">for</span> (<span class="k">int</span> v : adj.get(u))
+        <span class="k">if</span> (!seen[v]) { seen[v] = <span class="k">true</span>; q.add(v); }
+}
+<span class="c">// 3. count groups: loop over all nodes, start a walk from each unseen one</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Edge list → adjacency list → walk with a visited set.</b> Stack = deep (DFS, reachability, groups). Queue = wide (BFS, fewest steps).</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Forgetting the second <code>add</code> for undirected edges — half the roads become one-way.</li>
+  <li>Marking visited when you <i>poll</i> in BFS instead of when you <i>add</i> — the same node enters the queue many times.</li>
+  <li>Starting one walk from node 0 only — a graph can have several separate groups; loop over every node.</li>
+  <li>Recursive DFS on 100,000 nodes in a line — stack overflow. Use an explicit stack.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/find-if-path-exists-in-graph/">1971. Find if Path Exists in Graph</a> — build the list, BFS from source, check destination.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/keys-and-rooms/">841. Keys and Rooms</a> — the input is already an adjacency list; DFS from room 0.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/number-of-provinces/">547. Number of Provinces</a> — count how many walks you have to start.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/all-paths-from-source-to-target/">797. All Paths From Source to Target</a> — DFS that records the path (no visited needed: it is a DAG).</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/clone-graph/">133. Clone Graph</a> — BFS with a map old node → copy, which doubles as visited.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>You need the fewest number of moves from A to B in an unweighted graph. DFS or BFS?</summary>
+<p>BFS. It reaches nodes in order of distance, so the first time it sees B is via a shortest path. DFS may find a long path first.</p></details>
+<details class="quiz"><summary>An undirected graph has 5 nodes and 4 edges. How many entries does the adjacency list hold?</summary>
+<p>8 — every undirected edge is stored once in each direction.</p></details>
+<details class="quiz"><summary>Why does a tree traversal not need a visited set, but a graph traversal does?</summary>
+<p>A tree has no loops and you only walk from parent to child, so you can never come back. A graph can have cycles, and undirected edges lead straight back to where you came from.</p></details>
+<details class="quiz"><summary>What is the time complexity of BFS on an adjacency list, and why not O(V²)?</summary>
+<p>O(V + E): each node is polled once and each neighbour list is read once, so total work is the number of nodes plus the total length of all lists (2E).</p></details>
+
+<nav class="pager"><a href="lca.html">← Lowest common ancestor</a><a href="grid-bfs-dfs.html">Grid BFS / DFS →</a></nav>
+</main>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Two Heaps</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Heaps</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 21 · Heaps</div>
+<h1>Two Heaps</h1>
+<p class="lede">Split the numbers into a small half and a big half, each in its own heap; the median is always sitting on top of one or both of them.</p>
+<p class="meta">Time to learn: about 1–2 hours · Prerequisites: <a href="heap.html">Heaps</a>, <a href="top-k.html">Top K</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"<b>Median</b> of a data stream", "running median", "middle value as numbers arrive", "sliding window median", "balance two groups so one side is always ≤ the other".</p></div>
+
+<h2>The idea in plain words</h2>
+<p>Numbers arrive one at a time: 5, 15, 1, 3, 8, 7. After each one, you must say the <b>median</b> (the middle value of the sorted list; with an even count, the average of the two middle values).</p>
+<p>Re-sorting after every number costs O(n log n) each time. Instead, keep the numbers in two groups:</p>
+<ul>
+  <li><b>low</b>: the smaller half, in a <b>max-heap</b> — its top is the biggest of the small numbers.</li>
+  <li><b>high</b>: the bigger half, in a <b>min-heap</b> — its top is the smallest of the big numbers.</li>
+</ul>
+<p>Keep two promises: every number in low ≤ every number in high, and the sizes differ by at most one (low may hold one extra). Then the middle of the sorted list is right at the tops: odd count → <code>low.peek()</code>; even count → the average of both tops.</p>
+<p>Adding a number is a couple of heap operations, O(log n). Reading the median is O(1).</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A class lines up by height and splits into two rooms of equal size: short kids in one room, tall kids in the other. The tallest short kid and the shortest tall kid stand at the doors. The "middle height" is always one of the two kids at the doors — you never need to look inside the rooms.</p></div>
+
+<h2>Watch it work</h2>
+<p>Stream <code>5, 15, 1, 3, 8, 7</code>. Each heap is drawn in sorted order so low then high reads like the sorted list; the highlighted box is each heap's <b>top</b>.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const stream = [5, 15, 1, 3, 8, 7];
+  const r = Viz.recorder();
+  const low = [], high = []; // kept sorted ascending; low top = last, high top = first
+  let med = '-';
+  const P = (si, lm = {}, hm = {}, vars = {}) => {
+    const lt = low.length ? { [low.length - 1]: 'compare' } : {}, ht = high.length ? { 0: 'compare' } : {};
+    return [
+      { type: 'array', id: 's', label: 'stream', values: stream, pointers: si == null ? {} : { next: si }, marks: Object.fromEntries([...Array(si == null ? stream.length : si).keys()].map(j => [j, 'visited'])) },
+      { type: 'stack', id: 'l', label: 'low — max-heap of the smaller half (top on the right)', items: low.map(v => ({ id: 'v' + v, val: v })), kind: 'set', marks: { ...lt, ...lm } },
+      { type: 'stack', id: 'h', label: 'high — min-heap of the bigger half (top on the left)', items: high.map(v => ({ id: 'v' + v, val: v })), kind: 'set', marks: { ...ht, ...hm } },
+      { type: 'vars', id: 'v', vars: { 'low.size': low.length, 'high.size': high.length, median: med, ...vars }, marks: { median: 'done' } }];
+  };
+  const ins = (arr, x) => { arr.push(x); arr.sort((a, b) => a - b); };
+  r.step(P(0), [3, 4], 'Both halves are empty. low is a <b>max-heap</b> (top = its largest); high is a <b>min-heap</b> (top = its smallest).');
+  for (let i = 0; i < stream.length; i++) {
+    const x = stream[i];
+    ins(low, x);
+    r.step(P(i, { [low.indexOf(x)]: 'active' }), [6], `${x} arrives. Step 1: always drop it into <b>low</b> first.`);
+    const big = low.pop(); ins(high, big);
+    r.step(P(i, {}, { [high.indexOf(big)]: 'active' }), [7],
+      `Step 2: move low's <b>largest</b> (${big}) up to high. Now every number in low is ≤ every number in high, even if ${x} was a big number.`);
+    if (high.length > low.length) {
+      const sm = high.shift(); ins(low, sm);
+      r.step(P(i, { [low.indexOf(sm)]: 'active' }), [8, 9],
+        `Step 3: high has more numbers than low, so move high's <b>smallest</b> (${sm}) back down. Sizes are now ${low.length} and ${high.length}.`);
+    } else {
+      r.step(P(i), [8], `Step 3: sizes are ${low.length} and ${high.length}. low is not smaller than high, so no move is needed.`);
+    }
+    med = low.length > high.length ? low[low.length - 1] : (low[low.length - 1] + high[0]) / 2;
+    r.step(P(i + 1, { [low.length - 1]: 'done' }, low.length === high.length ? { 0: 'done' } : {}), low.length > high.length ? [12] : [13],
+      low.length > high.length ? `Odd count (${i + 1}): the median is low's top, <b>${med}</b>.`
+        : `Even count (${i + 1}): the median is the average of the two tops, (${low[low.length - 1]} + ${high[0]}) / 2 = <b>${med}</b>.`);
+  }
+  r.step(P(null, { [low.length - 1]: 'done' }, { 0: 'done' }), [13], `Sorted, the stream is ${[...low, ...high].join(', ')}. Its median is <b>${med}</b> — read in O(1) from the two tops.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Median from a data stream', code:
+`class MedianFinder {
+    // low: max-heap, smaller half.  high: min-heap, bigger half
+    Queue<Integer> low = new PriorityQueue<>((a, b) -> b - a);
+    Queue<Integer> high = new PriorityQueue<>();
+    void addNum(int x) {
+        low.offer(x);                   // 1. into the small half
+        high.offer(low.poll());         // 2. its biggest goes up
+        if (high.size() > low.size())   // 3. low keeps the extra
+            low.offer(high.poll());
+    }
+    double findMedian() {
+        if (low.size() > high.size()) return low.peek();
+        return (low.peek() + high.peek()) / 2.0;
+    }
+}` });
+})();
+</script>
+
+<h3>Same idea, written as "place, then rebalance"</h3>
+<p>Many people find this version easier to explain: compare with low's top to choose a side, then fix the sizes. Stream <code>2, 9, 4, 6, 1</code>.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const stream = [2, 9, 4, 6, 1];
+  const r = Viz.recorder();
+  const low = [], high = [];
+  let med = '-';
+  const P = (si, lm = {}, hm = {}, vars = {}) => [
+    { type: 'array', id: 's', label: 'stream', values: stream, pointers: si == null ? {} : { next: si }, marks: Object.fromEntries([...Array(si == null ? stream.length : si).keys()].map(j => [j, 'visited'])) },
+    { type: 'stack', id: 'l', label: 'low (max-heap, top on the right)', items: low.map(v => ({ id: 'v' + v, val: v })), kind: 'set', marks: { ...(low.length ? { [low.length - 1]: 'compare' } : {}), ...lm } },
+    { type: 'stack', id: 'h', label: 'high (min-heap, top on the left)', items: high.map(v => ({ id: 'v' + v, val: v })), kind: 'set', marks: { ...(high.length ? { 0: 'compare' } : {}), ...hm } },
+    { type: 'vars', id: 'v', vars: { median: med, ...vars }, marks: { median: 'done' } }];
+  const ins = (arr, x) => { arr.push(x); arr.sort((a, b) => a - b); };
+  r.step(P(0), [1], 'Same two heaps, different add rule.');
+  for (let i = 0; i < stream.length; i++) {
+    const x = stream[i];
+    const toLow = !low.length || x <= low[low.length - 1];
+    if (toLow) ins(low, x); else ins(high, x);
+    r.step(P(i, toLow ? { [low.indexOf(x)]: 'active' } : {}, toLow ? {} : { [high.indexOf(x)]: 'active' }), [2, 3],
+      !low.length || (toLow && low.length === 1) ? `${x}: low is empty, so it goes to low.`
+        : toLow ? `${x} ≤ low's top, so it belongs with the <b>small</b> numbers: into low.` : `${x} > low's top (${low[low.length - 1]}), so it belongs with the <b>big</b> numbers: into high.`);
+    if (low.length > high.length + 1) {
+      const m = low.pop(); ins(high, m);
+      r.step(P(i, {}, { [high.indexOf(m)]: 'active' }), [4], `low has ${low.length + 1}, high has ${high.length - 1}: low is too big by 2. Move low's top (${m}) to high.`);
+    } else if (high.length > low.length) {
+      const m = high.shift(); ins(low, m);
+      r.step(P(i, { [low.indexOf(m)]: 'active' }), [5], `high is bigger than low. Move high's top (${m}) to low so low keeps the extra one.`);
+    }
+    med = low.length > high.length ? low[low.length - 1] : (low[low.length - 1] + high[0]) / 2;
+    r.step(P(i + 1, { [low.length - 1]: 'done' }, low.length === high.length ? { 0: 'done' } : {}), [8, 9],
+      `Sizes ${low.length} and ${high.length}. Median = ${low.length > high.length ? `low's top = <b>${med}</b>` : `(${low[low.length - 1]} + ${high[0]}) / 2 = <b>${med}</b>`}.`);
+  }
+  r.step(P(null, { [low.length - 1]: 'done' }), [9], `Sorted stream: ${[...low, ...high].join(', ')}. Median <b>${med}</b>. Both versions keep the same two promises.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Two heaps: place then rebalance', code:
+`void addNum(int x) {
+    if (low.isEmpty() || x <= low.peek()) low.offer(x);
+    else high.offer(x);                   // pick the right half
+    if (low.size() > high.size() + 1) high.offer(low.poll());
+    else if (high.size() > low.size()) low.offer(high.poll());
+}
+double findMedian() {
+    if (low.size() > high.size()) return low.peek();
+    return (low.peek() + high.peek()) / 2.0;
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"low holds the smaller half and high the bigger half, with sizes equal or low one bigger. So in sorted order the median is exactly low's maximum, or the average of low's maximum and high's minimum — the two heap tops. Each add is O(log n), each median read O(1)."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code>PriorityQueue&lt;Integer&gt; low  = <span class="k">new</span> PriorityQueue&lt;&gt;(Collections.reverseOrder());
+PriorityQueue&lt;Integer&gt; high = <span class="k">new</span> PriorityQueue&lt;&gt;();
+<span class="k">void</span> add(<span class="k">int</span> x) {
+    low.offer(x);
+    high.offer(low.poll());                         <span class="c">// keep order between halves</span>
+    <span class="k">if</span> (high.size() &gt; low.size()) low.offer(high.poll()); <span class="c">// keep sizes</span>
+}
+<span class="k">double</span> median() {
+    <span class="k">return</span> low.size() &gt; high.size() ? low.peek() : (low.peek() + high.peek()) / <span class="n">2.0</span>;
+}</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Small half in a max-heap, big half in a min-heap; the median lives at the doors.</b> Add to low, push low's top to high, give one back if high got bigger.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Using two min-heaps — low must be a <b>max</b>-heap so its top is the biggest of the small half.</li>
+  <li>Integer division: <code>(7 + 8) / 2</code> is 7, not 7.5. Divide by <code>2.0</code>.</li>
+  <li><code>(a, b) -&gt; b - a</code> overflows for values near ±2³¹; use <code>Collections.reverseOrder()</code>.</li>
+  <li>Only balancing sizes and forgetting the order promise — a big number can end up in low.</li>
+  <li>Sliding window median needs removal of old numbers: use lazy deletion with a counter map, or two <code>TreeMap</code>s.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/find-median-from-data-stream/">295. Find Median from Data Stream</a> — exactly the animations.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/kth-largest-element-in-an-array/">215. Kth Largest Element in an Array</a> — warm up with one heap first.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/sliding-window-median/">480. Sliding Window Median</a> — two heaps plus lazy deletion.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/ipo/">502. IPO</a> — a min-heap by capital feeds a max-heap by profit.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-right-interval/">436. Find Right Interval</a> — two heaps sorted by start and by end.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>After 1, 2, 3, 4 have arrived, what is in low and high, and what is the median?</summary>
+<p>low = {1, 2} (top 2), high = {3, 4} (top 3). Median = (2 + 3) / 2 = 2.5.</p></details>
+<details class="quiz"><summary>Why is low a max-heap and high a min-heap, not the other way round?</summary>
+<p>The median is next to the boundary between the halves: the biggest small number and the smallest big number. Those are exactly the tops of a max-heap of the small half and a min-heap of the big half.</p></details>
+<details class="quiz"><summary>What is the cost of addNum and findMedian?</summary>
+<p>addNum O(log n) — at most three heap operations. findMedian O(1) — two peeks.</p></details>
+
+<nav class="pager"><a href="top-k.html">← Top K</a><a href="trie.html">Trie →</a></nav>
+</main>
+</body>
+</html>

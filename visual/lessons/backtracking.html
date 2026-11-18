@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backtracking</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Backtracking</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 39 · Backtracking</div>
+<h1>Backtracking</h1>
+<p class="lede">Build an answer one choice at a time; when a choice leads nowhere, undo it and try the next one — choose, explore, un-choose.</p>
+<p class="meta">Time to learn: about 3 hours · Prerequisites: <a href="recursion.html">Recursion</a>, <a href="tree-traversals.html">Tree traversals</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>The question asks for <b>all</b> of something: "return <b>all</b> subsets", "<b>all</b> combinations that sum to", "<b>all</b> permutations", "every valid arrangement", "generate all valid parentheses", "can the word be found in the grid". The input is small (n ≤ 15–20), because the answer itself can be exponential.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>Many problems are a series of small decisions. For the subsets of <code>[1, 2, 3]</code> you decide: start with 1 or not? then add 2 or not? then 3 or not? Each full series of decisions is one answer. There are 2 × 2 × 2 = 8 of them.</p>
+<p>Backtracking walks through these decisions like a person walking through a maze:</p>
+<ul>
+  <li><b>Choose</b> — take one option (add 1 to the current list, called the <i>path</i>).</li>
+  <li><b>Explore</b> — call yourself recursively to make the remaining decisions.</li>
+  <li><b>Un-choose</b> — when that call returns, remove 1 again, so the path is exactly as it was before. Now try the next option.</li>
+</ul>
+<p>Drawn out, the decisions form a tree (the <i>decision tree</i>): the root is "nothing chosen yet" and every edge is one choice. Backtracking is just a depth-first walk over that tree. The un-choose step is what lets one single list be reused for every branch, instead of copying it at every step.</p>
+<p><b>Pruning</b> = cutting a branch as soon as you can prove it cannot lead to an answer (for example, the running sum is already bigger than the target). Pruning does not change the answer, it only skips useless work.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Exploring a maze with a ball of string. At every fork you pick a corridor and unroll string as you walk (choose). You keep going (explore). If you hit a dead end, you walk back, rolling the string up to the last fork (un-choose), and try the next corridor. The string always shows exactly the path from the entrance to where you stand.</p></div>
+
+<h2>Watch it work</h2>
+<p>All subsets of <code>[1, 2, 3]</code>. Each circle is one choice; the path from the top <b>{}</b> to a circle is the current subset. Every circle is an answer, so we save a copy as soon as we arrive.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const nums = [1, 2, 3];
+  const pos = { '': [380, 30], '1': [200, 100], '12': [120, 170], '123': [120, 240], '13': [280, 170],
+    '2': [440, 100], '23': [440, 170], '3': [610, 100] };
+  const r = Viz.recorder();
+  const seen = [], finished = new Set(), res = [], path = [];
+  const id = k => 'n' + (k || 'r');
+  const show = (cur, line, say) => {
+    const onPath = new Set(path.map((_, i) => path.slice(0, i + 1).join('')).concat(['']));
+    const marks = {}, edgeMarks = {};
+    for (const k of seen) marks[id(k)] = k === cur ? 'active' : onPath.has(k) ? 'compare' : finished.has(k) ? 'done' : '';
+    for (const k of onPath) if (k) edgeMarks[`${id(k.slice(0, -1))}-${id(k)}`] = 'active';
+    r.step([
+      { type: 'graph', id: 'g', label: 'decision tree', h: 270,
+        nodes: seen.map(k => ({ id: id(k), x: pos[k][0], y: pos[k][1], label: k ? k.slice(-1) : '{}' })),
+        edges: seen.filter(k => k).map(k => ({ a: id(k.slice(0, -1)), b: id(k), dir: true })), marks, edgeMarks },
+      { type: 'stack', id: 'p', label: 'path (current choices)', items: path.length ? [...path] : [], marks: { [path.length - 1]: 'active' } },
+      { type: 'stack', id: 'res', label: 'results (copies saved)', kind: 'set', items: res.map((s, i) => ({ id: 'r' + i, val: '[' + s.join(',') + ']' })) }
+    ], line, say);
+  };
+  function backtrack(start) {
+    const k = path.join('');
+    seen.push(k);
+    res.push([...path]);
+    show(k, [3], path.length === 0
+      ? 'Start at the root: nothing chosen yet. The empty list <b>[]</b> is a subset too, so save a copy.'
+      : `Path is now <b>[${path}]</b>. Every path in this tree is a valid subset, so save a <b>copy</b> of it (the list itself will keep changing).`);
+    for (let i = start; i < nums.length; i++) {
+      path.push(nums[i]);
+      backtrack(i + 1);
+      path.pop();
+      finished.add(path.join('') + nums[i]);
+      show(path.join(''), [7], `Everything that starts with [${[...path, nums[i]]}] is done. <b>Un-choose ${nums[i]}</b>: the path goes back to [${path}], ready for the next choice.`
+        + (i + 1 < nums.length ? ` Next try: ${nums[i + 1]}.` : ' No numbers left to try here, so return.'));
+    }
+  }
+  backtrack(0);
+  finished.add('');
+  r.step(r.frames[r.frames.length - 1].panels.map(p => p.type === 'graph' ? { ...p, marks: Object.fromEntries(seen.map(k => [id(k), 'done'])), edgeMarks: {} } : p), [9],
+    `Done: <b>${res.length} subsets</b> (2 × 2 × 2 = 8). Each was saved when we first reached its circle. We only choose numbers to the <b>right</b> of the last one (start = i + 1), so [2,1] never appears as a duplicate of [1,2].`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Subsets decision tree', code:
+`List<List<Integer>> res = new ArrayList<>();
+void backtrack(int[] nums, int start, List<Integer> path) {
+    res.add(new ArrayList<>(path));      // every node is an answer
+    for (int i = start; i < nums.length; i++) {
+        path.add(nums[i]);               // 1. choose
+        backtrack(nums, i + 1, path);    // 2. explore (only later nums)
+        path.remove(path.size() - 1);    // 3. un-choose
+    }
+}
+// call: backtrack(nums, 0, new ArrayList<>());` });
+})();
+</script>
+
+<h3>With pruning: Combination Sum</h3>
+<p>Candidates <code>[2, 3]</code>, target <b>6</b>. A number may be used again and again. The small chip next to each circle shows how much is <b>left</b> to reach the target. The candidates are sorted, so the moment one is too big, every later one is too big as well — we <b>break</b> out of the loop (pruning, shown in red).</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const c = [2, 3], target = 6;
+  const pos = { '': [380, 30], '2': [240, 100], '22': [150, 170], '222': [90, 240], '223': [210, 240],
+    '23': [330, 170], '233': [330, 240], '3': [540, 100], '33': [540, 170], '332': [640, 240] };
+  const r = Viz.recorder();
+  const seen = [], remainOf = {}, pruned = new Set(), found = new Set(), res = [], path = [];
+  const id = k => 'n' + (k || 'r');
+  const show = (cur, line, say, remain) => {
+    const onPath = new Set(path.map((_, i) => path.slice(0, i + 1).join('')).concat(['']));
+    const marks = {}, edgeMarks = {}, badges = {};
+    for (const k of seen) {
+      marks[id(k)] = pruned.has(k) ? 'bad' : found.has(k) ? 'done' : k === cur ? 'active' : onPath.has(k) ? 'compare' : 'visited';
+      if (!pruned.has(k)) badges[id(k)] = 'left ' + remainOf[k];
+    }
+    for (const k of onPath) if (k) edgeMarks[`${id(k.slice(0, -1))}-${id(k)}`] = 'active';
+    for (const k of pruned) edgeMarks[`${id(k.slice(0, -1))}-${id(k)}`] = 'bad';
+    r.step([
+      { type: 'graph', id: 'g', label: 'decision tree (chip = amount left)', h: 270,
+        nodes: seen.map(k => ({ id: id(k), x: pos[k][0], y: pos[k][1], label: k ? k.slice(-1) : '{}' })),
+        edges: seen.filter(k => k).map(k => ({ a: id(k.slice(0, -1)), b: id(k), dir: true })), marks, edgeMarks, badges },
+      { type: 'stack', id: 'p', label: 'path', items: [...path] },
+      { type: 'vars', id: 'v', vars: { target, remain } },
+      { type: 'stack', id: 'res', label: 'results', kind: 'set', items: res.map((s, i) => ({ id: 'r' + i, val: '[' + s.join(',') + ']' })) }
+    ], line, say);
+  };
+  function backtrack(start, remain) {
+    const k = path.join('');
+    seen.push(k); remainOf[k] = remain;
+    if (remain === 0) {
+      found.add(k); res.push([...path]);
+      show(k, [4], `Path [${path}] adds up to exactly ${target} (left = 0). <b>Save a copy</b> and return — adding more can only overshoot.`, remain);
+      return;
+    }
+    show(k, [5], path.length === 0
+      ? `Start with nothing chosen: <b>${remain}</b> left to reach. Try each candidate, smallest first.`
+      : `Path [${path}], <b>${remain}</b> left. Try candidates from index ${start} on (the same number may be reused, so we do not skip it).`, remain);
+    for (let i = start; i < c.length; i++) {
+      if (c[i] > remain) {
+        const bad = k + c[i];
+        seen.push(bad); pruned.add(bad);
+        show(k, [6], `${c[i]} is bigger than the ${remain} left → this branch can never reach ${target}. Because the list is sorted, every later candidate is bigger too, so <b>break</b>: prune the rest of the loop.`, remain);
+        return;
+      }
+      path.push(c[i]);
+      backtrack(i, remain - c[i]);
+      path.pop();
+    }
+  }
+  backtrack(0, target);
+  show(null, [11],
+    `Done: <b>[2,2,2]</b> and <b>[3,3]</b>. Passing <b>i</b> (not i + 1) allows reuse; starting at <b>i</b> (not 0) stops [3,2]-style duplicates; the <b>break</b> skipped every branch that could only overshoot.`, 0);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Combination sum with pruning', code:
+`// candidates sorted ascending first: Arrays.sort(c)
+void backtrack(int[] c, int start, int remain,
+               List<Integer> path) {
+    if (remain == 0) { res.add(new ArrayList<>(path)); return; }
+    for (int i = start; i < c.length; i++) {
+        if (c[i] > remain) break;      // prune: rest are bigger too
+        path.add(c[i]);                // choose
+        backtrack(c, i, remain - c[i], path); // i: reuse allowed
+        path.remove(path.size() - 1);  // un-choose
+    }
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"Backtracking is a depth-first search over the decision tree. Each recursive call owns one decision; un-choosing after the call restores the state, so every branch starts from the same clean path. Pruning cuts subtrees that provably contain no answer, so the result is the same but faster."</p>
+<p>Cost: subsets is O(2<sup>n</sup> · n) — 2<sup>n</sup> answers, each copied in O(n). That is fine because n is small and you must output every answer anyway.</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">void</span> backtrack(state, path) {
+    <span class="k">if</span> (isComplete(path)) { res.add(<span class="k">new</span> ArrayList&lt;&gt;(path)); <span class="k">return</span>; }
+    <span class="k">for</span> (choice : choicesFrom(state)) {
+        <span class="k">if</span> (!valid(choice)) <span class="k">continue</span>;   <span class="c">// or break, if sorted</span>
+        path.add(choice);               <span class="c">// choose</span>
+        backtrack(next(state), path);   <span class="c">// explore</span>
+        path.remove(path.size() - <span class="n">1</span>);  <span class="c">// un-choose</span>
+    }
+}</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Choose → explore → un-choose.</b> Save a <b>copy</b> of the path. <code>i + 1</code> = use each item once, <code>i</code> = reuse allowed, <code>0</code> = order matters (permutations).</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li><code>res.add(path)</code> instead of <code>res.add(new ArrayList&lt;&gt;(path))</code> — every saved answer is the same list, which ends up empty.</li>
+  <li>Forgetting the un-choose line — the path keeps growing and later branches start dirty.</li>
+  <li>Using <code>continue</code> where <code>break</code> is safe (sorted input) — still correct, just slower. Using <code>break</code> on <b>unsorted</b> input — wrong, you skip valid answers.</li>
+  <li>Looping from 0 instead of <code>start</code> in combinations — you get [2,3] and [3,2] as two answers.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/subsets/">78. Subsets</a> — exactly the first animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/combinations/">77. Combinations</a> — subsets, but only save when path size is k.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/combination-sum/">39. Combination Sum</a> — the second animation; recurse with i.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/subsets-ii/">90. Subsets II</a> — sort, skip <code>nums[i] == nums[i-1]</code> when i &gt; start.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/combination-sum-ii/">40. Combination Sum II</a> — recurse with i + 1 and skip duplicates.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/generate-parentheses/">22. Generate Parentheses</a> — choose "(" if open &lt; n, ")" if close &lt; open.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/word-search/">79. Word Search</a> — mark the cell, explore 4 neighbours, unmark.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/palindrome-partitioning/">131. Palindrome Partitioning</a> — choose the next palindrome piece.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Why must you save <code>new ArrayList&lt;&gt;(path)</code> and not <code>path</code>?</summary>
+<p>There is only one path list; it keeps being changed by choose and un-choose. Saving the list itself saves a reference that ends up empty at the end. A copy freezes the answer at that moment.</p></details>
+<details class="quiz"><summary>In Combination Sum, what changes if you recurse with <code>i + 1</code> instead of <code>i</code>?</summary>
+<p>Each candidate can be used at most once — that is Combination Sum II. With <code>i</code> the same number can be picked again.</p></details>
+<details class="quiz"><summary>Why is <code>break</code> allowed in the pruning line?</summary>
+<p>The candidates are sorted. If <code>c[i]</code> is already bigger than what is left, every <code>c[j]</code> with j &gt; i is at least as big, so none of them can fit either.</p></details>
+<details class="quiz"><summary>How many subsets does a 20-element array have, and is backtracking OK?</summary>
+<p>2<sup>20</sup> ≈ one million. Yes — you must output them all, and a million is fine. At n = 40 it would not be.</p></details>
+
+<nav class="pager"><a href="mst.html">← Minimum spanning tree</a><a href="permutations.html">Permutations →</a></nav>
+</main>
+</body>
+</html>

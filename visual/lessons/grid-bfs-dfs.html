@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grid BFS and DFS</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Graphs</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 33 · Graphs</div>
+<h1>Grid BFS and DFS</h1>
+<p class="lede">A 2D grid is a graph in disguise: every cell is a node and its up/down/left/right cells are its neighbours, so islands are found with a DFS "flood fill" and shortest routes with a BFS.</p>
+<p class="meta">Time to learn: about 2.5 hours · Prerequisites: <a href="graph-basics.html">Graph basics</a>, <a href="recursion.html">Recursion</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>The input is a <b>matrix / board / map</b> of 0s and 1s (or letters), and the question says "<b>island</b>", "region", "connected cells", "flood / paint", "enclosed", or "<b>shortest path</b> from the top-left to the bottom-right".</p></div>
+
+<h2>The idea in plain words</h2>
+<p>Look at a 4 × 5 grid of land (1) and water (0). You never build an adjacency list: the neighbours of cell (r, c) are simply (r+1, c), (r−1, c), (r, c+1), (r, c−1) — as long as they are inside the grid. Some problems also allow the 4 diagonals (8 neighbours).</p>
+<ul>
+  <li><b>Counting islands</b> (groups of touching land): scan the grid row by row. The first time you step on land you have never seen, that is a <b>new island</b> — add 1 to the count, then "flood" it: visit every land cell you can reach from there and mark it, so the scan will not count it again.</li>
+  <li><b>Shortest path</b>: start a BFS from the start cell. Write 1 in it, then 2 in every free neighbour, then 3 in their free neighbours... The number that lands on the target is the length of the shortest route.</li>
+</ul>
+<p>Marking can be done <b>in place</b> (without a separate visited array): overwrite a visited land cell with 0 so it looks like water. A grid of R rows and C columns is visited in O(R × C).</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Counting islands is like spilling paint: you find an unpainted island, pour a bucket on one square, and the paint runs into every connected land square. Count the buckets you used. Shortest path is like dropping a stone in a pond — the ripple reaches nearby squares first, and the ring number when it hits the corner is the distance.</p></div>
+
+<h2>Watch it work</h2>
+<p><b>1. Number of Islands (DFS flood fill).</b> Land is "1", water is shown dark. Each island gets a letter as it is flooded. The panel under the grid is the recursion stack — the cells whose calls are still open.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const G = [[1, 1, 0, 0, 0], [1, 1, 0, 1, 1], [0, 0, 0, 1, 0], [1, 0, 0, 0, 1]];
+  const R = G.length, C = G[0].length;
+  const lab = G.map(row => row.map(() => ''));
+  const r = Viz.recorder();
+  let count = 0; const callStack = [];
+  const panels = (cur, scan, extra = {}) => {
+    const cells = G.map((row, i) => row.map((v, j) => lab[i][j] || (v ? '1' : '')));
+    const marks = {};
+    G.forEach((row, i) => row.forEach((v, j) => { if (!v && !lab[i][j]) marks[`${i},${j}`] = 'dim'; if (lab[i][j]) marks[`${i},${j}`] = 'done'; }));
+    if (scan) marks[scan] = 'compare';
+    if (cur) marks[cur] = 'active';
+    Object.assign(marks, extra);
+    return [{ type: 'grid', id: 'g', label: 'grid (1 = land)', cells, marks },
+      { type: 'stack', id: 'st', label: 'recursion stack (open sink calls)', items: callStack.map(([a, b]) => `${a},${b}`), kind: 'stack' },
+      { type: 'vars', id: 'v', vars: { count } }];
+  };
+  r.step(panels(null, null), [2, 3], 'Scan the grid row by row, left to right. Water (dark) is skipped. <b>count = 0</b>.');
+  const sink = (i, j, letter) => {
+    if (i < 0 || j < 0 || i >= R || j >= C || G[i][j] !== 1) return;
+    G[i][j] = 0; lab[i][j] = letter; callStack.push([i, j]);
+    r.step(panels(`${i},${j}`, null), [14], `sink(${i},${j}): land → mark it <b>${letter}</b> (set to 0) so nobody counts it again. Then try down, up, right, left.`);
+    sink(i + 1, j, letter); sink(i - 1, j, letter); sink(i, j + 1, letter); sink(i, j - 1, letter);
+    callStack.pop();
+  };
+  for (let i = 0; i < R; i++) for (let j = 0; j < C; j++) {
+    if (G[i][j] === 1) {
+      count++;
+      const letter = 'ABCD'[count - 1];
+      r.step(panels(null, `${i},${j}`), [5, 6], `Scan hits (${i},${j}): unvisited <b>land</b>. A new island! count = <b>${count}</b>. Now flood all of it.`);
+      sink(i, j, letter);
+      r.step(panels(null, null), [7], `Island ${letter} is fully flooded — every neighbour of its cells is water, edge or already marked. Resume the scan.`);
+    }
+  }
+  r.step(panels(null, null), [9], `Scan finished. Every land cell was visited exactly once. Answer: <b>${count} islands</b>.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Number of Islands', code:
+`int numIslands(char[][] g) {
+    int count = 0;
+    for (int r = 0; r < g.length; r++)
+        for (int c = 0; c < g[0].length; c++)
+            if (g[r][c] == '1') {    // unseen land
+                count++;              // a new island
+                sink(g, r, c);        // flood all of it
+            }
+    return count;
+}
+void sink(char[][] g, int r, int c) {
+    if (r < 0 || c < 0 || r >= g.length || c >= g[0].length
+        || g[r][c] != '1') return;   // off map or not land
+    g[r][c] = '0';                   // mark visited (in place)
+    sink(g, r + 1, c); sink(g, r - 1, c);   // down, up
+    sink(g, r, c + 1); sink(g, r, c - 1);   // right, left
+}` });
+})();
+</script>
+
+<p><b>2. Shortest Path in Binary Matrix (BFS).</b> 0 = free, ■ = blocked. Move in <b>8 directions</b> (diagonals allowed) from the top-left to the bottom-right. BFS writes the distance (counted in cells, start = 1) into each cell it reaches.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const G = [[0, 0, 0, 1, 0], [1, 1, 0, 1, 0], [0, 0, 0, 1, 0], [0, 1, 1, 0, 0], [0, 0, 0, 1, 0]];
+  const n = G.length;
+  const dist = G.map(row => row.map(() => 0));
+  const par = {};
+  const r = Viz.recorder();
+  const panels = (q, cur, extra = {}, sayVars = {}) => {
+    const cells = G.map((row, i) => row.map((v, j) => v ? '■' : dist[i][j] ? dist[i][j] : ''));
+    const marks = {};
+    G.forEach((row, i) => row.forEach((v, j) => { if (v) marks[`${i},${j}`] = 'dim'; else if (dist[i][j]) marks[`${i},${j}`] = 'visited'; }));
+    if (cur) marks[cur] = 'active';
+    Object.assign(marks, extra);
+    return [{ type: 'grid', id: 'g', label: 'grid with BFS distances', cells, marks },
+      { type: 'stack', id: 'q', label: 'queue (row,col)', items: q.map(([a, b]) => ({ id: `${a},${b}`, val: `${a},${b}` })), kind: 'queue' },
+      { type: 'vars', id: 'v', vars: sayVars }];
+  };
+  const q = [[0, 0]]; dist[0][0] = 1;
+  r.step(panels(q, '0,0', {}, { start: '(0,0)', target: '(4,4)' }), [6], 'Start cell is free: write <b>1</b> in it and put it in the queue.');
+  let found = false;
+  while (q.length) {
+    const [i, j] = q.shift();
+    if (i === n - 1 && j === n - 1) { found = true; break; }
+    const added = [];
+    for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
+      const a = i + di, b = j + dj;
+      if (a < 0 || b < 0 || a >= n || b >= n || G[a][b] === 1 || dist[a][b] > 0) continue;
+      dist[a][b] = dist[i][j] + 1; par[`${a},${b}`] = `${i},${j}`; q.push([a, b]); added.push(`(${a},${b})`);
+    }
+    const ex = Object.fromEntries(added.map(s => [s.slice(1, -1), 'compare']));
+    r.step(panels(q, `${i},${j}`, ex, { polled: `(${i},${j})`, dist: dist[i][j] }), added.length ? [8, 15, 16] : [8],
+      added.length
+        ? `Poll (${i},${j}) at distance ${dist[i][j]}. Its free, unseen neighbours ${added.join(' ')} get <b>${dist[i][j] + 1}</b> and join the queue.`
+        : `Poll (${i},${j}). Every neighbour is blocked, outside, or already has a number — nothing to add.`);
+  }
+  const path = []; let k = `${n - 1},${n - 1}`;
+  while (k) { path.push(k); k = par[k]; }
+  r.step(panels(q, null, Object.fromEntries(path.map(s => [s, 'path'])), { answer: dist[n - 1][n - 1] }), [9],
+    found ? `Polled the target (4,4): its number is <b>${dist[n - 1][n - 1]}</b>. Following the numbers backwards gives the shortest route (highlighted). BFS reached it first, so no route is shorter.`
+          : 'Queue empty, target never reached: answer -1.');
+  Viz.mount('#demo2', { frames: r.frames, title: 'Shortest path in binary matrix', code:
+`int shortestPath(int[][] g) {
+    int n = g.length;
+    if (g[0][0] == 1 || g[n-1][n-1] == 1) return -1;
+    int[][] dist = new int[n][n];     // 0 = not reached yet
+    Queue<int[]> q = new ArrayDeque<>();
+    q.add(new int[]{0, 0}); dist[0][0] = 1;
+    while (!q.isEmpty()) {
+        int[] cur = q.poll(); int r = cur[0], c = cur[1];
+        if (r == n-1 && c == n-1) return dist[r][c];
+        for (int dr = -1; dr <= 1; dr++)       // 8 neighbours
+            for (int dc = -1; dc <= 1; dc++) {
+                int nr = r + dr, nc = c + dc;
+                if (nr < 0 || nc < 0 || nr >= n || nc >= n) continue;
+                if (g[nr][nc] == 1 || dist[nr][nc] > 0) continue;
+                dist[nr][nc] = dist[r][c] + 1;  // one more step
+                q.add(new int[]{nr, nc});
+            }
+    }
+    return -1;                                  // unreachable
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"Each scan that lands on unvisited land must be a new island, because flood fill already marked every cell connected to earlier islands — so the count equals the number of flood fills. For shortest path, BFS on an unweighted grid visits cells in increasing distance, so the first time it reaches the target is via the fewest moves."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">int</span>[][] DIRS = {{<span class="n">1</span>,<span class="n">0</span>},{-<span class="n">1</span>,<span class="n">0</span>},{<span class="n">0</span>,<span class="n">1</span>},{<span class="n">0</span>,-<span class="n">1</span>}};
+<span class="c">// count regions: scan + flood</span>
+<span class="k">for</span> (r...) <span class="k">for</span> (c...) <span class="k">if</span> (isTarget(r, c)) { count++; dfs(r, c); }
+<span class="k">void</span> dfs(<span class="k">int</span> r, <span class="k">int</span> c) {
+    <span class="k">if</span> (outside || !isTarget(r, c)) <span class="k">return</span>;
+    mark(r, c);                         <span class="c">// BEFORE recursing</span>
+    <span class="k">for</span> (<span class="k">int</span>[] d : DIRS) dfs(r + d[<span class="n">0</span>], c + d[<span class="n">1</span>]);
+}
+<span class="c">// shortest path: BFS, dist[start] = 1, dist[next] = dist[cur] + 1</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Grid = graph with 4 (or 8) neighbours.</b> Count groups → scan + DFS flood. Fewest moves → BFS with distances.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Marking a cell <i>after</i> the recursive calls — neighbours come back to it and you loop forever.</li>
+  <li>Checking bounds after reading <code>g[r][c]</code> — ArrayIndexOutOfBounds. Bounds first.</li>
+  <li>Using DFS for shortest path — it finds <i>a</i> path, not the shortest.</li>
+  <li>Forgetting the start (or end) cell may itself be blocked in LC 1091.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/flood-fill/">733. Flood Fill</a> — the flood without the scan.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/number-of-islands/">200. Number of Islands</a> — exactly animation 1.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/max-area-of-island/">695. Max Area of Island</a> — dfs returns 1 + sum of the four calls.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/shortest-path-in-binary-matrix/">1091. Shortest Path in Binary Matrix</a> — exactly animation 2.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/surrounded-regions/">130. Surrounded Regions</a> — flood from the border first, flip the rest.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/pacific-atlantic-water-flow/">417. Pacific Atlantic Water Flow</a> — two floods uphill from each ocean, intersect.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Why does Number of Islands not need a separate visited array?</summary>
+<p>We overwrite each visited land cell with '0', so it looks like water and is never flooded or counted again. (Ask the interviewer whether modifying the input is allowed.)</p></details>
+<details class="quiz"><summary>What is the time and space of Number of Islands on an R × C grid?</summary>
+<p>Time O(R × C) — every cell is scanned once and sunk at most once. Space O(R × C) in the worst case for the recursion depth (a grid full of land).</p></details>
+<details class="quiz"><summary>In the BFS, why mark a cell (give it a distance) when it is added, not when it is polled?</summary>
+<p>Otherwise two different cells can add the same neighbour before it is polled, so it enters the queue twice and the work blows up.</p></details>
+
+<nav class="pager"><a href="graph-basics.html">← Graph basics</a><a href="multi-source-bfs.html">Multi-source BFS →</a></nav>
+</main>
+</body>
+</html>

@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bit Tricks</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Greedy &amp; intervals</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 25 · Greedy &amp; intervals</div>
+<h1>Bit Tricks</h1>
+<p class="lede">Every int is a row of 0s and 1s; AND, OR, XOR and shifts work on all the bits at once, which turns some problems into a single line with O(1) extra space.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="big-o.html">Big-O</a>, <a href="arrays-hashing.html">Arrays and hashing</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"Every element appears <b>twice except one</b>", "<b>without extra space</b>", "count the <b>1 bits</b>", "<b>power of two</b>", "without using + or −", "all subsets" with n ≤ 20, "missing number" from 0..n, "reverse the bits".</p></div>
+
+<h2>The idea in plain words</h2>
+<p>A number is stored in <b>binary</b>: each position is worth double the one to its right — 1, 2, 4, 8, 16... So <code>13 = 8 + 4 + 1 = 1101</code>. Each 0/1 is a <b>bit</b>.</p>
+<ul>
+  <li><code>a &amp; b</code> (AND): a bit is 1 only where <b>both</b> have a 1. <code>12 &amp; 10 = 1100 &amp; 1010 = 1000 = 8</code>.</li>
+  <li><code>a | b</code> (OR): 1 where <b>either</b> has a 1. <code>12 | 10 = 1110 = 14</code>.</li>
+  <li><code>a ^ b</code> (XOR): 1 where they are <b>different</b>. <code>12 ^ 10 = 0110 = 6</code>.</li>
+  <li><code>a &lt;&lt; 1</code> moves every bit one place left = <b>times 2</b>; <code>a &gt;&gt; 1</code> moves right = <b>divide by 2</b> (rounding down).</li>
+</ul>
+<p>Three facts carry most interview questions: <b>x ^ x = 0</b> and <b>x ^ 0 = x</b> (so XOR-ing pairs cancels them), and <b>n &amp; (n − 1)</b> removes the lowest 1 bit of n (so it counts bits, and <code>n &amp; (n − 1) == 0</code> means n is a power of two).</p>
+<p>Test bit i with <code>(n &gt;&gt; i) &amp; 1</code>; set it with <code>n | (1 &lt;&lt; i)</code>; clear it with <code>n &amp; ~(1 &lt;&lt; i)</code>.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A row of light switches. AND is "on only if both rows have it on", OR is "on if either does", XOR is "flip the switch where the second row says 1" — flip the same switch twice and it is back where it started. A shift slides the whole row one place along.</p></div>
+
+<h2>Watch it work</h2>
+<p>The operators on <code>a = 12</code> and <code>b = 10</code>, bit by bit. Columns are bit values 16, 8, 4, 2, 1.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const W = 5, bits = n => [...Array(W)].map((_, k) => (n >> (W - 1 - k)) & 1);
+  const cols = [...Array(W)].map((_, k) => 1 << (W - 1 - k));
+  const a = 12, b = 10;
+  const r = Viz.recorder();
+  const G = (resLabel, res, opts = {}) => {
+    const rows = [bits(a), bits(b)], labels = ['a = ' + a, 'b = ' + b];
+    if (res != null) { rows.push(res.map(x => x === null ? '' : x)); labels.push(resLabel); }
+    const marks = {};
+    rows.forEach((row, ri) => row.forEach((v, c) => { if (v === 1) marks[`${ri},${c}`] = ri === 2 ? 'done' : 'visited'; }));
+    if (opts.col != null) for (let ri = 0; ri < 2; ri++) marks[`${ri},${opts.col}`] = 'compare';
+    if (opts.col != null && res) marks[`2,${opts.col}`] = res[opts.col] ? 'active' : 'bad';
+    return { type: 'grid', id: 'g', cells: rows, rowLabels: labels, colLabels: cols, marks, cell: 44 };
+  };
+  r.step([G()], [1], `12 = 8 + 4 = <b>01100</b>, 10 = 8 + 2 = <b>01010</b>. Each column is worth double the one to its right.`);
+  const res = Array(W).fill(null);
+  for (let c = 0; c < W; c++) {
+    res[c] = bits(a)[c] & bits(b)[c];
+    r.step([G('a & b', res.slice(), { col: c })], [2],
+      `AND, column ${cols[c]}: a has ${bits(a)[c]}, b has ${bits(b)[c]} → <b>${res[c]}</b>${res[c] ? ' (both are 1)' : bits(a)[c] || bits(b)[c] ? ' (only one is 1, not enough)' : ''}.`);
+  }
+  r.step([G('a & b = 8', bits(a & b))], [2], `a &amp; b = 01000 = <b>${a & b}</b>. AND keeps only the bits the two numbers share — great for <b>masking</b> (keeping chosen bits).`);
+  r.step([G('a | b = 14', bits(a | b))], [3], `a | b = 01110 = <b>${a | b}</b>. OR turns a bit on if <b>either</b> number has it.`);
+  r.step([G('a ^ b = 6', bits(a ^ b))], [4], `a ^ b = 00110 = <b>${a ^ b}</b>. XOR is 1 exactly where they <b>differ</b>; where both are 1 (the 8 column) it gives 0.`);
+  r.step([G('a << 1 = 24', bits(a << 1))], [5], `a &lt;&lt; 1 slides every bit one column left: 01100 → 11000 = <b>${a << 1}</b>. Every bit is worth double, so the number doubles.`);
+  r.step([G('a >> 1 = 6', bits(a >> 1))], [6], `a &gt;&gt; 1 slides right: 01100 → 00110 = <b>${a >> 1}</b>, half of 12. The rightmost bit falls off (that is why 13 &gt;&gt; 1 is 6, not 6.5).`);
+  r.step([G('a & 1 = 0', bits(a & 1), { })], [7], `a &amp; 1 keeps only the last bit: 0, so 12 is <b>even</b>. This is the fastest odd/even test.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'AND, OR, XOR and shifts', code:
+`int a = 12, b = 10;   // 01100 and 01010
+int and = a & b;      // both 1      -> 01000 = 8
+int or  = a | b;      // either 1    -> 01110 = 14
+int xor = a ^ b;      // different   -> 00110 = 6
+int dbl = a << 1;     // times 2     -> 11000 = 24
+int half = a >> 1;    // divide by 2 -> 00110 = 6
+int odd = a & 1;      // last bit: 1 = odd, 0 = even` });
+})();
+</script>
+
+<h3>Single Number with XOR</h3>
+<p>In <code>[4, 1, 2, 1, 2]</code> every number appears twice except one. XOR everything: pairs cancel to 0, the lonely one survives.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const nums = [4, 1, 2, 1, 2];
+  const W = 3, bits = n => [...Array(W)].map((_, k) => (n >> (W - 1 - k)) & 1);
+  const r = Viz.recorder();
+  let res = 0;
+  const G = (x, out, flip) => {
+    const rows = [bits(res)], labels = ['res = ' + res];
+    if (x != null) { rows.push(bits(x)); labels.push('x = ' + x); rows.push(bits(out)); labels.push('res ^ x = ' + out); }
+    const marks = {};
+    rows.forEach((row, ri) => row.forEach((v, c) => { if (v) marks[`${ri},${c}`] = ri === 2 ? 'done' : 'visited'; }));
+    if (x != null) bits(x).forEach((v, c) => { if (v) marks[`1,${c}`] = 'compare'; });
+    return { type: 'grid', id: 'g', cells: rows, rowLabels: labels, colLabels: [4, 2, 1], marks, cell: 44 };
+  };
+  const A = (i, m = {}) => ({ type: 'array', id: 'a', label: 'nums', values: nums, pointers: i == null ? {} : { i }, marks: m });
+  const seen = i => Object.fromEntries([...Array(i).keys()].map(j => [j, 'visited']));
+  r.step([A(null), G()], [2], 'res starts at 0. Remember: x ^ 0 = x and x ^ x = 0, and the order of XORs does not matter.');
+  for (let i = 0; i < nums.length; i++) {
+    const x = nums[i], out = res ^ x;
+    r.step([A(i, { ...seen(i), [i]: 'active' }), G(x, out)], [3],
+      `res ^ ${x}: every 1 bit of ${x} <b>flips</b> the same column of res. ${res} ^ ${x} = <b>${out}</b>.${nums.indexOf(x) < i ? ` This is the second ${x}, so its flips undo the first ${x}'s flips.` : ''}`);
+    res = out;
+    r.step([A(i, { ...seen(i + 1) }), G()], [3], `res is now <b>${res}</b>.${i === nums.length - 1 ? '' : ' Next number.'}`);
+  }
+  r.step([A(null, Object.fromEntries(nums.map((v, j) => [j, v === res ? 'done' : 'dim']))), G()], [4],
+    `Both 1s cancelled and both 2s cancelled, leaving <b>${res}</b> — the single number. O(n) time, O(1) space, no hash set.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Single number', code:
+`int singleNumber(int[] nums) {
+    int res = 0;
+    for (int x : nums) res ^= x;   // pairs cancel: x ^ x = 0
+    return res;                    // the lonely one is left
+}` });
+})();
+</script>
+
+<h3>n &amp; (n − 1): erase the lowest 1 bit</h3>
+<p>Count the 1 bits of <code>n = 13</code> (1101). Subtracting 1 turns the lowest 1 into 0 and every 0 to its right into 1; AND-ing with n wipes exactly that lowest 1.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const W = 4, bits = n => [...Array(W)].map((_, k) => (n >> (W - 1 - k)) & 1);
+  let n = 13, count = 0;
+  const r = Viz.recorder();
+  const G = (show) => {
+    const rows = [bits(n)], labels = ['n = ' + n];
+    const marks = {};
+    if (show) { rows.push(bits(n - 1)); labels.push('n−1 = ' + (n - 1)); rows.push(bits(n & (n - 1))); labels.push('n&(n−1) = ' + (n & (n - 1))); }
+    rows.forEach((row, ri) => row.forEach((v, c) => { if (v) marks[`${ri},${c}`] = ri === 2 ? 'done' : 'visited'; }));
+    if (show) { const low = W - 1 - Math.log2(n & -n); marks[`0,${low}`] = 'bad'; marks[`1,${low}`] = 'compare'; }
+    return { type: 'grid', id: 'g', cells: rows, rowLabels: labels, colLabels: [8, 4, 2, 1], marks, cell: 44 };
+  };
+  const V = () => ({ type: 'vars', id: 'v', vars: { count } });
+  r.step([G(false), V()], [2], '13 = 8 + 4 + 1 = 1101. Instead of checking all 32 bits, loop once per <b>1</b> bit.');
+  while (n !== 0) {
+    const low = n & -n;
+    r.step([G(true), V()], [4], `n = ${n}. Its lowest 1 bit is the ${low} column (red). n − 1 = ${n - 1}: that bit became 0 and the bits right of it became 1. AND keeps only what both share → <b>${n & (n - 1)}</b>.`);
+    n &= n - 1; count++;
+    r.step([G(false), V()], [4, 5], `n = ${n}: exactly one 1 bit is gone, so count = <b>${count}</b>.${n ? ' Repeat.' : ''}`);
+  }
+  r.step([G(false), V()], [7], `n is 0, no 1 bits left. 13 has <b>${count}</b> one-bits. Bonus: n is a power of two exactly when n &gt; 0 and n &amp; (n − 1) == 0 (it has a single 1 bit).`);
+  Viz.mount('#demo3', { frames: r.frames, title: 'n and n minus 1', code:
+`int hammingWeight(int n) {
+    int count = 0;
+    while (n != 0) {
+        n &= n - 1;        // erase the lowest 1 bit
+        count++;           // one loop per 1 bit
+    }
+    return count;
+}` });
+})();
+</script>
+
+<h3>Counting Bits (0 to n)</h3>
+<p>For every i from 0 to 8, how many 1 bits? <code>i &gt;&gt; 1</code> is i without its last bit, and we already know its answer.</p>
+<div id="demo4"></div>
+<script>
+(() => {
+  const n = 8;
+  const ans = Array(n + 1).fill('');
+  ans[0] = 0;
+  const r = Viz.recorder();
+  const bin = i => i.toString(2);
+  const P = (i, m = {}, vars = {}) => [
+    { type: 'array', id: 'b', label: 'i in binary', values: [...Array(n + 1).keys()].map(bin), marks: m, pointers: i == null ? {} : { i }, cell: 60 },
+    { type: 'array', id: 'a', label: 'ans[i] = number of 1 bits', values: ans.slice(), marks: m, cell: 60 },
+    { type: 'vars', id: 'v', vars }];
+  r.step(P(null, { 0: 'done' }, { 'ans[0]': 0 }), [2], 'ans[0] = 0: zero has no 1 bits. Every other answer will be built from a smaller one.');
+  for (let i = 1; i <= n; i++) {
+    const h = i >> 1, last = i & 1;
+    r.step(P(i, { [i]: 'active', [h]: 'compare' }, { 'i >> 1': `${i}>>1 = ${h}`, 'i & 1': last }), [5],
+      `i = ${i} (${bin(i)}). Drop its last bit: ${i} &gt;&gt; 1 = ${h} (${bin(h)}), whose answer ans[${h}] = ${ans[h]} is already known. The dropped bit is ${last}.`);
+    ans[i] = ans[h] + last;
+    r.step(P(i, { [i]: 'done' }, { [`ans[${i}]`]: `${ans[h]} + ${last} = ${ans[i]}` }), [5], `ans[${i}] = ans[${h}] + ${last} = <b>${ans[i]}</b>.`);
+  }
+  r.step(P(null, Object.fromEntries([...Array(n + 1).keys()].map(k => [k, 'done']))), [6], `Answer: <b>[${ans.join(', ')}]</b>. One step per number, O(n) total.`);
+  Viz.mount('#demo4', { frames: r.frames, title: 'Counting bits', code:
+`int[] countBits(int n) {
+    int[] ans = new int[n + 1];             // ans[0] = 0
+    for (int i = 1; i <= n; i++)
+        // i>>1 = i without its last bit; i&1 = that last bit
+        ans[i] = ans[i >> 1] + (i & 1);
+    return ans;
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"XOR is its own inverse and order does not matter, so every pair cancels to 0 and only the unpaired value remains. n &amp; (n − 1) clears the lowest set bit because subtracting 1 flips that bit and all the zeros below it, so the loop runs once per 1 bit."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code>(n &gt;&gt; i) &amp; <span class="n">1</span>      <span class="c">// is bit i set?</span>
+n | (<span class="n">1</span> &lt;&lt; i)       <span class="c">// set bit i</span>
+n &amp; ~(<span class="n">1</span> &lt;&lt; i)      <span class="c">// clear bit i</span>
+n ^ (<span class="n">1</span> &lt;&lt; i)       <span class="c">// flip bit i</span>
+n &amp; (n - <span class="n">1</span>)       <span class="c">// drop the lowest 1 bit; == 0 means power of two (n &gt; 0)</span>
+n &amp; -n            <span class="c">// keep only the lowest 1 bit</span>
+x ^ x == <span class="n">0</span>, x ^ <span class="n">0</span> == x   <span class="c">// pairs cancel</span>
+<span class="k">for</span> (<span class="k">int</span> m = <span class="n">0</span>; m &lt; (<span class="n">1</span> &lt;&lt; n); m++)  <span class="c">// every subset of n items</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>XOR cancels pairs. n &amp; (n−1) eats the lowest 1. Shift left doubles, shift right halves.</b></p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Operator precedence: <code>n &amp; 1 == 0</code> is parsed as <code>n &amp; (1 == 0)</code> — always write <code>(n &amp; 1) == 0</code>.</li>
+  <li>Using <code>&gt;&gt;</code> on negative numbers in Java keeps the sign bit; use <code>&gt;&gt;&gt;</code> for "unsigned" shifts (LC 190, 191).</li>
+  <li><code>1 &lt;&lt; 31</code> is negative and <code>1 &lt;&lt; 32</code> is 1 for ints; use <code>1L &lt;&lt;</code> for long masks.</li>
+  <li>Power-of-two check without <code>n &gt; 0</code>: 0 &amp; (−1) is 0, but 0 is not a power of two.</li>
+  <li>Single Number II (every number three times) cannot use plain XOR — count each bit mod 3.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/single-number/">136. Single Number</a> — XOR everything.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/number-of-1-bits/">191. Number of 1 Bits</a> — n &amp;= n − 1 until 0.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/counting-bits/">338. Counting Bits</a> — ans[i] = ans[i &gt;&gt; 1] + (i &amp; 1).</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/missing-number/">268. Missing Number</a> — XOR all indices and all values.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/reverse-bits/">190. Reverse Bits</a> — take the last bit, push it in from the right, 32 times.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sum-of-two-integers/">371. Sum of Two Integers</a> — XOR adds without carry, (a &amp; b) &lt;&lt; 1 is the carry.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/subsets/">78. Subsets</a> — mask m from 0 to 2ⁿ − 1, bit i = take item i.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/single-number-iii/">260. Single Number III</a> — XOR all, split the numbers by one differing bit.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>What are <code>6 &amp; 3</code>, <code>6 | 3</code> and <code>6 ^ 3</code>?</summary>
+<p>110 and 011: AND = 010 = 2, OR = 111 = 7, XOR = 101 = 5.</p></details>
+<details class="quiz"><summary>What does <code>40 &amp; 39</code> equal, and what does it tell you?</summary>
+<p>40 = 101000, 39 = 100111, AND = 100000 = 32. It is not 0, so 40 is not a power of two (it has two 1 bits).</p></details>
+<details class="quiz"><summary>Why does XOR find the single number even when the pairs are not next to each other?</summary>
+<p>XOR is commutative and associative, so the order does not matter: you can mentally regroup it as (1 ^ 1) ^ (2 ^ 2) ^ 4 = 0 ^ 0 ^ 4 = 4.</p></details>
+<details class="quiz"><summary>How do you check if a number is odd without <code>%</code>?</summary>
+<p><code>(n &amp; 1) == 1</code> — the last bit is 1 for odd numbers.</p></details>
+
+<nav class="pager"><a href="greedy.html">← Greedy</a><a href="recursion.html">Recursion →</a></nav>
+</main>
+</body>
+</html>

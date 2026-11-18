@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minimum Spanning Tree</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Graphs</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 38 · Graphs</div>
+<h1>Minimum Spanning Tree (Kruskal and Prim)</h1>
+<p class="lede">Connect every node with the cheapest total cable: Kruskal takes the cheapest edges first and skips any that would close a loop; Prim grows one tree, always adding the cheapest edge leaving it.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="union-find.html">Union-Find</a>, <a href="heap.html">Heap</a>, <a href="greedy.html">Greedy</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"Connect <b>all</b> points / cities / houses with the <b>minimum total cost</b>", "minimum cable / road / pipe", "cheapest network". Every node must be reachable, nobody cares about any single path's length — only the sum.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>6 villages, 9 possible roads, each with a building cost. You want every village connected (directly or through others) for the lowest total cost. The answer is always a <b>tree</b>: exactly 5 roads for 6 villages (n − 1), because a 6th road would make a loop, and a loop always has one road you could remove and stay connected. A tree that touches every node is a <b>spanning tree</b>; the cheapest one is the <b>MST</b>.</p>
+<p><b>Kruskal</b> (greedy on edges): sort the roads by cost. Walk the list from cheapest; build a road only if its two villages are <b>not yet connected</b> — Union-Find answers that in O(1). Stop after n − 1 roads. Time O(E log E) for the sort.</p>
+<p><b>Prim</b> (greedy on nodes): start with one village. Repeatedly add the cheapest road from "inside" to an "outside" village. With a heap that is O(E log V); for a complete graph (every pair of points can be joined, as in LC 1584) a simple array version is O(n²) and is fastest.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Kruskal is a shopper with a price-sorted catalogue who buys the cheapest useful item each time and skips items they effectively already own. Prim is a spreading town: every year it builds the single cheapest road from the town's edge to a new village.</p></div>
+
+<h2>Watch it work</h2>
+<p><b>1. Kruskal.</b> Edges sorted by cost along the top. Green = built, red = skipped because it would close a loop. The badge on each village is its Union-Find leader (same leader = already connected).</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const L = ['A', 'B', 'C', 'D', 'E', 'F'];
+  const nodes = [{ id: 0, x: 120, y: 130 }, { id: 1, x: 250, y: 50 }, { id: 2, x: 250, y: 220 }, { id: 3, x: 410, y: 50 }, { id: 4, x: 410, y: 220 }, { id: 5, x: 550, y: 130 }]
+    .map(x => ({ ...x, label: L[x.id] }));
+  const E = [[0, 1, 4], [0, 2, 3], [1, 2, 1], [1, 3, 2], [2, 3, 2], [2, 4, 5], [3, 4, 3], [3, 5, 6], [4, 5, 4]];
+  const edges = E.map(([a, b, w]) => ({ a, b, w }));
+  const sorted = [...E].sort((x, y) => x[2] - y[2]);
+  const parent = [0, 1, 2, 3, 4, 5];
+  const find = x => parent[x] === x ? x : (parent[x] = find(parent[x]));
+  const status = {};
+  let total = 0, used = 0;
+  const r = Viz.recorder();
+  const panels = (cur, marks = {}) => {
+    const em = {};
+    sorted.forEach(([a, b], i) => { if (status[i]) em[`${a}-${b}`] = status[i] === 'done' ? 'done' : 'dim'; });
+    if (cur != null) em[`${sorted[cur][0]}-${sorted[cur][1]}`] = status[cur] === 'bad' ? 'bad' : status[cur] ? 'active' : 'compare';
+    const am = {}; sorted.forEach((_, i) => { if (status[i]) am[i] = status[i] === 'done' ? 'done' : 'bad'; }); if (cur != null && !status[cur]) am[cur] = 'compare';
+    return [{ type: 'array', id: 'el', label: 'edges sorted by cost', values: sorted.map(([a, b, w]) => `${L[a]}${L[b]} ${w}`), marks: am, indices: false },
+      { type: 'graph', id: 'g', label: 'villages and possible roads', h: 260, nodes, edges, edgeMarks: em, marks,
+        badges: Object.fromEntries(nodes.map(x => [x.id, L[find(x.id)]])) },
+      { type: 'vars', id: 'v', vars: { 'roads built': `${used} / 5`, total } }];
+  };
+  r.step(panels(null), [2, 3], 'Sort all 9 roads from cheapest to most expensive. Every village starts as its own group (badge = its own letter).');
+  for (let i = 0; i < sorted.length && used < 5; i++) {
+    const [a, b, w] = sorted[i];
+    r.step(panels(i, { [a]: 'compare', [b]: 'compare' }), [5, 6], `Next cheapest: <b>${L[a]}–${L[b]}</b> (cost ${w}). Leaders: ${L[find(a)]} and ${L[find(b)]}.`);
+    if (find(a) === find(b)) {
+      status[i] = 'bad';
+      r.step(panels(i, { [a]: 'bad', [b]: 'bad' }), [7], `Same leader ${L[find(a)]}: ${L[a]} and ${L[b]} are already connected through built roads. Building ${L[a]}–${L[b]} would make a <b>loop</b> — skip it.`);
+      continue;
+    }
+    parent[find(a)] = find(b); status[i] = 'done'; total += w; used++;
+    r.step(panels(i, { [a]: 'done', [b]: 'done' }), used === 5 ? [8, 9] : [8],
+      used === 5 ? `Build ${L[a]}–${L[b]}: that is road <b>5 = n − 1</b>, so every village is connected. Stop early.`
+                 : `Different groups → build it (cost ${w}). The two groups merge. total = ${total}.`);
+  }
+  r.step(panels(null, Object.fromEntries(nodes.map(x => [x.id, 'done']))), [11],
+    `MST done: 5 roads, total cost <b>${total}</b>. The remaining roads were never needed — we did not even look at the last two.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Kruskal MST', code:
+`int kruskal(int n, int[][] edges) {
+    Arrays.sort(edges, (a, b) -> a[2] - b[2]);
+    UnionFind uf = new UnionFind(n);
+    int total = 0, used = 0;
+    for (int[] e : edges) {       // cheapest first
+        if (!uf.union(e[0], e[1]))
+            continue;             // would make a loop
+        total += e[2];
+        if (++used == n - 1) break;   // tree done
+    }
+    return total;
+}` });
+})();
+</script>
+
+<p><b>2. Prim on Min Cost to Connect All Points.</b> Points <code>[0,0] [2,2] [3,10] [5,2] [7,0]</code>; cost of joining two points = |x1 − x2| + |y1 − y2| (Manhattan distance). Every pair can be joined, so instead of a heap we keep <code>best[i]</code> = cheapest known link from the tree to point i. Blue lines are those best links (candidates); green ones are built.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const P = [[0, 0], [2, 2], [3, 10], [5, 2], [7, 0]];
+  const n = P.length;
+  const nodes = P.map(([x, y], i) => ({ id: i, label: 'P' + i, x: 150 + x * 60, y: 40 + (10 - y) * 20 }));
+  const md = (i, j) => Math.abs(P[i][0] - P[j][0]) + Math.abs(P[i][1] - P[j][1]);
+  const best = Array(n).fill(Infinity), from = Array(n).fill(-1), inT = Array(n).fill(false);
+  best[0] = 0;
+  const built = [];
+  let total = 0;
+  const r = Viz.recorder();
+  const fmt = v => v === Infinity ? '∞' : v;
+  const panels = (marks = {}, bm = {}, vars = {}) => {
+    const edges = [...built.map(([a, b]) => ({ a, b, w: md(a, b) }))];
+    const em = {}; built.forEach(([a, b]) => em[`${a}-${b}`] = 'done');
+    for (let v = 0; v < n; v++) if (!inT[v] && from[v] >= 0) { edges.push({ a: from[v], b: v, w: best[v] }); em[`${from[v]}-${v}`] = 'compare'; }
+    const m = {}; inT.forEach((t, i) => { if (t) m[i] = 'done'; }); Object.assign(m, marks);
+    return [{ type: 'graph', id: 'g', label: 'points (x, y) on a plane', h: 285, nodes, edges, edgeMarks: em, marks: m },
+      { type: 'array', id: 'b', label: 'best[i] = cheapest link from the tree', values: best.map(fmt),
+        marks: { ...Object.fromEntries(inT.map((t, i) => [i, t ? 'done' : ''])), ...bm } },
+      { type: 'vars', id: 'v', vars: { total, ...vars } }];
+  };
+  r.step(panels({ 0: 'active' }), [3, 4, 5, 6], 'best[0] = 0 (we start the tree at P0), all others ∞. Nothing is in the tree yet.');
+  for (let k = 0; k < n; k++) {
+    let u = -1;
+    for (let i = 0; i < n; i++) if (!inT[i] && (u < 0 || best[i] < best[u])) u = i;
+    inT[u] = true; total += best[u];
+    if (from[u] >= 0) built.push([from[u], u]);
+    r.step(panels({ [u]: 'active' }, { [u]: 'active' }, { added: 'P' + u }), [8, 9, 10, 11, 12],
+      k === 0 ? 'The cheapest point outside the tree is P0 (cost 0). Add it — the tree is just P0.'
+              : `Cheapest outside point: <b>P${u}</b> with best = ${best[u]} (link from P${from[u]}). Build that link. total = ${total}.`);
+    if (k === n - 1) break;
+    const changed = [];
+    for (let v = 0; v < n; v++) {
+      if (inT[v]) continue;
+      const d = md(u, v);
+      if (d < best[v]) { best[v] = d; from[v] = u; changed.push(`P${v} → ${d}`); }
+    }
+    r.step(panels({ [u]: 'active' }, Object.fromEntries(changed.map(s => [+s[1], 'compare']))), [13, 14, 15, 16],
+      changed.length ? `From the new point P${u}, some outside points got a cheaper link: ${changed.join(', ')}.`
+                     : `P${u} is not closer to any outside point than the links we already have. No change.`);
+  }
+  r.step(panels(Object.fromEntries(nodes.map(x => [x.id, 'done']))), [19],
+    `All 5 points connected with 4 links. Minimum total cost = <b>${total}</b>.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Prim min cost connect points', code:
+`int minCostConnectPoints(int[][] p) {
+    int n = p.length, total = 0;
+    int[] best = new int[n];     // cheapest link
+    Arrays.fill(best, Integer.MAX_VALUE);
+    boolean[] in = new boolean[n];
+    best[0] = 0;
+    for (int k = 0; k < n; k++) {
+        int u = -1;              // closest outside
+        for (int i = 0; i < n; i++)
+            if (!in[i] && (u < 0 || best[i] < best[u]))
+                u = i;
+        in[u] = true; total += best[u];
+        for (int v = 0; v < n; v++) {
+            int d = Math.abs(p[u][0] - p[v][0])
+                  + Math.abs(p[u][1] - p[v][1]);
+            if (!in[v] && d < best[v]) best[v] = d;
+        }
+    }
+    return total;
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"The cut property: for any split of the nodes into two sides, the cheapest edge crossing the split belongs to some MST. Kruskal's next non-loop edge and Prim's cheapest edge leaving the tree are both such cheapest crossing edges, so the greedy choice is always safe."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// Kruskal: edge list, sparse graphs</span>
+sort(edges by w);
+<span class="k">for</span> (e : edges) <span class="k">if</span> (uf.union(e.a, e.b)) { total += e.w; <span class="k">if</span> (++used == n - <span class="n">1</span>) <span class="k">break</span>; }
+<span class="c">// Prim (heap): adjacency list</span>
+pq.add({<span class="n">0</span>, start});
+<span class="k">while</span> (!pq.isEmpty()) {
+    {w, u} = pq.poll(); <span class="k">if</span> (in[u]) <span class="k">continue</span>;
+    in[u] = <span class="k">true</span>; total += w;
+    <span class="k">for</span> (edge u -&gt; v, c) <span class="k">if</span> (!in[v]) pq.add({c, v});
+}</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Kruskal = sort edges + Union-Find, skip loops, stop at n − 1. Prim = grow one tree by the cheapest outgoing edge.</b> Complete graph → array Prim O(n²).</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Confusing MST with shortest paths — MST minimises the <b>total</b>, not the distance from one source (that is Dijkstra).</li>
+  <li>For LC 1584, building all n² edges and sorting them for Kruskal — works, but array Prim is simpler and faster.</li>
+  <li>Prim with a heap: forgetting <code>if (in[u]) continue;</code> — the same node is added twice and the total is too big.</li>
+  <li>Not checking that the graph is connected (used &lt; n − 1 at the end means no spanning tree exists → often return −1).</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/min-cost-to-connect-all-points/">1584. Min Cost to Connect All Points</a> — exactly animation 2.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/connecting-cities-with-minimum-cost/">1135. Connecting Cities With Minimum Cost</a> — plain Kruskal; −1 if not connected.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/number-of-operations-to-make-network-connected/">1319. Number of Operations to Make Network Connected</a> — Union-Find: count spare edges vs components.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/optimize-water-distribution-in-a-village/">1168. Optimize Water Distribution in a Village</a> — add a virtual node 0 for wells, then Kruskal.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/find-critical-and-pseudo-critical-edges-in-minimum-spanning-tree/">1489. Critical and Pseudo-Critical Edges in MST</a> — rerun Kruskal without / forcing each edge.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>How many edges does an MST of n nodes have, and why?</summary>
+<p>n − 1. It must connect all n nodes (at least n − 1 edges) and has no loop (at most n − 1 edges).</p></details>
+<details class="quiz"><summary>In Kruskal, what tells you an edge would form a loop?</summary>
+<p>Its two endpoints already have the same Union-Find root, i.e. <code>union</code> returns false.</p></details>
+<details class="quiz"><summary>When is Prim preferable to Kruskal?</summary>
+<p>On dense graphs, especially complete ones like "connect all points": array Prim is O(n²) with no sorting and no edge list.</p></details>
+
+<nav class="pager"><a href="dijkstra.html">← Dijkstra</a><a href="backtracking.html">Backtracking →</a></nav>
+</main>
+</body>
+</html>

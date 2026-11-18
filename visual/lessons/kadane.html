@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kadane's Algorithm</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Arrays</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 5 · Arrays</div>
+<h1>Kadane's Algorithm</h1>
+<p class="lede">Walk the array once, and at every number decide: keep adding to the run I have, or throw it away and start fresh here. The best run you ever had is the answer.</p>
+<p class="meta">Time to learn: about 1.5 hours · Prerequisites: <a href="prefix-sum.html">Prefix sum</a>, <a href="big-o.html">Big-O</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"<b>Maximum sum subarray</b>", "largest <b>contiguous</b> sum", "<b>maximum product</b> subarray", "best profit from one buy and one sell", "maximum circular subarray" — one best stretch of neighbours, numbers can be <b>negative</b>, and you want O(n) time with O(1) memory.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>In <code>[−2, 1, −3, 4, −1, 2, 1, −5, 4]</code> the best stretch is <code>[4, −1, 2, 1]</code> with sum 6. There are 45 stretches; we do not want to try them all.</p>
+<p>Walk left to right keeping <b>cur</b> = the best sum of a stretch that <i>ends right here</i>. At the next number x there are only two choices:</p>
+<ul>
+  <li><b>Keep</b>: extend the previous stretch → <code>cur + x</code>.</li>
+  <li><b>Restart</b>: start a new stretch at x → <code>x</code>.</li>
+</ul>
+<p>Pick the bigger. In plain words: <b>if the run so far is negative, it only drags you down — drop it.</b> Keep <b>best</b> = the largest cur ever seen.</p>
+<p>For <b>products</b>, a negative number flips the biggest product into the smallest and the smallest into the biggest (−6 × −4 = 24). So keep both the largest (<b>hi</b>) and the smallest (<b>lo</b>) product ending here.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A gambler walking past a row of tables, each paying a win or a loss. He carries his running winnings. If at some table his pocket is below zero, he leaves that debt behind and starts again with an empty pocket — a debt can never help a future streak. He writes down his best pocket total ever.</p></div>
+
+<h2>Watch it work</h2>
+<p><b>Maximum Subarray.</b> The dashed box is the current run (ending at i); green cells are the best run found so far.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const a = [-2, 1, -3, 4, -1, 2, 1, -5, 4];
+  const r = Viz.recorder();
+  let cur = a[0], best = a[0], start = 0, bestL = 0, bestR = 0;
+  const bestMarks = () => Object.fromEntries([...Array(bestR - bestL + 1)].map((_, d) => [bestL + d, 'done']));
+  const P = (i, mk, vm) => [
+    { type: 'array', id: 'a', label: 'nums', values: a, window: [start, i], pointers: { i }, marks: mk },
+    { type: 'vars', id: 'v', vars: { cur, best }, marks: vm || {} }];
+  r.step(P(0, bestMarks()), [2], 'Start with the first number: the only stretch ending at index 0 is [−2], so cur = best = −2.');
+  for (let i = 1; i < a.length; i++) {
+    const keep = cur + a[i], restart = a[i];
+    const restarted = restart > keep;
+    const prev = cur;
+    if (restarted) start = i;
+    cur = Math.max(restart, keep);
+    const better = cur > best;
+    if (better) { best = cur; bestL = start; bestR = i; }
+    r.step(P(i, { ...bestMarks(), [i]: restarted ? 'active' : 'compare' }, { cur: restarted ? 'active' : '', best: better ? 'done' : '' }), [4, 5, 6, 7],
+      `x = ${a[i]}. Keep: ${prev} + ${a[i]} = ${keep}. Restart: ${restart}. ` +
+      (restarted ? `The old run (${prev}) is ${prev < 0 ? 'negative' : 'not helping'}, so <b>restart</b> here.` : `<b>Keep</b> the run.`) +
+      ` cur = ${cur}. ${better ? `New best: <b>${best}</b>.` : `best stays ${best}.`}`);
+  }
+  r.step([{ type: 'array', id: 'a', label: 'nums', values: a, window: [bestL, bestR], marks: bestMarks() }, { type: 'vars', id: 'v', vars: { best }, marks: { best: 'done' } }], [9],
+    `Answer: <b>${best}</b> from [${a.slice(bestL, bestR + 1).join(', ')}]. One pass, two variables: O(n) time, O(1) space.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Kadane maximum subarray', code:
+`int maxSubArray(int[] nums) {
+    int cur = nums[0], best = nums[0];
+    for (int i = 1; i < nums.length; i++) {
+        // keep the run, or restart here?
+        int keep = cur + nums[i];
+        cur = Math.max(nums[i], keep);
+        best = Math.max(best, cur);
+    }
+    return best;
+}` });
+})();
+</script>
+
+<p><b>Maximum Product Subarray</b> on <code>[2, −3, 0, −4, 2, −3]</code>. Watch <b>lo</b> (the most negative product) suddenly become the winner.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const a = [2, -3, 0, -4, 2, -3];
+  const r = Viz.recorder();
+  let hi = a[0], lo = a[0], best = a[0];
+  const arr = (i, mk) => ({ type: 'array', id: 'a', label: 'nums', values: a, pointers: { i }, marks: mk });
+  const vis = i => Object.fromEntries([...Array(i)].map((_, x) => [x, 'visited']));
+  r.step([arr(0, { 0: 'active' }), { type: 'vars', id: 'v', vars: { hi, lo, best } }], [2, 3],
+    'hi = largest product of a stretch ending here, lo = smallest (most negative). Both start at 2.');
+  for (let i = 1; i < a.length; i++) {
+    const x = a[i], p = hi * x, q = lo * x;
+    r.step([arr(i, { ...vis(i), [i]: 'compare' }), { type: 'vars', id: 'v', vars: { x, 'hi·x': p, 'lo·x': q, best } }], [5, 6],
+      `x = ${x}. Three candidates for a stretch ending here: x alone (${x}), hi·x (${p}), lo·x (${q}).` + (x < 0 ? ' x is negative, so it <b>swaps</b> big and small.' : x === 0 ? ' Zero wipes every product out.' : ''));
+    hi = Math.max(x, p, q); lo = Math.min(x, p, q);
+    const better = hi > best; best = Math.max(best, hi);
+    r.step([arr(i, { ...vis(i), [i]: better ? 'done' : 'active' }), { type: 'vars', id: 'v', vars: { hi, lo, best }, marks: { hi: 'active', lo: 'compare', best: better ? 'done' : '' } }], [7, 8, 9],
+      `hi = max = <b>${hi}</b>, lo = min = <b>${lo}</b>. ${better ? `New best <b>${best}</b>${q === hi && q > 0 ? ' — it came from lo × a negative!' : ''}.` : `best stays ${best}.`}`);
+  }
+  r.step([{ type: 'array', id: 'a', label: 'nums', values: a, window: [3, 5], marks: { 3: 'done', 4: 'done', 5: 'done' } }, { type: 'vars', id: 'v', vars: { best }, marks: { best: 'done' } }], [11],
+    `Answer: <b>${best}</b> from [−4, 2, −3]. Keeping only hi would have missed it — that is why we track lo too.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Maximum product subarray', code:
+`int maxProduct(int[] nums) {
+    int hi = nums[0], lo = nums[0];
+    int best = nums[0];
+    for (int i = 1; i < nums.length; i++) {
+        int x = nums[i];
+        int a = hi * x, b = lo * x;
+        hi = Math.max(x, Math.max(a, b));
+        lo = Math.min(x, Math.min(a, b));
+        best = Math.max(best, hi);
+    }
+    return best;
+}` });
+})();
+</script>
+
+<h2>Why it works (the one sentence to say in an interview)</h2>
+<p>"The best subarray ending at i either extends the best one ending at i − 1 or starts fresh at i — a negative prefix can only lower the sum — so one pass tracking 'best ending here' and 'best overall' finds the maximum in O(n). For products I track both max and min because a negative number swaps them."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">int</span> cur = a[<span class="n">0</span>], best = a[<span class="n">0</span>];
+<span class="k">for</span> (<span class="k">int</span> i = <span class="n">1</span>; i &lt; n; i++) {
+    cur  = Math.max(a[i], cur + a[i]);   <span class="c">// restart or keep</span>
+    best = Math.max(best, cur);
+}
+<span class="c">// Product: track hi and lo; candidates are a[i], hi*a[i], lo*a[i]</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Keep or restart: cur = max(x, cur + x).</b> A negative run is dead weight. Products: carry both hi and lo — a minus sign swaps them.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Starting with <code>best = 0</code>: if every number is negative (e.g. [−3, −1]) the answer is −1, not 0.</li>
+  <li>Product: updating <code>hi</code> first and then using the <i>new</i> hi to compute lo. Save hi·x and lo·x before updating either.</li>
+  <li>Forgetting that 0 resets a product run — the "x alone" candidate handles it.</li>
+  <li>Circular version: the answer is max(normal Kadane, total − minimum subarray), except when all numbers are negative.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock/">121. Best Time to Buy and Sell Stock</a> — Kadane on daily price differences, or track the minimum price.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-subarray/">53. Maximum Subarray</a> — the first animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-product-subarray/">152. Maximum Product Subarray</a> — the second animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-sum-circular-subarray/">918. Maximum Sum Circular Subarray</a> — total minus the minimum subarray.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-absolute-sum-of-any-subarray/">1749. Maximum Absolute Sum of Any Subarray</a> — run Kadane for max and for min.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>All numbers are negative: [−5, −2, −7]. What does Kadane return, and why must best not start at 0?</summary>
+<p>−2. A subarray must contain at least one number; starting best at 0 would wrongly return the empty subarray's sum.</p></details>
+<details class="quiz"><summary>When exactly do we "restart"?</summary>
+<p>When cur + x &lt; x, i.e. when cur &lt; 0. A negative run can only make the next stretch smaller.</p></details>
+<details class="quiz"><summary>Why track the minimum in the product version?</summary>
+<p>A very negative product times a negative number becomes a very large positive product — today's minimum can be tomorrow's maximum.</p></details>
+
+<nav class="pager"><a href="prefix-sum.html">← Prefix sum</a><a href="in-place-tricks.html">In-place tricks →</a></nav>
+</main>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Merge Sort</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Sorting</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 11 · Sorting</div>
+<h1>Merge Sort</h1>
+<p class="lede">Cut the array in half again and again until every piece has one number, then zip the pieces back together in order — always O(n log n).</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="recursion.html">Recursion</a>, <a href="two-pointers.html">Two pointers</a>, <a href="big-o.html">Big-O</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"Sort in guaranteed O(n log n)", "<b>stable</b> sort" (equal items keep their order), "sort a <b>linked list</b>", "count <b>inversions</b>" / "count smaller numbers after self", or any time you must <b>merge two sorted</b> things.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>Sorting 8 numbers is hard. Sorting 1 number is free — it is already sorted. Merge sort uses that:</p>
+<ul>
+  <li><b>Split:</b> cut <code>[38, 27, 43, 3, 9, 82, 10, 15]</code> into two halves of 4, cut those into 2s, then into 1s. Three rounds of cutting (8 → 4 → 2 → 1, because log₂ 8 = 3).</li>
+  <li><b>Merge:</b> two sorted piles can be combined into one sorted pile by repeatedly taking the smaller of the two front items. <code>[27, 38]</code> and <code>[3, 43]</code>: take 3, then 27, then 38, then 43.</li>
+  <li>Merge the 1s into sorted 2s, the 2s into sorted 4s, the 4s into the sorted 8.</li>
+</ul>
+<p>Each round of merging touches every number once (n work), and there are log n rounds, so the total is <b>O(n log n)</b> — even in the worst case. The cost: merging needs a spare array of size n (O(n) extra memory).</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Two teachers each hold a stack of exam papers already sorted by roll number. To combine them, you look at the top paper of each stack, take the smaller roll number, put it face down on the new pile, and repeat. You never need to look deeper than the two top papers.</p></div>
+
+<h2>Watch it work</h2>
+<p>The whole sort, level by level. Each box is one piece of the array. First the pieces are split down to single numbers, then merged back up. (The real code does this depth-first through recursion, but every merge happens exactly as shown.)</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const a = [38, 27, 43, 3, 9, 82, 10, 15];
+  const r = Viz.recorder();
+  // build the split tree: levels[d] = list of [lo, hi)
+  const levels = [[[0, a.length]]];
+  while (levels[levels.length - 1].some(([l, h]) => h - l > 1)) {
+    levels.push(levels[levels.length - 1].flatMap(([l, h]) => h - l > 1 ? [[l, l + ((h - l) >> 1)], [l + ((h - l) >> 1), h]] : [[l, h]]));
+  }
+  const content = {}; // "l-h" -> values shown
+  const sortedKeys = new Set();
+  for (const lv of levels) for (const [l, h] of lv) content[`${l}-${h}`] = a.slice(l, h);
+  const panel = (d, marks = {}) => ({ type: 'stack', id: 'L' + d, kind: 'set', label: d === 0 ? 'level 0: the whole array' : `level ${d}: pieces of ${levels[d][0][1] - levels[d][0][0]}`,
+    items: levels[d].map(([l, h]) => ({ id: `${l}-${h}`, val: content[`${l}-${h}`].join(' ') })),
+    marks: Object.fromEntries(levels[d].map(([l, h], i) => [i, marks[`${l}-${h}`] || (sortedKeys.has(`${l}-${h}`) ? 'done' : '')])) });
+  const show = (upto, marks, line, say) => r.step(levels.slice(0, upto + 1).map((_, d) => panel(d, marks)), line, say);
+  show(0, {}, [1], 'Start with 8 unsorted numbers.');
+  for (let d = 1; d < levels.length; d++) {
+    const n = levels[d][0][1] - levels[d][0][0];
+    show(d, {}, [3, 4, 5], d < levels.length - 1
+      ? `Split every piece in half at mid = lo + (hi − lo) / 2. Now we have pieces of <b>${n}</b>.`
+      : 'Split again. Every piece has <b>1</b> number, and a single number is already sorted. Splitting stops here (the base case).');
+  }
+  const last = levels.length - 1;
+  for (const [l, h] of levels[last]) sortedKeys.add(`${l}-${h}`);
+  for (let d = last - 1; d >= 0; d--) {
+    for (const [l, h] of levels[d]) {
+      if (h - l < 2) continue;
+      const m = l + ((h - l) >> 1);
+      const A = content[`${l}-${m}`], B = content[`${m}-${h}`];
+      const out = [...A, ...B].sort((x, y) => x - y);
+      const marks = { [`${l}-${m}`]: 'compare', [`${m}-${h}`]: 'compare' };
+      content[`${l}-${h}`] = out; sortedKeys.add(`${l}-${h}`);
+      marks[`${l}-${h}`] = 'active';
+      show(last, marks, [6, 7], `Merge sorted <b>[${A.join(', ')}]</b> and <b>[${B.join(', ')}]</b>: keep taking the smaller front number → <b>[${out.join(', ')}]</b>.`);
+    }
+  }
+  show(last, { '0-8': 'done' }, [8], `Done: <b>[${content['0-8'].join(', ')}]</b>. ${levels.length - 1} levels, each level of merging touches all 8 numbers once → O(n log n).`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Merge sort split and merge', code:
+`void mergeSort(int[] a, int lo, int hi) { // sorts [lo, hi)
+    if (hi - lo < 2) return;       // 0 or 1 item: sorted
+    int mid = lo + (hi - lo) / 2;
+    mergeSort(a, lo, mid);         // sort left half
+    mergeSort(a, mid, hi);         // sort right half
+    merge(a, lo, mid, hi);         // zip the two halves
+}
+// call: mergeSort(a, 0, a.length)` });
+})();
+</script>
+
+<p>Now zoom into one <b>merge</b>: combining the sorted halves <code>[3, 27, 38, 43]</code> and <code>[9, 10, 15, 82]</code>. Pointer <b>i</b> walks the left half, <b>j</b> the right half, <b>k</b> is where the next number is written.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const L = [3, 27, 38, 43], R = [9, 10, 15, 82];
+  const out = Array(L.length + R.length).fill('');
+  const r = Viz.recorder();
+  let i = 0, j = 0, k = 0;
+  const pan = (mi = {}, mj = {}) => [
+    { type: 'array', id: 'l', label: 'left half (sorted)', values: L, pointers: { i }, marks: { ...Object.fromEntries(L.map((_, x) => [x, x < i ? 'dim' : ''])), ...mi } },
+    { type: 'array', id: 'r', label: 'right half (sorted)', values: R, pointers: { j }, marks: { ...Object.fromEntries(R.map((_, x) => [x, x < j ? 'dim' : ''])), ...mj } },
+    { type: 'array', id: 'o', label: 'merged output', values: out, pointers: { k }, marks: Object.fromEntries(out.map((_, x) => [x, x < k ? 'done' : ''])) }];
+  r.step(pan(), [2], 'Both halves are already sorted. The smallest number overall must be at the front of one of them.');
+  while (i < L.length && j < R.length) {
+    r.step(pan({ [i]: 'compare' }, { [j]: 'compare' }), [3, 4], `Compare the two fronts: <b>${L[i]}</b> vs <b>${R[j]}</b>.`);
+    if (L[i] <= R[j]) {
+      out[k] = L[i];
+      r.step(pan({ [i]: 'active' }), [4], `${L[i]} ≤ ${R[j]}, so ${L[i]} is the smallest left. Write it at k = ${k} and move <b>i</b>. (Using ≤ keeps equal items in order: a <i>stable</i> sort.)`);
+      i++; k++;
+    } else {
+      out[k] = R[j];
+      r.step(pan({}, { [j]: 'active' }), [5], `${R[j]} &lt; ${L[i]}, so ${R[j]} is the smallest left. Write it at k = ${k} and move <b>j</b>.`);
+      j++; k++;
+    }
+  }
+  const rest = i < L.length ? 'left' : 'right';
+  while (i < L.length) out[k++] = L[i++];
+  while (j < R.length) out[k++] = R[j++];
+  r.step(pan(), [7, 8], `The other half ran out. Whatever is left in the ${rest} half is already sorted and bigger than everything written, so copy it straight over.`);
+  r.step(pan(), [9], `Merged: <b>[${out.join(', ')}]</b> in ${out.length} writes — linear time, O(n).`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Merging two sorted halves', code:
+`void merge(int[] a, int lo, int mid, int hi) {
+    int[] t = new int[hi - lo]; int i = lo, j = mid, k = 0;
+    while (i < mid && j < hi) {
+        if (a[i] <= a[j]) t[k++] = a[i++]; // left is smaller
+        else t[k++] = a[j++];              // right is smaller
+    }
+    while (i < mid) t[k++] = a[i++];       // leftovers
+    while (j < hi) t[k++] = a[j++];
+    System.arraycopy(t, 0, a, lo, t.length); // copy back
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"Merging two sorted arrays is linear: the smallest remaining item is always at one of the two fronts. Splitting halves the size each level, so there are log n levels of O(n) merging — O(n log n) in every case, with O(n) extra space, and it is stable."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">void</span> sort(<span class="k">int</span>[] a, <span class="k">int</span> lo, <span class="k">int</span> hi) {   <span class="c">// [lo, hi)</span>
+    <span class="k">if</span> (hi - lo &lt; <span class="n">2</span>) <span class="k">return</span>;
+    <span class="k">int</span> mid = lo + (hi - lo) / <span class="n">2</span>;
+    sort(a, lo, mid); sort(a, mid, hi);
+    merge(a, lo, mid, hi);   <span class="c">// take the smaller front, copy leftovers</span>
+}</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Split to 1s, merge by "smaller front wins".</b> log n levels × n work = O(n log n), always. Stable. O(n) extra space.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Forgetting the leftover loops — the tail of one half never gets copied.</li>
+  <li>Using <code>&lt;</code> instead of <code>&lt;=</code> in the merge: still sorted, but no longer stable.</li>
+  <li>Allocating the temp array inside every call is fine for interviews, but say you could allocate it once and pass it down.</li>
+  <li>Mixing <code>[lo, hi]</code> and <code>[lo, hi)</code> ranges — pick half-open and stick to it.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/merge-sorted-array/">88. Merge Sorted Array</a> — the merge step, filled from the back.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/merge-two-sorted-lists/">21. Merge Two Sorted Lists</a> — same merge on linked lists.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-an-array/">912. Sort an Array</a> — write merge sort from memory.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-list/">148. Sort List</a> — merge sort on a linked list (find middle with fast/slow).</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/count-of-smaller-numbers-after-self/">315. Count of Smaller Numbers After Self</a> — count during the merge.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/reverse-pairs/">493. Reverse Pairs</a> — count pairs across halves before merging.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Why is merge sort O(n log n) even on the worst input?</summary>
+<p>It always splits exactly in half, whatever the values are, so there are always log n levels, each costing O(n).</p></details>
+<details class="quiz"><summary>What does "stable" mean and why does merge sort have it?</summary>
+<p>Equal items keep their original order. On a tie the merge takes from the left half first (<code>&lt;=</code>), and left items came first originally.</p></details>
+<details class="quiz"><summary>Why is merge sort the best choice for sorting a linked list?</summary>
+<p>It only walks forward and re-links nodes, so merging needs no extra array (O(log n) stack only), and it does not need random access like quick sort's partition.</p></details>
+
+<nav class="pager"><a href="rotated-array.html">← Rotated sorted array</a><a href="quick-sort.html">Quick sort →</a></nav>
+</main>
+</body>
+</html>

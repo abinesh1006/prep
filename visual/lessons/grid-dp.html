@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grid DP</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Dynamic programming</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 47 · Dynamic programming</div>
+<h1>Grid DP</h1>
+<p class="lede">When you can only move right or down, each cell's answer comes from the cell above and the cell to its left — fill the grid row by row.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="dp-intro.html">DP intro</a>, <a href="lcs-edit-distance.html">LCS &amp; edit distance</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>A grid and movement only <b>right / down</b> (or any direction that never goes back): "number of <b>unique paths</b>", "<b>minimum path sum</b>", "paths with obstacles", "largest <b>square</b> of 1s", "dungeon game". If you may move in all four directions, it is a graph problem (BFS / Dijkstra), not grid DP.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>A robot starts at the top-left of a 3 × 4 grid and may only step <b>right</b> or <b>down</b>. How many different routes reach the bottom-right?</p>
+<p>The last step into any cell came either from the cell <b>above</b> or from the cell to the <b>left</b>. So: <code>paths(cell) = paths(above) + paths(left)</code>. The top row and the left column have exactly 1 path each (go straight). Fill row by row, left to right, and every cell you need is already done.</p>
+<p>Change "+" to "min, plus this cell's cost" and you have <b>Minimum Path Sum</b>. Change the question to "biggest square of 1s whose bottom-right corner is here" and the cell looks at three neighbours — up, left and up-left — and takes the <b>smallest</b> plus 1: <b>Maximal Square</b>.</p>
+<p>Memory trick: each row only needs the row above, so one array of length n is enough (<code>dp[j] += dp[j−1]</code> for unique paths).</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Walking through a city laid out in blocks where every street is one-way, either east or south. The number of ways to reach a crossing is the ways to reach the crossing just north of it plus the ways to reach the one just west — write the count at each crossing as you go.</p></div>
+
+<h2>Watch it work</h2>
+<h3>1. Unique Paths (3 × 4)</h3>
+<p>Blue = the two cells this one adds (above and left), yellow = being filled.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const m = 3, n = 4, r = Viz.recorder();
+  const dp = [...Array(m)].map(() => Array(n).fill(''));
+  const grid = (marks, vars, line, say) => r.step([
+    { type: 'grid', id: 'g', label: 'dp[i][j] = number of paths to cell (i, j)', cells: dp.map(x => [...x]), marks, cell: 56,
+      rowLabels: [0, 1, 2], colLabels: [0, 1, 2, 3] },
+    { type: 'vars', id: 'v', vars }], line, say);
+  grid({ '0,0': 'compare', [`${m - 1},${n - 1}`]: 'compare' }, { start: '(0,0)', goal: '(2,3)' }, [1], 'Start top-left, goal bottom-right, moves only <b>right</b> or <b>down</b>.');
+  for (let i = 0; i < m; i++) dp[i][0] = 1;
+  for (let j = 0; j < n; j++) dp[0][j] = 1;
+  const edge = {}; for (let i = 0; i < m; i++) edge[`${i},0`] = 'visited'; for (let j = 0; j < n; j++) edge[`0,${j}`] = 'visited';
+  grid(edge, { 'top row': 1, 'left column': 1 }, [3, 4], 'Top row: you can only get there by going right all the way → <b>1 path</b>. Left column: only by going down → <b>1 path</b>.');
+  for (let i = 1; i < m; i++) for (let j = 1; j < n; j++) {
+    dp[i][j] = dp[i - 1][j] + dp[i][j - 1];
+    grid({ [`${i - 1},${j}`]: 'compare', [`${i},${j - 1}`]: 'compare', [`${i},${j}`]: 'active' }, { up: dp[i - 1][j], left: dp[i][j - 1], [`dp[${i}][${j}]`]: dp[i][j] }, [7],
+      `Cell (${i},${j}): the last step came from above (${dp[i - 1][j]} paths) or from the left (${dp[i][j - 1]} paths). Add them: <b>${dp[i][j]}</b>.`);
+  }
+  grid({ [`${m - 1},${n - 1}`]: 'done' }, { answer: dp[m - 1][n - 1] }, [8],
+    `Answer: <b>${dp[m - 1][n - 1]} paths</b>. (Check: 5 moves, choose which 2 are "down" → 5·4/2 = 10.) O(m × n) time.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Unique paths', code:
+`int uniquePaths(int m, int n) {
+    int[][] dp = new int[m][n];
+    for (int i = 0; i < m; i++) dp[i][0] = 1; // down only
+    for (int j = 0; j < n; j++) dp[0][j] = 1; // right only
+    for (int i = 1; i < m; i++)
+        for (int j = 1; j < n; j++)
+            dp[i][j] = dp[i - 1][j] + dp[i][j - 1]; // up + left
+    return dp[m - 1][n - 1];
+}` });
+})();
+</script>
+
+<h3>2. Minimum Path Sum</h3>
+<p>Each cell has a cost; find the cheapest route from top-left to bottom-right (right / down moves). <code>dp[i][j]</code> = cheapest total to reach (i, j), including its own cost.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const g = [[1, 3, 1], [1, 5, 1], [4, 2, 1]], m = 3, n = 3, r = Viz.recorder();
+  const dp = [...Array(m)].map(() => Array(n).fill(''));
+  const step = (gm, dm, vars, line, say) => r.step([
+    { type: 'grid', id: 'cost', label: 'cost of each cell', cells: g, marks: gm, cell: 52 },
+    { type: 'grid', id: 'dp', label: 'dp = cheapest total to reach the cell', cells: dp.map(x => [...x]), marks: dm, cell: 52 },
+    { type: 'vars', id: 'v', vars }], line, say);
+  step({}, {}, { moves: 'right / down' }, [1], 'Costs on top, our table below. We fill the table in reading order.');
+  for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) {
+    let say, line, dm = { [`${i},${j}`]: 'active' }, vars;
+    if (i === 0 && j === 0) { dp[0][0] = g[0][0]; say = `The start cell just costs its own ${g[0][0]}.`; line = [6]; vars = { 'dp[0][0]': dp[0][0] }; }
+    else if (i === 0) { dp[i][j] = dp[i][j - 1] + g[i][j]; dm[`${i},${j - 1}`] = 'compare'; say = `Top row: only reachable from the left. ${dp[i][j - 1]} + ${g[i][j]} = <b>${dp[i][j]}</b>.`; line = [7]; vars = { left: dp[i][j - 1], cost: g[i][j] }; }
+    else if (j === 0) { dp[i][j] = dp[i - 1][j] + g[i][j]; dm[`${i - 1},${j}`] = 'compare'; say = `Left column: only reachable from above. ${dp[i - 1][j]} + ${g[i][j]} = <b>${dp[i][j]}</b>.`; line = [8]; vars = { up: dp[i - 1][j], cost: g[i][j] }; }
+    else {
+      const up = dp[i - 1][j], left = dp[i][j - 1];
+      dp[i][j] = g[i][j] + Math.min(up, left);
+      dm[`${i - 1},${j}`] = up <= left ? 'done' : 'compare'; dm[`${i},${j - 1}`] = up <= left ? 'compare' : 'done';
+      say = `Cell (${i},${j}) costs ${g[i][j]}. Arrive from above (${up}) or from the left (${left}) — take the cheaper ${Math.min(up, left)}: ${g[i][j]} + ${Math.min(up, left)} = <b>${dp[i][j]}</b>.`;
+      line = [9, 10]; vars = { up, left, cost: g[i][j] };
+    }
+    step({ [`${i},${j}`]: 'active' }, dm, vars, line, say);
+  }
+  // walk back the cheapest route
+  const route = []; let i = m - 1, j = n - 1;
+  while (true) { route.unshift([i, j]); if (i === 0 && j === 0) break; if (i === 0) j--; else if (j === 0) i--; else if (dp[i - 1][j] <= dp[i][j - 1]) i--; else j--; }
+  const pm = Object.fromEntries(route.map(([a, b]) => [`${a},${b}`, 'done']));
+  step(pm, pm, { answer: dp[m - 1][n - 1] }, [12],
+    `Answer <b>${dp[m - 1][n - 1]}</b>. Walking back from the corner to whichever neighbour is cheaper gives the route ${route.map(([a, b]) => g[a][b]).join(' → ')} (sum 7).`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Minimum path sum', code:
+`int minPathSum(int[][] g) {
+    int m = g.length, n = g[0].length;
+    int[][] dp = new int[m][n];
+    for (int i = 0; i < m; i++)
+        for (int j = 0; j < n; j++) {
+            if (i == 0 && j == 0) dp[i][j] = g[0][0];
+            else if (i == 0) dp[i][j] = dp[i][j - 1] + g[i][j];
+            else if (j == 0) dp[i][j] = dp[i - 1][j] + g[i][j];
+            else dp[i][j] = g[i][j]
+                 + Math.min(dp[i - 1][j], dp[i][j - 1]);
+        }
+    return dp[m - 1][n - 1];
+}` });
+})();
+</script>
+
+<h3>3. Maximal Square</h3>
+<p>Find the largest square made only of 1s. <code>dp[i][j]</code> = side of the biggest all-1 square whose <b>bottom-right corner</b> is (i, j). A square of side k there needs squares of side k − 1 above, to the left and up-left — so take the <b>smallest</b> of those three, plus 1.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const a = [[1, 0, 1, 0, 0], [1, 0, 1, 1, 1], [1, 1, 1, 1, 1], [1, 0, 0, 1, 0]], m = 4, n = 5, r = Viz.recorder();
+  const dp = [...Array(m)].map(() => Array(n).fill(''));
+  let best = 0;
+  const step = (am, dm, vars, line, say) => r.step([
+    { type: 'grid', id: 'mat', label: 'matrix', cells: a, marks: am, cell: 46 },
+    { type: 'grid', id: 'dp', label: 'dp = side of the biggest square ending here', cells: dp.map(x => [...x]), marks: dm, cell: 46 },
+    { type: 'vars', id: 'v', vars: { ...vars, best } }], line, say);
+  step({}, {}, {}, [1], 'Look for the largest square of 1s. Answer for this matrix: a 2 × 2 square — watch the table find it.');
+  for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) if (i === 0 || j === 0) { dp[i][j] = a[i][j]; best = Math.max(best, dp[i][j]); }
+  const edge = {}; for (let i = 0; i < m; i++) edge[`${i},0`] = 'visited'; for (let j = 0; j < n; j++) edge[`0,${j}`] = 'visited';
+  step(edge, edge, {}, [7, 8], 'First row and first column: a square ending there can be at most 1 × 1, so dp = the cell itself (0 or 1).');
+  for (let i = 1; i < m; i++) for (let j = 1; j < n; j++) {
+    if (a[i][j] === 0) {
+      dp[i][j] = 0;
+      step({ [`${i},${j}`]: 'bad' }, { [`${i},${j}`]: 'bad' }, { [`a[${i}][${j}]`]: 0 }, [7], `(${i},${j}) is 0 → no square can end here. dp = 0.`);
+      continue;
+    }
+    const d = dp[i - 1][j - 1], u = dp[i - 1][j], l = dp[i][j - 1];
+    dp[i][j] = 1 + Math.min(d, u, l);
+    const grew = dp[i][j] > best; best = Math.max(best, dp[i][j]);
+    const am = { [`${i},${j}`]: 'active' };
+    if (dp[i][j] > 1) for (let x = i - dp[i][j] + 1; x <= i; x++) for (let y = j - dp[i][j] + 1; y <= j; y++) am[`${x},${y}`] = x === i && y === j ? 'active' : 'done';
+    step(am, { [`${i - 1},${j - 1}`]: 'compare', [`${i - 1},${j}`]: 'compare', [`${i},${j - 1}`]: 'compare', [`${i},${j}`]: 'active' },
+      { 'up-left': d, up: u, left: l }, [9, 10, 11],
+      `(${i},${j}) is 1. Neighbours ↖ ${d}, ↑ ${u}, ← ${l}; the smallest is ${Math.min(d, u, l)}, so dp = ${Math.min(d, u, l)} + 1 = <b>${dp[i][j]}</b>.${dp[i][j] > 1 ? ` A ${dp[i][j]} × ${dp[i][j]} square ends here (green)${grew ? ' — new best!' : '.'}` : ''}`);
+  }
+  step({}, {}, { area: best * best }, [13], `Largest side = <b>${best}</b>, so the area is <b>${best * best}</b>. The weakest of the three neighbours limits how big the square can grow — that is why it is min, not max.`);
+  Viz.mount('#demo3', { frames: r.frames, title: 'Maximal square', code:
+`int maximalSquare(char[][] a) {
+    int m = a.length, n = a[0].length, best = 0;
+    // dp[i][j] = side of the biggest square
+    // whose bottom-right corner is (i, j)
+    int[][] dp = new int[m][n];
+    for (int i = 0; i < m; i++) for (int j = 0; j < n; j++) {
+        if (a[i][j] == '0') continue;      // stays 0
+        if (i == 0 || j == 0) dp[i][j] = 1;
+        else dp[i][j] = 1 + Math.min(dp[i - 1][j - 1],
+                 Math.min(dp[i - 1][j], dp[i][j - 1]));
+        best = Math.max(best, dp[i][j]);
+    }
+    return best * best;                    // area
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"With only right and down moves, every route into a cell passes through its top or left neighbour, and those are computed earlier in row-major order. So each cell combines two (or three) finished answers in O(1), and the whole grid is O(m × n)."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">for</span> (<span class="k">int</span> i = <span class="n">0</span>; i &lt; m; i++)
+    <span class="k">for</span> (<span class="k">int</span> j = <span class="n">0</span>; j &lt; n; j++) {
+        <span class="k">if</span> (i == <span class="n">0</span> || j == <span class="n">0</span>) dp[i][j] = base(i, j);           <span class="c">// edges</span>
+        <span class="k">else</span> dp[i][j] = combine(dp[i-<span class="n">1</span>][j], dp[i][j-<span class="n">1</span>]);  <span class="c">// up, left (+ up-left)</span>
+    }
+<span class="c">// one row is enough: dp[j] = combine(dp[j] /* up */, dp[j-1] /* left */)</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Right/down only → up + left.</b> Paths: add. Cost: min + cell. Square: min of three + 1.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Forgetting the edge cells (top row / left column have only one neighbour).</li>
+  <li>Obstacles (Unique Paths II): an obstacle cell is 0, and so is everything after an obstacle in the first row / column.</li>
+  <li>Maximal Square: returning the side instead of the <b>area</b>, or comparing chars with ints (<code>'1'</code> vs <code>1</code>).</li>
+  <li>Using grid DP when moves can go up or left — then cells depend on each other in a cycle; use BFS / Dijkstra.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/unique-paths/">62. Unique Paths</a> — the first animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/unique-paths-ii/">63. Unique Paths II</a> — obstacles are 0.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/minimum-path-sum/">64. Minimum Path Sum</a> — the second animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/triangle/">120. Triangle</a> — fill from the bottom row up.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximal-square/">221. Maximal Square</a> — the third animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/count-square-submatrices-with-all-ones/">1277. Count Square Submatrices</a> — same table, answer = sum of dp.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/dungeon-game/">174. Dungeon Game</a> — fill from the bottom-right backwards.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Unique paths in a 2 × 2 grid?</summary>
+<p>2 — right then down, or down then right. dp = [[1,1],[1,2]].</p></details>
+<details class="quiz"><summary>Why min of three neighbours in Maximal Square, not max?</summary>
+<p>The square of side k needs all three neighbouring squares to be at least k − 1. The smallest one is the limit.</p></details>
+<details class="quiz"><summary>How do you get Unique Paths down to O(n) memory?</summary>
+<p>Keep one row: <code>dp[j] += dp[j − 1]</code>. Before the update dp[j] is the value from the row above; dp[j − 1] is already the current row's left cell.</p></details>
+
+<nav class="pager"><a href="knapsack.html">← Knapsack</a></nav>
+</main>
+</body>
+</html>

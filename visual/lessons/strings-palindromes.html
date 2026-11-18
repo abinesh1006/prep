@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strings and Palindromes</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>MAANG extras</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 48 · MAANG extras</div>
+<h1>Strings and Palindromes</h1>
+<p class="lede">Four string tools interviewers love: grow palindromes from their middle, compare letter counts in a sliding window, skip re-checking with KMP, and compare whole windows with one number using a rolling hash.</p>
+<p class="meta">Time to learn: about 3 hours · Prerequisites: <a href="two-pointers.html">Two pointers</a>, <a href="sliding-window.html">Sliding window</a>, <a href="arrays-hashing.html">Arrays and hashing</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"<b>Longest palindromic</b> substring", "count <b>palindromic</b> substrings" → expand around center. "<b>Anagram</b>", "<b>permutation</b> of p inside s" → frequency window. "Find a <b>pattern</b> in a text", "repeated substring", "shortest palindrome by adding letters" → KMP prefix function. "Find <b>duplicate</b> substrings of length L", "compare many substrings fast" → rolling hash (Rabin–Karp).</p></div>
+
+<h2>The idea in plain words</h2>
+<p><b>Palindrome</b> = a word that reads the same forwards and backwards, like <code>abba</code> or <code>racecar</code>. Every palindrome has a <b>middle</b>: a single letter (<code>race<b>c</b>ar</code>, odd length) or the gap between two letters (<code>ab|ba</code>, even length). A string of length 6 has 6 letters and 5 gaps, so only 11 possible middles. From each middle, step one letter left and one right; as long as the two letters match, it is still a palindrome. That is <b>expand around center</b>: O(n²) time, O(1) extra memory, and much simpler than any table.</p>
+<p><b>Anagram</b> = same letters, different order (<code>abc</code>, <code>bca</code>, <code>cab</code>). Two words are anagrams exactly when their <b>letter counts</b> match. To find every anagram of <code>p</code> (length 3) inside <code>s</code>, slide a window of length 3: add the new letter on the right, remove the old letter on the left, and compare 26 counts. Each slide costs O(26), not O(3 log 3) for sorting.</p>
+<p><b>KMP</b> (Knuth–Morris–Pratt) answers "where does pattern <code>p</code> appear in text <code>t</code>?" in O(n + m). Its secret is one array, <code>lps</code> ("longest proper prefix that is also a suffix"). <code>lps[i]</code> says: in <code>p[0..i]</code>, how many letters at the end are the same as the letters at the start? For <code>aabaaab</code>, the full string ends with <code>aab</code> and starts with <code>aab</code>, so <code>lps[6] = 3</code>. When a match fails, you do not start over — you jump back to that already-matched prefix.</p>
+<p><b>Rabin–Karp</b> turns each window of text into one number (a <b>hash</b> = a fingerprint number). If the window's number differs from the pattern's number, the strings surely differ, so you skip them in O(1). Sliding the window one step only needs "remove the left digit, shift, add the right digit" — a <b>rolling hash</b>. If the numbers are equal, you check letter by letter, because two different strings can share a hash (a <b>collision</b>).</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Expand around center is like dropping a stone in a pond: the ripple grows outwards from the middle until the two sides stop matching. The anagram window is a bag of Scrabble tiles: you do not care about the order, only how many of each letter are in the bag. KMP is a reader who, after a mismatch, remembers "the last few letters I read are also how the word starts", so they never re-read. The rolling hash is a cashier who keeps a running total instead of re-adding the whole basket each time one item changes.</p></div>
+
+<h2>Watch it work</h2>
+<h3>1. Longest palindromic substring — expand around every middle</h3>
+<p>String <code>cabbad</code>. We try all 11 middles. The answer, <code>abba</code>, comes from an even middle — the gap between the two <code>b</code>s.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const s = 'cabbad'.split(''), n = s.length;
+  const r = Viz.recorder();
+  let best = [0, 0];
+  const bestStr = () => s.slice(best[0], best[1] + 1).join('');
+  const panel = (win, marks, ptr) => ({ type: 'array', id: 's', label: 's', values: s, window: win, marks, pointers: ptr });
+  const vars = extra => ({ type: 'vars', id: 'v', vars: { ...extra, best: `"${bestStr()}"` }, marks: { best: 'done' } });
+  r.step([panel(null, {}, {}), vars({ middles: 2 * n - 1 })], [3],
+    'Every palindrome has a middle: a letter (odd length) or a gap between letters (even length). 6 letters + 5 gaps = <b>11 middles</b>. Try each one.');
+  function grow(l, r0, odd) {
+    let a = l, b = r0;
+    while (a >= 0 && b < n && s[a] === s[b]) {
+      if (!(odd && a === b)) r.step([panel([a, b], { [a]: 'done', [b]: 'done' }, { l: a, r: b }), vars({ length: b - a + 1 })], [12, 13, 14],
+        `s[${a}] = s[${b}] = '${s[a]}'. Both ends match, so <b>"${s.slice(a, b + 1).join('')}"</b> is a palindrome. Grow one step further out.`);
+      a--; b++;
+    }
+    const L = a + 1, R = b - 1, len = R - L + 1;
+    const marks = {};
+    if (a >= 0 && b < n) { marks[a] = 'bad'; marks[b] = 'bad'; }
+    let why;
+    if (a < 0 || b >= n) why = 'We hit the edge of the string, so we cannot grow.';
+    else why = `s[${a}] = '${s[a]}' but s[${b}] = '${s[b]}'. They differ, so growing stops here.`;
+    let found = len > 0 ? `Longest palindrome at this middle: "${s.slice(L, R + 1).join('')}".` : 'No palindrome at this gap.';
+    if (len > best[1] - best[0] + 1) { best = [L, R]; found += ' <b>New best!</b>'; }
+    const ptr = {}; if (a >= 0 && b < n) { ptr.l = a; ptr.r = b; }
+    r.step([panel(len > 0 ? [L, R] : null, marks, ptr), vars({ middle: odd ? `letter ${l}` : `gap ${l}|${r0}` })], [4, 5, 16],
+      `${odd ? `Middle = letter ${l} ('${s[l]}').` : `Middle = gap between ${l} and ${r0}.`} ${why} ${found}`);
+  }
+  for (let i = 0; i < n; i++) {
+    grow(i, i, true);
+    if (i + 1 < n) grow(i, i + 1, false);
+  }
+  r.step([panel(best, Object.fromEntries([...Array(best[1] - best[0] + 1).keys()].map(k => [best[0] + k, 'done'])), {}), vars({})], [9],
+    `All middles tried. The longest palindrome is <b>"${bestStr()}"</b> (start ${best[0]}, length ${best[1] - best[0] + 1}). Counting palindromic substrings is the same loop: add 1 for every successful grow step.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Expand around center', code:
+`String longestPalindrome(String s) {
+    int start = 0, best = 0;
+    for (int i = 0; i < s.length(); i++) {
+        int a = expand(s, i, i);       // odd: middle is a letter
+        int b = expand(s, i, i + 1);   // even: middle is a gap
+        int len = Math.max(a, b);
+        if (len > best) { best = len; start = i - (len - 1) / 2; }
+    }
+    return s.substring(start, start + best);
+}
+int expand(String s, int l, int r) {
+    while (l >= 0 && r < s.length()
+           && s.charAt(l) == s.charAt(r)) {
+        l--; r++;                      // ends match: grow outwards
+    }
+    return r - l - 1;                  // length of the palindrome
+}` });
+})();
+</script>
+
+<h3>2. Find all anagrams — a fixed window of letter counts</h3>
+<p>Find every start index in <code>cbaebabacd</code> where a rearrangement of <code>abc</code> begins. The window always holds exactly 3 letters.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const s = 'cbaebabacd'.split(''), p = 'abc', m = p.length;
+  const letters = ['a', 'b', 'c', 'd', 'e'];
+  const need = letters.map(c => [...p].filter(x => x === c).length);
+  const win = letters.map(() => 0);
+  const ans = [];
+  const r = Viz.recorder();
+  const grid = () => {
+    const marks = {};
+    letters.forEach((c, k) => { marks[`1,${k}`] = win[k] === need[k] ? 'done' : 'bad'; });
+    return { type: 'grid', id: 'g', label: 'letter counts', cells: [need.slice(), win.slice()], rowLabels: ['p', 'window'], colLabels: letters, marks };
+  };
+  const arr = (lo, hi, marks) => ({ type: 'array', id: 's', label: 's', values: s, window: [lo, hi], marks, pointers: { left: lo, right: hi } });
+  const out = () => ({ type: 'text', id: 'o', text: `answer = [${ans.join(', ')}]` });
+  r.step([{ type: 'array', id: 's', label: 's', values: s }, grid(), out()], [4],
+    'Count the letters of p = "abc": one a, one b, one c. Any window with the <b>same counts</b> is an anagram — the order does not matter.');
+  for (let i = 0; i < s.length; i++) {
+    win[letters.indexOf(s[i])]++;
+    let dropped = '';
+    if (i >= m) { win[letters.indexOf(s[i - m])]--; dropped = ` and remove '${s[i - m]}' from the left`; }
+    if (i < m - 1) continue;
+    const lo = i - m + 1;
+    const same = need.every((v, k) => v === win[k]);
+    if (same) ans.push(lo);
+    const marks = {}; for (let k = lo; k <= i; k++) marks[k] = same ? 'done' : 'compare';
+    marks[i] = same ? 'done' : 'active';
+    const first = i === m - 1;
+    r.step([arr(lo, i, marks), grid(), out()], first ? [5, 6, 9] : [6, 7, 8, 9],
+      `${first ? `Fill the first window "${s.slice(0, m).join('')}".` : `Slide: add '${s[i]}' on the right${dropped}.`} ` +
+      (same ? `Counts match p exactly → <b>anagram at index ${lo}</b>.` : `Some counts differ (red columns) → not an anagram.`));
+  }
+  r.step([{ type: 'array', id: 's', label: 's', values: s, marks: Object.fromEntries(ans.flatMap(a => [a, a + 1, a + 2].map(k => [k, 'done']))) }, grid(), out()], [11],
+    `Done. Anagrams of "abc" start at <b>[${ans.join(', ')}]</b>: "cba" and "bac". Each slide changed only two counts, so the whole scan is O(26·n).`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Anagram window', code:
+`List<Integer> findAnagrams(String s, String p) {
+    List<Integer> ans = new ArrayList<>();
+    int[] need = new int[26], win = new int[26];
+    for (char c : p.toCharArray()) need[c - 'a']++;
+    for (int i = 0; i < s.length(); i++) {
+        win[s.charAt(i) - 'a']++;          // add the new right letter
+        if (i >= p.length())                // window too long:
+            win[s.charAt(i - p.length()) - 'a']--; // drop left
+        if (Arrays.equals(need, win)) ans.add(i - p.length() + 1);
+    }
+    return ans;
+}` });
+})();
+</script>
+
+<h3>3. KMP prefix function — building the lps array</h3>
+<p>Pattern <code>aabaaab</code>. <b>len</b> = how many letters at the start we have matched so far; <b>i</b> = the letter we are filling in. Watch the "fall back" at i = 2 and i = 5: instead of restarting from zero, len jumps to <code>lps[len − 1]</code>.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const p = 'aabaaab'.split(''), n = p.length;
+  const lps = Array(n).fill('·'); lps[0] = 0;
+  const r = Viz.recorder();
+  const panels = (i, len, pm, lm, extra = {}) => [
+    { type: 'array', id: 'p', label: 'pattern p', values: p, pointers: { i, len }, marks: pm },
+    { type: 'array', id: 'lps', label: 'lps', values: lps.slice(), marks: lm },
+    { type: 'vars', id: 'v', vars: { i, len, ...extra } }];
+  r.step(panels(1, 0, { 0: 'done' }, { 0: 'done' }), [2, 3],
+    'lps[0] is always 0 (a proper prefix cannot be the whole string). Start with <b>i = 1</b> and <b>len = 0</b> (nothing matched yet).');
+  let len = 0, i = 1;
+  while (i < n) {
+    if (p[i] === p[len]) {
+      r.step(panels(i, len, { [i]: 'done', [len]: 'done' }, {}), [5],
+        `p[${i}] = '${p[i]}' equals p[${len}] = '${p[len]}'. The matched prefix grows to length ${len + 1}.`);
+      len++; lps[i] = len;
+      r.step(panels(i, len, {}, { [i]: 'active' }), [6],
+        `So <b>lps[${i}] = ${len}</b>: "${p.slice(0, i + 1).join('')}" ends with "${p.slice(0, len).join('')}", which is also how it starts. Move i on.`);
+      i++;
+    } else if (len > 0) {
+      const old = len; len = lps[len - 1];
+      r.step(panels(i, len, { [i]: 'bad', [old]: 'bad' }, { [old - 1]: 'compare' }), [7, 8],
+        `p[${i}] = '${p[i]}' does not match p[${old}] = '${p[old]}'. Do not restart: the shorter prefix lps[${old - 1}] = ${len} still matches, so <b>len = ${len}</b> and try again with the same i.`);
+    } else {
+      lps[i] = 0;
+      r.step(panels(i, len, { [i]: 'bad', 0: 'bad' }, { [i]: 'active' }), [9, 10],
+        `p[${i}] = '${p[i]}' does not match p[0] = '${p[0]}' and len is already 0. Nothing matches: <b>lps[${i}] = 0</b>.`);
+      i++;
+    }
+  }
+  r.step([{ type: 'array', id: 'p', label: 'pattern p', values: p }, { type: 'array', id: 'lps', label: 'lps', values: lps.slice(), marks: Object.fromEntries(lps.map((_, k) => [k, 'done'])) }, { type: 'vars', id: 'v', vars: { lps: `[${lps.join(',')}]` }, marks: { lps: 'done' } }], [13],
+    `Done: <b>lps = [${lps.join(', ')}]</b>. Searching a text uses the same loop: on a mismatch after matching j letters, jump to j = lps[j − 1] instead of moving the text pointer back. Total O(n + m).`);
+  Viz.mount('#demo3', { frames: r.frames, title: 'KMP lps array', code:
+`int[] buildLps(String p) {
+    int[] lps = new int[p.length()];
+    int len = 0;                    // length of matched prefix
+    for (int i = 1; i < p.length(); ) {
+        if (p.charAt(i) == p.charAt(len)) {
+            lps[i++] = ++len;       // extend the match
+        } else if (len > 0) {
+            len = lps[len - 1];     // fall back, keep the same i
+        } else {
+            lps[i++] = 0;           // nothing matches at all
+        }
+    }
+    return lps;
+}` });
+})();
+</script>
+
+<h3>4. Rabin–Karp — a rolling hash</h3>
+<p>Find <code>159</code> in <code>31415926</code>. Each 3-digit window becomes one number. To slide, drop the left digit (subtract it × 100), shift (× 10) and add the new right digit.</p>
+<div id="demo4"></div>
+<script>
+(() => {
+  const t = '31415926'.split(''), p = '159', m = 3;
+  const ph = +p;
+  const r = Viz.recorder();
+  const arr = (lo, marks) => ({ type: 'array', id: 't', label: 'text', values: t, window: [lo, lo + m - 1], marks, pointers: { i: lo } });
+  let th = +t.slice(0, m).join('');
+  r.step([arr(0, {}), { type: 'vars', id: 'v', vars: { 'pattern hash': ph, 'window hash': th }, marks: { 'window hash': 'compare' } }], [5, 6, 7],
+    `Hash the pattern once: <b>159</b>. Hash the first window: <b>${th}</b>. (Here a digit's value is used so you can read the hash; real code uses character codes and a modulus.)`);
+  for (let i = 0; ; i++) {
+    const v = { type: 'vars', id: 'v', vars: { 'pattern hash': ph, 'window hash': th } };
+    if (th === ph) {
+      v.marks = { 'window hash': 'done', 'pattern hash': 'done' };
+      r.step([arr(i, { [i]: 'done', [i + 1]: 'done', [i + 2]: 'done' }), v], [10],
+        `Hashes are equal (${th} = ${ph}). Equal hashes <i>might</i> be a collision, so verify letter by letter: 1=1, 5=5, 9=9. <b>Found at index ${i}</b>.`);
+      break;
+    }
+    v.marks = { 'window hash': 'bad' };
+    r.step([arr(i, { [i]: 'compare', [i + 1]: 'compare', [i + 2]: 'compare' }), v], [10],
+      `${th} ≠ ${ph}, so the strings must differ. Skip this window without comparing any letters.`);
+    const out = +t[i], inn = +t[i + m];
+    const nth = (th - out * 100) * 10 + inn;
+    r.step([arr(i + 1, { [i]: 'dim', [i + m]: 'active' }), { type: 'vars', id: 'v', vars: { 'pattern hash': ph, roll: `(${th} − ${out}×100)×10 + ${inn}`, 'window hash': nth }, marks: { roll: 'active' } }], [12, 13],
+      `Roll the window one step: drop ${out} on the left, shift, add ${inn} on the right → <b>${nth}</b>. That is O(1), no matter how long the pattern is.`);
+    th = nth;
+  }
+  Viz.mount('#demo4', { frames: r.frames, title: 'Rolling hash', code:
+`int search(String t, String p) {    // MOD = 1_000_000_007
+    int m = p.length(), B = 256;
+    long pow = 1, ph = 0, th = 0;
+    for (int i = 0; i < m - 1; i++) pow = pow * B % MOD;
+    for (int i = 0; i < m; i++) {     // hash p and first window
+        ph = (ph * B + p.charAt(i)) % MOD;
+        th = (th * B + t.charAt(i)) % MOD;
+    }
+    for (int i = 0; ; i++) {
+        if (ph == th && t.startsWith(p, i)) return i; // verify
+        if (i + m >= t.length()) return -1;
+        th = (th - t.charAt(i) * pow % MOD + MOD) % MOD; // drop left
+        th = (th * B + t.charAt(i + m)) % MOD;          // add right
+    }
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"Every palindrome is symmetric around its middle, and there are only 2n − 1 middles, so expanding from each one finds every palindrome in O(n²) with O(1) memory." For anagrams: "Two strings are anagrams exactly when their letter counts are equal, and sliding a fixed window changes only two counts." For KMP: "lps tells me the longest part of what I already matched that I can reuse, so the text pointer never moves backwards — O(n + m)."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// Expand around center: try 2n-1 middles</span>
+<span class="k">for</span> (<span class="k">int</span> i = <span class="n">0</span>; i &lt; n; i++) {
+    expand(i, i);       <span class="c">// odd</span>
+    expand(i, i + <span class="n">1</span>);   <span class="c">// even</span>
+}
+<span class="c">// Anagram window: counts in, counts out</span>
+win[s[i]]++;  <span class="k">if</span> (i &gt;= m) win[s[i - m]]--;
+<span class="k">if</span> (Arrays.equals(need, win)) ans.add(i - m + <span class="n">1</span>);
+<span class="c">// KMP: on mismatch, fall back with lps</span>
+<span class="k">while</span> (len &gt; <span class="n">0</span> &amp;&amp; c != p[len]) len = lps[len - <span class="n">1</span>];
+<span class="k">if</span> (c == p[len]) len++;</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Palindrome → grow from 2n−1 middles. Anagram → compare counts in a sliding window. Pattern search → KMP's lps "never re-read". Many substrings → rolling hash, but verify on equal hashes.</b></p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Forgetting the <b>even</b> middles: <code>abba</code> has no middle letter, so <code>expand(i, i)</code> alone misses it.</li>
+  <li>Computing the start index wrong after <code>expand</code>: it is <code>i − (len − 1) / 2</code>.</li>
+  <li>In KMP, moving <code>i</code> forward on a fall back — only <code>len</code> changes; <code>i</code> stays.</li>
+  <li>In Rabin–Karp, trusting equal hashes without checking the letters, or getting a negative number after subtraction (add MOD before <code>%</code>).</li>
+  <li>Sorting each window for anagrams — that is O(n · m log m) instead of O(26 · n).</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/valid-anagram/">242. Valid Anagram</a> — compare 26 counts.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-palindromic-substring/">5. Longest Palindromic Substring</a> — animation 1.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/palindromic-substrings/">647. Palindromic Substrings</a> — same loop, count every grow step.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-all-anagrams-in-a-string/">438. Find All Anagrams in a String</a> — animation 2.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/permutation-in-string/">567. Permutation in String</a> — same window, return true at the first match.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/find-the-index-of-the-first-occurrence-in-a-string/">28. Find the Index of the First Occurrence</a> — write KMP once by hand.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/shortest-palindrome/">214. Shortest Palindrome</a> — lps of <code>s + "#" + reverse(s)</code>.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/longest-duplicate-substring/">1044. Longest Duplicate Substring</a> — binary search the length + rolling hash.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>How many middles does a string of length n have, and why both kinds?</summary>
+<p>2n − 1: n letters (odd-length palindromes) and n − 1 gaps (even-length palindromes like "abba").</p></details>
+<details class="quiz"><summary>What is lps for "abab"?</summary>
+<p>[0, 0, 1, 2]. "aba" ends with "a" = its start; "abab" ends with "ab" = its start.</p></details>
+<details class="quiz"><summary>Why does KMP never move the text pointer backwards?</summary>
+<p>After a mismatch, lps tells you how much of what you already matched is still a valid start, so you continue from there; the text characters already read are never needed again.</p></details>
+<details class="quiz"><summary>Two windows have the same rolling hash. Are they equal?</summary>
+<p>Not necessarily — different strings can collide. Always compare the letters (or use two different moduli to make collisions very unlikely).</p></details>
+
+<nav class="pager"><a href="grid-dp.html">← Grid DP</a><a href="matrix-traversal.html">Matrix traversal →</a></nav>
+</main>
+</body>
+</html>

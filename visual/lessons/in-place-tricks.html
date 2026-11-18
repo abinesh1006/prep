@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>In-place Array Tricks</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Arrays</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 7 · Arrays</div>
+<h1>In-place Array Tricks</h1>
+<p class="lede">Four small tricks that rearrange or answer questions about an array without making a copy of it: partition with three pointers, rotate by reversing, put each value at its own index, and multiply from both sides.</p>
+<p class="meta">Time to learn: about 2.5 hours · Prerequisites: <a href="two-pointers.html">Two pointers</a>, <a href="prefix-sum.html">Prefix sum</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"<b>In place</b>", "<b>O(1) extra space</b>", "do not allocate another array", "<b>without division</b>". Also: the values are a <b>range 0..n or 1..n</b> ("missing number", "find the duplicate", "first missing positive"), only <b>2 or 3 distinct values</b> to sort, or "<b>rotate</b> by k".</p></div>
+
+<h2>The idea in plain words</h2>
+<p><b>In-place</b> means without making a copy of the array: you only swap or overwrite cells, using a few extra variables — O(1) extra space.</p>
+<ul>
+  <li><b>Dutch flag (Sort Colors):</b> three zones. Everything left of <code>low</code> is 0, everything right of <code>high</code> is 2, and <code>mid</code> walks through the unknown middle sending each number to its zone. One pass.</li>
+  <li><b>Rotate by reversal:</b> to rotate <code>[1..7]</code> right by 3 → <code>[5, 6, 7, 1, 2, 3, 4]</code>: reverse everything, then reverse the first 3, then reverse the other 4. Three reversals, no extra array.</li>
+  <li><b>Cyclic sort:</b> when values are 0..n, value v "belongs" at index v. Keep swapping each value to its home. Afterwards the first index whose value is wrong is the missing number. (Alternative: XOR all indices and all values — pairs cancel out, the missing one remains.)</li>
+  <li><b>Product of Array Except Self:</b> the answer at i is (product of everything left of i) × (product of everything right of i). Fill the left products in one pass and multiply in the right products on the way back.</li>
+</ul>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Sorting laundry into three baskets — but the "baskets" are the two ends of the same table: socks are pushed to the left end, shirts to the right end, and towels stay in the middle. For cyclic sort, think of hotel guests each holding a room number: whoever is in the wrong room walks to their own room and swaps with whoever is there.</p></div>
+
+<h2>Watch it work</h2>
+<p><b>Sort Colors (Dutch national flag)</b> on <code>[2, 0, 2, 1, 1, 0]</code>. Green on the left = settled 0s, green on the right = settled 2s.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const a = [2, 0, 2, 1, 1, 0];
+  const keys = a.map((_, i) => 'k' + i);
+  const r = Viz.recorder();
+  let low = 0, mid = 0, high = a.length - 1;
+  const swap = (i, j) => { [a[i], a[j]] = [a[j], a[i]]; [keys[i], keys[j]] = [keys[j], keys[i]]; };
+  const zones = () => { const m = {}; for (let i = 0; i < low; i++) m[i] = 'done'; for (let i = high + 1; i < a.length; i++) m[i] = 'done'; return m; };
+  const P = (mk, say, line) => r.step([{ type: 'array', id: 'a', label: 'a', values: [...a], keys: [...keys], pointers: { low, mid, high }, marks: { ...zones(), ...mk } },
+    { type: 'vars', id: 'v', vars: { 'a[mid]': mid <= high ? a[mid] : '—' } }], line, say);
+  P({}, 'Three pointers. [0, low) will hold 0s, (high, end] will hold 2s, and [mid, high] is still unknown.', [2, 3]);
+  while (mid <= high) {
+    const v = a[mid];
+    if (v === 0) {
+      P({ [mid]: 'compare', [low]: 'compare' }, `a[mid] = 0 → it belongs in the left zone. Swap it with a[low] and move <b>both</b> low and mid right.`, [5, 6]);
+      swap(low, mid); low++; mid++;
+    } else if (v === 1) {
+      P({ [mid]: 'compare' }, `a[mid] = 1 → 1s belong in the middle, which is right where it is. Just move mid.`, [7, 8]);
+      mid++;
+    } else {
+      P({ [mid]: 'compare', [high]: 'compare' }, `a[mid] = 2 → swap it to the right end and shrink high. Do <b>not</b> move mid: the number that came back is unchecked.`, [9, 10]);
+      swap(mid, high); high--;
+    }
+    P({ [mid]: mid <= high ? 'active' : '' }, `Now low = ${low}, mid = ${mid}, high = ${high}.${mid > high ? ' mid passed high: nothing unknown remains.' : ''}`, [4]);
+  }
+  r.step([{ type: 'array', id: 'a', label: 'a', values: [...a], keys: [...keys], marks: Object.fromEntries(a.map((_, i) => [i, 'done'])) }, { type: 'vars', id: 'v', vars: { result: a.join(', ') }, marks: { result: 'done' } }], [12],
+    `Sorted in <b>one pass</b>, O(n) time, O(1) space: [${a.join(', ')}].`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Dutch national flag', code:
+`void sortColors(int[] a) {
+    int low = 0, mid = 0;
+    int high = a.length - 1;
+    while (mid <= high) {
+        if (a[mid] == 0)
+            swap(a, low++, mid++);
+        else if (a[mid] == 1)
+            mid++;
+        else              // a[mid] == 2
+            swap(a, mid, high--);
+    }
+}` });
+})();
+</script>
+
+<p><b>Rotate right by k = 3</b> using three reversals on <code>[1, 2, 3, 4, 5, 6, 7]</code>.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const a = [1, 2, 3, 4, 5, 6, 7], n = a.length, k = 3;
+  const keys = a.map(v => 'v' + v);
+  const r = Viz.recorder();
+  const S = (win, mk, ptr, line, say) => r.step([{ type: 'array', id: 'a', label: 'a', values: [...a], keys: [...keys], window: win, pointers: ptr, marks: mk }], line, say);
+  S(null, {}, {}, [2], 'Goal: [5, 6, 7, 1, 2, 3, 4]. The last 3 numbers must come to the front — without a second array.');
+  const phases = [[0, n - 1, 3, 'Reverse the <b>whole</b> array: the last 3 numbers land at the front (but backwards).'],
+    [0, k - 1, 4, 'Reverse the <b>first k = 3</b>: they become the right way round.'],
+    [k, n - 1, 5, 'Reverse the <b>rest</b>: the old front part is the right way round too.']];
+  for (const [L, R, line, say] of phases) {
+    S([L, R], {}, {}, [line], say);
+    let l = L, rr = R;
+    while (l < rr) {
+      S([L, R], { [l]: 'compare', [rr]: 'compare' }, { l, r: rr }, [8], `Swap a[${l}] = ${a[l]} and a[${rr}] = ${a[rr]}, then move both ends inward.`);
+      [a[l], a[rr]] = [a[rr], a[l]]; [keys[l], keys[rr]] = [keys[rr], keys[l]];
+      l++; rr--;
+    }
+    S([L, R], Object.fromEntries([...Array(R - L + 1)].map((_, d) => [L + d, 'active'])), {}, [line], `Reversed: [${a.join(', ')}].`);
+  }
+  S(null, Object.fromEntries(a.map((_, i) => [i, 'done'])), {}, [6], `Rotated: <b>[${a.join(', ')}]</b>. Each number moved at most twice: O(n) time, O(1) space.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Rotate by reversal', code:
+`void rotate(int[] a, int k) {
+    k %= a.length;     // k may exceed n
+    reverse(a, 0, a.length - 1);  // all
+    reverse(a, 0, k - 1);     // first k
+    reverse(a, k, a.length - 1);  // rest
+}
+void reverse(int[] a, int l, int r) {
+    while (l < r) swap(a, l++, r--);
+}` });
+})();
+</script>
+
+<p><b>Missing Number by cyclic sort</b> on <code>[4, 0, 5, 1, 2]</code> (values 0..5, one is missing). Value v belongs at index v; the value 5 has no slot (n = 5), so it is left wherever it ends up.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const a = [4, 0, 5, 1, 2], n = a.length;
+  const keys = a.map(v => 'v' + v);
+  const r = Viz.recorder();
+  const home = () => Object.fromEntries(a.map((v, i) => [i, v === i ? 'done' : '']).filter(e => e[1]));
+  const S = (mk, ptr, line, say) => r.step([{ type: 'array', id: 'a', label: 'a', values: [...a], keys: [...keys], pointers: ptr, marks: { ...home(), ...mk } }], line, say);
+  S({}, {}, [2], 'Green = the value sits at its own index. Goal: make as many green as possible by swapping.');
+  let i = 0;
+  while (i < n) {
+    const v = a[i];
+    if (v < n && a[v] !== v) {
+      S({ [i]: 'compare', [v]: 'compare' }, { i }, [4, 5, 6, 7], `a[${i}] = ${v} belongs at index ${v}. Swap it there. Stay at i = ${i} — the value that comes back must be placed too.`);
+      [a[i], a[v]] = [a[v], a[i]]; [keys[i], keys[v]] = [keys[v], keys[i]];
+    } else {
+      S({ [i]: v >= n ? 'dim' : 'done' }, { i }, [8], v >= n ? `a[${i}] = ${v} is too big to have a slot (no index ${v}). Leave it and move on.` : `a[${i}] = ${v} is already home. Move on.`);
+      i++;
+    }
+  }
+  for (i = 0; i < n; i++) {
+    if (a[i] !== i) {
+      S({ [i]: 'bad' }, { i }, [10, 11], `Scan: index ${i} holds ${a[i]}, not ${i}. So <b>${i} is the missing number</b>.`);
+      break;
+    }
+    S({ [i]: 'done' }, { i }, [10, 11], `Scan: index ${i} holds ${i}. Fine.`);
+  }
+  r.step([{ type: 'array', id: 'a', label: 'a', values: [...a], keys: [...keys], marks: { ...home(), [i]: 'bad' } }, { type: 'vars', id: 'v', vars: { missing: i }, marks: { missing: 'done' } }], [11],
+    `Answer: <b>${i}</b>. Each swap puts one value home for good, so there are at most n swaps: O(n) time, O(1) space.`);
+  Viz.mount('#demo3', { frames: r.frames, title: 'Cyclic sort missing number', code:
+`int missingNumber(int[] a) {
+    int i = 0, n = a.length;
+    while (i < n) {
+        int v = a[i];
+        // v belongs at index v (if v < n)
+        if (v < n && a[v] != v)
+            swap(a, i, v);
+        else i++;
+    }
+    for (i = 0; i < n; i++)
+        if (a[i] != i) return i;
+    return n;
+}` });
+})();
+</script>
+
+<p><b>Product of Array Except Self</b> on <code>[2, 3, 4, 5]</code>, without division. Pass 1 stores the product of everything <b>left</b> of each index; pass 2 multiplies in everything <b>right</b>.</p>
+<div id="demo4"></div>
+<script>
+(() => {
+  const a = [2, 3, 4, 5], n = a.length;
+  const ans = Array(n).fill('');
+  const r = Viz.recorder();
+  const S = (amk, ansmk, vars, line, say) => r.step([
+    { type: 'array', id: 'a', label: 'a', values: a, marks: amk },
+    { type: 'array', id: 'ans', label: 'ans', values: [...ans], marks: ansmk },
+    { type: 'vars', id: 'v', vars }], line, say);
+  ans[0] = 1;
+  S({}, { 0: 'active' }, { pass: 'left products' }, [4], 'Nothing is to the left of index 0, so its left product is <b>1</b> (multiplying by 1 changes nothing).');
+  for (let i = 1; i < n; i++) {
+    ans[i] = ans[i - 1] * a[i - 1];
+    S(Object.fromEntries([...Array(i)].map((_, x) => [x, 'visited'])), { [i - 1]: 'compare', [i]: 'active' }, { pass: 'left products' }, [5, 6],
+      `ans[${i}] = ans[${i - 1}] × a[${i - 1}] = ${ans[i - 1]} × ${a[i - 1]} = <b>${ans[i]}</b>: the product of everything left of index ${i}.`);
+  }
+  let right = 1;
+  S({}, {}, { pass: 'right products', right }, [7], 'Now walk back from the end. <b>right</b> = product of everything to the right of i (starts at 1).');
+  for (let i = n - 1; i >= 0; i--) {
+    const before = ans[i];
+    ans[i] *= right;
+    S(Object.fromEntries([...Array(n - 1 - i)].map((_, d) => [i + 1 + d, 'visited'])), { [i]: 'done' }, { right, 'ans[i]': `${before} × ${right} = ${ans[i]}` }, [9],
+      `ans[${i}] = left part ${before} × right part ${right} = <b>${ans[i]}</b>. That is every number except a[${i}] = ${a[i]}.`);
+    right *= a[i];
+    S({ [i]: 'active' }, {}, { right }, [10], `Include a[${i}] = ${a[i]} in right for the next index: right = <b>${right}</b>.`);
+  }
+  S({}, Object.fromEntries(ans.map((_, i) => [i, 'done'])), { answer: ans.join(', ') }, [12],
+    `Answer: <b>[${ans.join(', ')}]</b>. Two passes, no division, and no extra array besides the output: O(n) time, O(1) extra space.`);
+  Viz.mount('#demo4', { frames: r.frames, title: 'Product of array except self', code:
+`int[] productExceptSelf(int[] a) {
+    int n = a.length;
+    int[] ans = new int[n];
+    ans[0] = 1;     // nothing on the left
+    for (int i = 1; i < n; i++)
+        ans[i] = ans[i - 1] * a[i - 1];
+    int right = 1;  // product on the right
+    for (int i = n - 1; i >= 0; i--) {
+        ans[i] *= right;
+        right *= a[i];
+    }
+    return ans;
+}` });
+})();
+</script>
+
+<h2>Why it works (the one sentence to say in an interview)</h2>
+<p>"Each trick keeps an invariant while swapping in place: in the Dutch flag, everything before low is 0 and after high is 2; in cyclic sort, every swap sends one value to its final index so there are at most n swaps; and product-except-self is just left-product × right-product computed in two passes."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// Dutch flag (3 values)</span>
+<span class="k">while</span> (mid &lt;= high)
+    <span class="k">if</span> (a[mid] == <span class="n">0</span>) swap(a, low++, mid++);
+    <span class="k">else if</span> (a[mid] == <span class="n">1</span>) mid++;
+    <span class="k">else</span> swap(a, mid, high--);
+
+<span class="c">// Rotate right by k: reverse all, reverse [0,k), reverse [k,n)</span>
+
+<span class="c">// Cyclic sort (values 0..n-1 or 1..n)</span>
+<span class="k">while</span> (i &lt; n)
+    <span class="k">if</span> (a[i] &lt; n &amp;&amp; a[a[i]] != a[i]) swap(a, i, a[i]);
+    <span class="k">else</span> i++;
+
+<span class="c">// Missing number by XOR: x = n; for i: x ^= i ^ a[i]; return x;</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>3 values → 3 pointers. Rotate → 3 reversals. Values 0..n → value v lives at index v. "Except self" → left × right.</b></p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Dutch flag: moving <code>mid</code> after swapping with <code>high</code>. The number that came back from the right has not been looked at yet.</li>
+  <li>Dutch flag: <code>while (mid &lt; high)</code> instead of <code>&lt;=</code> — the last unknown cell is skipped.</li>
+  <li>Rotate: forgetting <code>k %= n</code> (k can be larger than n).</li>
+  <li>Cyclic sort: swapping when <code>a[v] == v</code> already (a duplicate) — an endless loop. Check <code>a[v] != v</code>, not <code>v != i</code>.</li>
+  <li>Product except self: using division — fails when the array has a 0, and the problem usually forbids it.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/move-zeroes/">283. Move Zeroes</a> — write pointer keeps non-zeros, rest becomes 0.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/missing-number/">268. Missing Number</a> — cyclic sort, XOR, or n(n+1)/2 − sum.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-colors/">75. Sort Colors</a> — the Dutch flag animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/rotate-array/">189. Rotate Array</a> — three reversals.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/product-of-array-except-self/">238. Product of Array Except Self</a> — left pass, right pass.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-all-duplicates-in-an-array/">442. Find All Duplicates in an Array</a> — mark seen values by negating a[v − 1].</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/first-missing-positive/">41. First Missing Positive</a> — cyclic sort for values 1..n, ignore the rest.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>In the Dutch flag, why do we move mid after swapping with low but not after swapping with high?</summary>
+<p>The value coming from low is already checked (it is a 1, or low == mid). The value coming from high has never been looked at.</p></details>
+<details class="quiz"><summary>Rotate [1, 2, 3, 4, 5] right by 2 with reversals. What are the three steps?</summary>
+<p>Reverse all → [5, 4, 3, 2, 1]; reverse first 2 → [4, 5, 3, 2, 1]; reverse the rest → [4, 5, 1, 2, 3].</p></details>
+<details class="quiz"><summary>Why does XOR find the missing number?</summary>
+<p>x ^ x = 0 and x ^ 0 = x. XOR-ing all indices 0..n and all values cancels every number that appears in both, leaving only the missing one.</p></details>
+<details class="quiz"><summary>Why not compute the total product and divide by a[i]?</summary>
+<p>A zero in the array breaks division, and the problem forbids it. Left × right products need no division.</p></details>
+
+<nav class="pager"><a href="kadane.html">← Kadane</a><a href="binary-search.html">Binary search →</a></nav>
+</main>
+</body>
+</html>

@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quick Sort and Quickselect</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Sorting</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 12 · Sorting</div>
+<h1>Quick Sort and Quickselect</h1>
+<p class="lede">Pick one number as the pivot, move everything smaller to its left and everything bigger to its right — the pivot is now in its final place. Repeat on both sides to sort, or on one side only to find the k-th largest.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="merge-sort.html">Merge sort</a>, <a href="two-pointers.html">Two pointers</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"<b>K-th largest</b> / k-th smallest", "<b>median</b> of an unsorted array", "top k" when the order inside the top k does not matter, "sort in place". Also any "move all X to one side" question (Sort Colors, move zeroes) — that is a partition.</p></div>
+
+<h2>The idea in plain words</h2>
+<p><b>Partition</b> is the heart of it. Take <code>[7, 2, 1, 6, 8, 5, 3, 4]</code> and choose the last number, <b>4</b>, as the <b>pivot</b> (the number we compare everything against).</p>
+<ul>
+  <li>Walk through the other numbers with a reader <b>j</b>. Keep a marker <b>i</b> = "the next slot for a small number".</li>
+  <li>When <code>nums[j] &lt; 4</code>, swap it into slot i and move i one right. Big numbers are simply skipped.</li>
+  <li>At the end, swap the pivot into slot i. Now: <code>[2, 1, 3, <b>4</b>, 8, 5, 7, 6]</code> — everything left of 4 is smaller, everything right is bigger. 4 is exactly where it belongs in the sorted array.</li>
+</ul>
+<p><b>Quick sort</b> partitions, then sorts the left part and the right part the same way. On average each pivot splits the array roughly in half: O(n log n). If the pivot is always the smallest or largest (e.g. an already sorted array), it degrades to O(n²) — so pick a <b>random</b> pivot.</p>
+<p><b>Quickselect:</b> to find the 2nd largest of 6 numbers, we only need the number that would sit at index 4 after sorting. After a partition we know the pivot's final index p. If p = 4, done. If p &lt; 4, the answer is on the right — ignore the left completely. Only one side is followed, so on average n + n/2 + n/4 + … ≈ 2n work: <b>O(n)</b>.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A teacher lines up a class by height. She picks one student and says "shorter than Asha to my left, taller to my right." Asha is now standing exactly where she would be in the final line. To find the 3rd tallest, the teacher only needs to keep sorting the group that contains that position — the other group can stay messy.</p></div>
+
+<h2>Watch it work</h2>
+<p>One <b>Lomuto partition</b> of <code>[7, 2, 1, 6, 8, 5, 3, 4]</code> with pivot = last element.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const a = [7, 2, 1, 6, 8, 5, 3, 4];
+  const keys = a.map((_, x) => x);
+  const r = Viz.recorder();
+  const hi = a.length - 1, pivot = a[hi];
+  let i = 0;
+  const pan = (j, extra = {}) => {
+    const m = {};
+    for (let x = 0; x < i; x++) m[x] = 'done';
+    if (j != null) for (let x = i; x < j; x++) m[x] = 'visited';
+    m[hi] = 'path';
+    return [{ type: 'array', id: 'a', label: 'nums   (green = smaller than pivot, grey = bigger)', values: [...a], keys: [...keys], pointers: j != null ? { i, j } : { i }, marks: { ...m, ...extra } },
+            { type: 'vars', id: 'v', vars: { pivot, i, ...(j != null ? { j } : {}) } }];
+  };
+  const swap = (x, y) => { [a[x], a[y]] = [a[y], a[x]]; [keys[x], keys[y]] = [keys[y], keys[x]]; };
+  r.step(pan(0), [2, 3], `Pivot = the last number, <b>${pivot}</b>. <b>i = 0</b>: no small numbers collected yet. <b>j</b> will read every other number.`);
+  for (let j = 0; j < hi; j++) {
+    if (a[j] < pivot) {
+      r.step(pan(j, { [j]: 'compare' }), [5], `nums[${j}] = ${a[j]} &lt; ${pivot}: it belongs on the small side.`);
+      const wasI = i;
+      swap(i, j); i++;
+      r.step(pan(j, { [wasI]: 'active' }), [6], wasI === j ? `Swap it into slot i = ${wasI} (same place here) and move i to ${i}.` : `Swap it with slot i = ${wasI} (the first big number), so the small side grows. i moves to ${i}.`);
+    } else {
+      r.step(pan(j, { [j]: 'bad' }), [4, 5], `nums[${j}] = ${a[j]} ≥ ${pivot}: big, leave it where it is. Only j moves.`);
+    }
+  }
+  r.step(pan(hi, { [i]: 'compare' }), [9], `j reached the pivot. Slots 0..${i - 1} hold the small numbers; slot ${i} is the first big one. Swap the pivot into slot <b>${i}</b>.`);
+  swap(i, hi);
+  const fin = {}; for (let x = 0; x < a.length; x++) fin[x] = x < i ? 'done' : x === i ? 'path' : 'visited';
+  r.step([{ type: 'array', id: 'a', label: 'after partition', values: [...a], keys: [...keys], pointers: { p: i }, marks: fin }, { type: 'vars', id: 'v', vars: { pivot, 'final index': i }, marks: { 'final index': 'done' } }], [10],
+    `<b>${pivot}</b> is at index ${i}, its final sorted position. Left: [${a.slice(0, i).join(', ')}] all smaller. Right: [${a.slice(i + 1).join(', ')}] all bigger. Quick sort now repeats this on each side.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Lomuto partition', code:
+`int partition(int[] a, int lo, int hi) {
+    int pivot = a[hi];      // last one is pivot
+    int i = lo;             // next slot for small
+    for (int j = lo; j < hi; j++) {
+        if (a[j] < pivot) { // small: move it left
+            swap(a, i, j); i++;
+        }
+    }
+    // put the pivot between the two sides
+    swap(a, i, hi);
+    return i;               // pivot's final index
+}
+void quickSort(int[] a, int lo, int hi) {
+    if (lo >= hi) return;
+    int p = partition(a, lo, hi);
+    quickSort(a, lo, p - 1);
+    quickSort(a, p + 1, hi);
+}` });
+})();
+</script>
+
+<p><b>Quickselect</b> — Kth Largest Element, <code>[3, 2, 1, 5, 6, 4]</code>, k = 2. The 2nd largest sits at index n − k = 4 in sorted order. Each frame is one partition; the dashed frame is the part still in play.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const a = [3, 2, 1, 5, 6, 4], k = 2, target = a.length - k;
+  const keys = a.map((_, x) => x);
+  const r = Viz.recorder();
+  const swap = (x, y) => { [a[x], a[y]] = [a[y], a[x]]; [keys[x], keys[y]] = [keys[y], keys[x]]; };
+  const fixed = new Set();
+  const pan = (lo, hi, ptr, extra = {}) => {
+    const m = {};
+    for (let x = 0; x < a.length; x++) if (x < lo || x > hi) m[x] = 'dim';
+    for (const f of fixed) m[f] = 'path';
+    return [{ type: 'array', id: 'a', label: 'nums', values: [...a], keys: [...keys], pointers: ptr, marks: { ...m, ...extra }, window: [lo, hi] },
+            { type: 'vars', id: 'v', vars: { k, 'target index': target, lo, hi } }];
+  };
+  let lo = 0, hi = a.length - 1;
+  r.step(pan(lo, hi, { lo, hi, target }), [2, 3], `We want the number that would be at index <b>${target}</b> if the array were sorted (n − k = 6 − 2). We will never fully sort it.`);
+  while (true) {
+    const pivot = a[hi];
+    r.step(pan(lo, hi, { lo, hi, target }, { [hi]: 'compare' }), [5], `Partition the range [${lo}..${hi}] around its last number, pivot = <b>${pivot}</b>.`);
+    let i = lo;
+    for (let j = lo; j < hi; j++) if (a[j] < pivot) { swap(i, j); i++; }
+    swap(i, hi);
+    fixed.add(i);
+    r.step(pan(lo, hi, { p: i, target }), [5], `After partitioning: ${pivot} lands at index <b>p = ${i}</b>, its final place. Smaller ones to its left, bigger to its right.`);
+    if (i === target) {
+      r.step(pan(lo, hi, { p: i }, { [i]: 'done' }), [6], `p = ${i} is the target index. The ${k}nd largest number is <b>${a[i]}</b>. Notice the rest is still not sorted — we did not need it to be.`);
+      const sorted = [...a].sort((x, y) => x - y);
+      r.step([{ type: 'array', id: 'a', label: 'check: the fully sorted array', values: sorted, keys: sorted.map(v => keys[a.indexOf(v)]), pointers: { target }, marks: { [target]: 'done' } },
+              { type: 'vars', id: 'v', vars: { answer: a[i] }, marks: { answer: 'done' } }], [6],
+        `Check: sorted it would be [${sorted.join(', ')}], and index ${target} holds <b>${sorted[target]}</b>. Same answer, but quickselect only partitioned ${fixed.size} times instead of sorting.`);
+      break;
+    }
+    if (i < target) {
+      r.step(pan(i + 1, hi, { lo: i + 1, hi, target }), [7], `p = ${i} &lt; ${target}: the answer is to the <b>right</b>. Drop everything from ${lo} to ${i} for good: lo = p + 1 = ${i + 1}.`);
+      lo = i + 1;
+    } else {
+      r.step(pan(lo, i - 1, { lo, hi: i - 1, target }), [8], `p = ${i} &gt; ${target}: the answer is to the <b>left</b>. Drop everything from ${i} to ${hi}: hi = p − 1 = ${i - 1}.`);
+      hi = i - 1;
+    }
+  }
+  Viz.mount('#demo2', { frames: r.frames, title: 'Quickselect kth largest', code:
+`int findKthLargest(int[] nums, int k) {
+    int target = nums.length - k; // sorted index
+    int lo = 0, hi = nums.length - 1;
+    while (true) {
+        int p = partition(nums, lo, hi);
+        if (p == target) return nums[p];
+        else if (p < target) lo = p + 1; // go right
+        else hi = p - 1;                 // go left
+    }
+}
+// shuffle nums first (or pick a random
+// pivot) to avoid the O(n^2) worst case` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"After a partition the pivot is in its final sorted position, with smaller items left and larger right. Quick sort recurses into both sides (average O(n log n)); quickselect recurses into the one side that contains index n − k, so on average the work is n + n/2 + n/4 … = O(n)."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">int</span> partition(<span class="k">int</span>[] a, <span class="k">int</span> lo, <span class="k">int</span> hi) {
+    <span class="k">int</span> pivot = a[hi], i = lo;
+    <span class="k">for</span> (<span class="k">int</span> j = lo; j &lt; hi; j++)
+        <span class="k">if</span> (a[j] &lt; pivot) swap(a, i++, j);
+    swap(a, i, hi);
+    <span class="k">return</span> i;
+}
+<span class="c">// sort: recurse both sides. select: follow the side holding target.</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Partition = pivot lands home.</b> Both sides → quick sort O(n log n). One side → quickselect O(n). Random pivot dodges O(n²).</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Forgetting the final <code>swap(a, i, hi)</code> — the pivot never moves into place.</li>
+  <li>Using a fixed pivot on sorted input (or a test designed against you) → O(n²). Shuffle or pick a random index and swap it to <code>hi</code>.</li>
+  <li>Kth <b>largest</b> is index <code>n - k</code>, not <code>k - 1</code>.</li>
+  <li>Many equal values make Lomuto slow; a three-way partition (Sort Colors style) fixes that.</li>
+  <li>Quick sort is <b>not stable</b>. If stability matters, use merge sort.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/move-zeroes/">283. Move Zeroes</a> — a partition with "non-zero" as the test.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-colors/">75. Sort Colors</a> — three-way partition (0s, 1s, 2s).</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-an-array/">912. Sort an Array</a> — quick sort with a random pivot.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/kth-largest-element-in-an-array/">215. Kth Largest Element in an Array</a> — the second animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/k-closest-points-to-origin/">973. K Closest Points to Origin</a> — quickselect on distance.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/wiggle-sort-ii/">324. Wiggle Sort II</a> — find the median by quickselect first.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>After one partition, what do you know for certain?</summary>
+<p>The pivot is in its final sorted index; everything left is smaller, everything right is greater or equal. Nothing about the order inside each side.</p></details>
+<details class="quiz"><summary>When is quick sort O(n²)?</summary>
+<p>When every pivot is the smallest or largest of its range, e.g. last-element pivot on an already sorted array. Each partition then removes only one element.</p></details>
+<details class="quiz"><summary>Quickselect or heap for "k-th largest"?</summary>
+<p>Quickselect: average O(n), O(1) space, but it rearranges the array. Heap of size k: O(n log k), works on a stream. Mention both.</p></details>
+
+<nav class="pager"><a href="merge-sort.html">← Merge sort</a><a href="linked-list-reverse.html">Reverse a linked list →</a></nav>
+</main>
+</body>
+</html>

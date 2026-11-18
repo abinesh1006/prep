@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tree Recursion</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Recursion &amp; trees</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 29 · Recursion &amp; trees</div>
+<h1>Tree Recursion (the 3 questions)</h1>
+<p class="lede">Almost every tree problem is one small function per node: decide what you need from your children, what you hand back to your parent, and what you pass down.</p>
+<p class="meta">Time to learn: about 3 hours · Prerequisites: <a href="recursion.html">Recursion</a>, <a href="tree-traversals.html">Tree traversals</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>A binary tree plus words like "<b>depth</b>", "<b>height</b>", "<b>balanced</b>", "<b>diameter</b>", "<b>path sum</b>", "<b>for every node</b>", "subtree", "same / symmetric / invert". If the answer for a node can be built from the answers of its two subtrees, it is this pattern.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>Do not think about the whole tree. Stand on <b>one</b> node and answer three questions:</p>
+<ol>
+  <li><b>What do I need from my children?</b> (Example: the height of my left subtree and of my right subtree.)</li>
+  <li><b>What do I return to my parent?</b> (Example: my own height = 1 + the taller child.)</li>
+  <li><b>What do I pass down to my children?</b> (Example: how much of the target sum is still left to find.)</li>
+</ol>
+<p>Answers that travel <b>up</b> (from children to parent, as return values) make a <b>bottom-up</b> solution — a node finishes only after its children, like post-order. Information that travels <b>down</b> (as parameters) makes a <b>top-down</b> solution — like pre-order. Many problems use one direction; some use both.</p>
+<p>The base case is almost always the empty spot: <code>if (node == null) return ...</code> with the answer for an empty tree (height 0, sum false, count 0).</p>
+<p>A second trick for "longest / biggest <i>anywhere</i>" problems: what the parent needs (one straight branch it can extend) is different from the answer (a path that may bend at this node). So you <b>return</b> one thing and update a <b>global best</b> variable with the other.</p>
+<p>Cost: every node is handled once → <b>O(n) time</b>; the call stack holds one root-to-node path → <b>O(h) space</b>.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A company where every manager only talks to their two direct reports. To find the company's deepest chain of command, the CEO does not walk the whole org chart. Each manager asks their two reports "how deep is your team?", takes the bigger number, adds 1 for themselves, and reports that up (bottom-up). To share a budget, the CEO instead tells each report "you have this much left" and they pass the rest down (top-down).</p></div>
+
+<h2>Watch it work</h2>
+<h3>1. Maximum depth — bottom-up, answers travel up</h3>
+<p>The 3 questions: need → the depth of each child; return → <code>1 + max(left, right)</code>; pass down → nothing. The badge under a node is the number it <b>returned</b> to its parent.</p>
+<div id="demo1"></div>
+<h3>2. Diameter — return one thing, record another</h3>
+<p>Diameter = the number of edges on the longest path between <b>any</b> two nodes. The path may <b>bend</b> at a node: go down its left side and down its right side. The parent cannot use a bent path (it can only extend one straight branch), so each node <b>returns its height</b> but <b>records</b> <code>left + right</code> in a global <code>best</code>.</p>
+<div id="demo2"></div>
+<h3>3. Path Sum — top-down, information travels down</h3>
+<p>Is there a root-to-leaf path whose values add up to <b>22</b>? The 3 questions: pass down → how much is <b>still needed</b>; return → true / false; need from children → did either side find it? The badge shows what is still needed after paying for that node.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const N = { 3: { val: 3, left: 9, right: 20 }, 9: { val: 9, left: null, right: null }, 20: { val: 20, left: 15, right: 7 },
+    15: { val: 15, left: 8, right: null }, 7: { val: 7, left: null, right: null }, 8: { val: 8, left: null, right: null } };
+  const r = Viz.recorder(), stack = [], badges = {}, done = new Set();
+  const snap = (cur, line, say, vars = {}) => {
+    const marks = {};
+    for (const v of done) marks[v] = 'done';
+    for (const v of stack) if (!done.has(v)) marks[v] = 'compare';
+    if (cur != null) marks[cur] = 'active';
+    r.step([{ type: 'tree', id: 't', label: 'tree (badge = value returned to the parent)', root: 3, nodes: N, marks, badges },
+      { type: 'stack', id: 's', label: 'call stack', items: stack.map(v => ({ id: 'c' + v, val: `maxDepth(${v})` })), marks: stack.length ? { [stack.length - 1]: 'active' } : {} },
+      { type: 'vars', id: 'v', vars }], line, say);
+  };
+  function depth(id) {
+    if (id == null) return 0;
+    stack.push(id);
+    const n = N[id];
+    snap(id, [3], n.left == null && n.right == null
+      ? `<b>${id}</b> is a leaf. Both children are null, and an empty tree has depth 0 (line 2).`
+      : `At <b>${id}</b>. Question 1: I need the depth of my left and right subtrees. Ask them and wait (trust the calls).`);
+    const L = depth(n.left), R = depth(n.right);
+    const d = 1 + Math.max(L, R);
+    badges[id] = '↑ ' + d; done.add(id);
+    snap(id, [5], `<b>${id}</b> got left = ${L}, right = ${R}. Question 2: return 1 (me) + the taller side = 1 + ${Math.max(L, R)} = <b>${d}</b>.`, { left: L, right: R, return: d });
+    stack.pop();
+    return d;
+  }
+  snap(null, [1], 'Call maxDepth(3). Remember: no node looks further than its own two children.');
+  const ans = depth(3);
+  snap(null, [5], `The root returned <b>${ans}</b>, so the maximum depth is ${ans} (path 3 → 20 → 15 → 8). Each node did one tiny step: O(n) time, O(h) stack.`, { answer: ans });
+  Viz.mount('#demo1', { frames: r.frames, title: 'Max depth bottom-up', code:
+`int maxDepth(TreeNode node) {
+    if (node == null) return 0;          // empty: depth 0
+    int left = maxDepth(node.left);      // Q1: ask the children
+    int right = maxDepth(node.right);
+    return 1 + Math.max(left, right);    // Q2: me + taller side
+}` });
+})();
+
+(() => {
+  const N = { 1: { val: 1, left: 2, right: null }, 2: { val: 2, left: 4, right: 5 }, 4: { val: 4, left: 6, right: null },
+    5: { val: 5, left: null, right: 7 }, 6: { val: 6, left: null, right: null }, 7: { val: 7, left: null, right: null } };
+  const r = Viz.recorder(), stack = [], badges = {}, done = new Set();
+  let best = 0, bestAt = null;
+  const snap = (cur, line, say, extra = {}, edgeMarks = {}) => {
+    const marks = {};
+    for (const v of done) marks[v] = 'done';
+    for (const v of stack) if (!done.has(v)) marks[v] = 'compare';
+    if (cur != null) marks[cur] = 'active';
+    r.step([{ type: 'tree', id: 't', label: 'tree (badge = height returned)', root: 1, nodes: N, marks, badges, edgeMarks, pointers: bestAt != null ? { best: bestAt } : {} },
+      { type: 'vars', id: 'v', vars: { ...extra, best }, marks: { best: 'done' } }], line, say);
+  };
+  function height(id) {
+    if (id == null) return 0;
+    stack.push(id);
+    const n = N[id];
+    if (n.left != null || n.right != null) snap(id, [8, 9], `At <b>${id}</b>: first get the heights of both children.`);
+    const l = height(n.left), rr = height(n.right);
+    const through = l + rr;
+    let note = `the longest path bending at ${id} has l + r = ${l} + ${rr} = ${through} edges`;
+    if (through > best) { best = through; bestAt = id; note += ` — a <b>new best</b>`; }
+    else note += ` — not better than best = ${best}`;
+    badges[id] = 'h=' + (1 + Math.max(l, rr)); done.add(id);
+    snap(id, [10, 11], `<b>${id}</b>: l = ${l}, r = ${rr}. Record: ${note}. Return to the parent only its height 1 + max = <b>${1 + Math.max(l, rr)}</b> (one straight branch).`, { l, r: rr, 'l + r': through });
+    stack.pop();
+    return 1 + Math.max(l, rr);
+  }
+  snap(null, [1], 'best starts at 0. The answer will be <b>edges</b> on the longest path.');
+  height(1);
+  snap(null, [4], `Diameter = <b>${best}</b>: the path 6 – 4 – 2 – 5 – 7 bends at node ${bestAt}. It does <b>not</b> pass through the root 1 — that is why we check every node, not just the root.`, {},
+    { '2-4': 'path', '4-6': 'path', '2-5': 'path', '5-7': 'path' });
+  Viz.mount('#demo2', { frames: r.frames, title: 'Diameter with a global best', code:
+`int best = 0;              // answer, in edges
+int diameter(TreeNode root) {
+    height(root);
+    return best;
+}
+int height(TreeNode node) {
+    if (node == null) return 0;
+    int l = height(node.left);
+    int r = height(node.right);
+    best = Math.max(best, l + r); // bend at me
+    return 1 + Math.max(l, r);    // one branch up
+}` });
+})();
+
+(() => {
+  const N = { a: { val: 5, left: 'b', right: 'c' }, b: { val: 4, left: 'd', right: null }, c: { val: 8, left: 'e', right: 'f' },
+    d: { val: 11, left: 'g', right: 'h' }, e: { val: 13, left: null, right: null }, f: { val: 4, left: null, right: 'i' },
+    g: { val: 7, left: null, right: null }, h: { val: 2, left: null, right: null }, i: { val: 1, left: null, right: null } };
+  const r = Viz.recorder(), path = [], badges = {}, marks = {};
+  const em = () => Object.fromEntries(path.slice(1).map((v, k) => [`${path[k]}-${v}`, 'active']));
+  const snap = (line, say, edgeMarks = em()) => r.step([
+    { type: 'tree', id: 't', label: 'target = 22 (badge = still needed)', root: 'a', nodes: N, marks: { ...marks }, badges, edgeMarks },
+    { type: 'vars', id: 'v', vars: { path: path.map(v => N[v].val).join(' → ') || '-' } }], line, say);
+  function has(id, remain) {
+    if (id == null) return false;
+    path.push(id);
+    remain -= N[id].val;
+    badges[id] = 'need ' + remain;
+    const leaf = N[id].left == null && N[id].right == null;
+    if (leaf) {
+      marks[id] = remain === 0 ? 'done' : 'bad';
+      snap([6], remain === 0
+        ? `Leaf <b>${N[id].val}</b>: after paying ${N[id].val}, still needed = <b>0</b>. Exact! Return <b>true</b>.`
+        : `Leaf <b>${N[id].val}</b>: still needed = ${remain}, not 0. This path adds to ${22 - remain}, not 22. Return false.`);
+      if (remain === 0) return true;
+      path.pop(); marks[id] = 'dim';
+      return false;
+    }
+    marks[id] = 'active';
+    snap([3, 7], `At <b>${N[id].val}</b>: pay for it, so still needed = ${remain + N[id].val} − ${N[id].val} = <b>${remain}</b>. Pass ${remain} <b>down</b> to the children.`);
+    marks[id] = 'compare';
+    if (has(N[id].left, remain)) { marks[id] = 'done'; return true; }
+    if (N[id].right != null) {
+      marks[id] = 'active';
+      snap([8], `Back at <b>${N[id].val}</b>: the left side said false. Try the right side with the same need = ${remain}.`);
+      marks[id] = 'compare';
+    }
+    if (has(N[id].right, remain)) { marks[id] = 'done'; return true; }
+    path.pop(); marks[id] = 'dim';
+    return false;
+  }
+  snap([1], 'Start at the root with <b>remain = 22</b>. Each node will pay its value and pass the rest down.');
+  const ok = has('a', 22);
+  snap([7, 8], `true travels back up through every <code>||</code>, and the right subtree of 5 is never visited (short-circuit). Answer: <b>${ok}</b> — 5 + 4 + 11 + 2 = 22.`,
+    Object.fromEntries(path.slice(1).map((v, k) => [`${path[k]}-${v}`, 'path'])));
+  Viz.mount('#demo3', { frames: r.frames, title: 'Path sum top-down', code:
+`boolean hasPath(TreeNode node, int remain) {
+    if (node == null) return false; // fell off
+    remain -= node.val;             // pay for me
+    boolean leaf = node.left == null
+                && node.right == null;
+    if (leaf) return remain == 0;   // exact?
+    return hasPath(node.left, remain)  // pass
+        || hasPath(node.right, remain); // down
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"I answer three questions for one node — what I need from my children, what I return, what I pass down — and trust the recursive calls for the subtrees. The base case is the null node. Each node is visited once, so O(n) time and O(h) stack. When the best answer can bend at a node but the parent can only extend one branch, I return the branch and keep the answer in a global variable."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">int</span> best;                                 <span class="c">// only if the answer can bend</span>
+<span class="k">Info</span> dfs(<span class="k">TreeNode</span> node, <span class="k">Down</span> fromParent) {  <span class="c">// Q3: what I pass down</span>
+    <span class="k">if</span> (node == <span class="k">null</span>) <span class="k">return</span> emptyAnswer;
+    <span class="k">Info</span> l = dfs(node.left, next(fromParent, node));   <span class="c">// Q1: ask</span>
+    <span class="k">Info</span> r = dfs(node.right, next(fromParent, node));  <span class="c">//     children</span>
+    best = Math.max(best, combineThroughMe(l, r));  <span class="c">// optional</span>
+    <span class="k">return</span> whatParentNeeds(l, r, node);        <span class="c">// Q2: what I return</span>
+}</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Need from children? Return to parent? Pass down?</b> Up = return values (bottom-up). Down = parameters (top-down). "Anywhere in the tree" = return one branch, record the bend in <code>best</code>.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Returning the diameter instead of the height — the parent then extends a bent path, which is not a real path.</li>
+  <li>Mixing up edges and nodes: diameter in LeetCode counts <b>edges</b> (l + r with null = 0), not nodes.</li>
+  <li>Path Sum: checking <code>remain == 0</code> at a <b>null</b> node — a node with one child would wrongly count as a leaf end. Check at real leaves only.</li>
+  <li>Using a <code>static</code> field for <code>best</code> and not resetting it between test cases.</li>
+  <li>Calling the height function again inside every node (e.g. Balanced Tree) — that is O(n²). Return the height and the answer together in one pass.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/maximum-depth-of-binary-tree/">104. Maximum Depth of Binary Tree</a> — animation 1.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/invert-binary-tree/">226. Invert Binary Tree</a> — swap children, trust both calls.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/path-sum/">112. Path Sum</a> — animation 3.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/balanced-binary-tree/">110. Balanced Binary Tree</a> — return height, or −1 for "already unbalanced".</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/diameter-of-binary-tree/">543. Diameter of Binary Tree</a> — animation 2.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/count-good-nodes-in-binary-tree/">1448. Count Good Nodes in Binary Tree</a> — pass the max so far down.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/binary-tree-maximum-path-sum/">124. Binary Tree Maximum Path Sum</a> — diameter's trick with sums; drop negative branches with max(0, ...).</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Answer the 3 questions for "count the nodes in a tree".</summary>
+<p>Need: the count of each subtree. Return: 1 + left + right. Pass down: nothing. Base case: null returns 0.</p></details>
+<details class="quiz"><summary>Is Path Sum top-down or bottom-up? What travels in each direction?</summary>
+<p>Both: the remaining sum travels <b>down</b> as a parameter; true / false travels <b>up</b> as the return value.</p></details>
+<details class="quiz"><summary>Why does the diameter need a global variable but max depth does not?</summary>
+<p>For depth, what the parent needs (my height) is also the answer. For diameter, the answer (a path bending at me, l + r) is not what the parent can use (one straight branch, 1 + max), so the bend is recorded separately.</p></details>
+<details class="quiz"><summary>What is the space complexity of max depth on a balanced tree of 1,000,000 nodes?</summary>
+<p>O(h) = about log₂(1,000,000) ≈ 20 frames on the call stack.</p></details>
+
+<nav class="pager"><a href="tree-bfs.html">← Tree BFS</a><a href="bst.html">Binary search trees →</a></nav>
+</main>
+</body>
+</html>

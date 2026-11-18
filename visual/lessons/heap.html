@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heaps</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Heaps</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 19 · Heaps</div>
+<h1>Heaps</h1>
+<p class="lede">A heap always knows its smallest (or largest) item, lets you remove it, and accepts new items — each in O(log n) — using a tree that secretly lives in a plain array.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="big-o.html">Big-O</a>, <a href="stack-basics.html">Stacks and queues</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"Repeatedly take the <b>smallest / largest</b>", "k largest", "k closest", "merge k sorted", "schedule the next task", "median of a stream", "cheapest next step" (Dijkstra). If you would sort again and again after every insert, you want a heap.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>A <b>min-heap</b> is a binary tree with one rule: <b>every parent is ≤ its children</b>. So the smallest value is always at the root. It does <i>not</i> keep everything sorted — only "parent beats children" — and that weaker rule is why it is fast.</p>
+<p>The tree is always <b>complete</b> (filled level by level, left to right), so it fits in an array with no gaps:</p>
+<ul>
+  <li>children of index <code>i</code> are at <code>2i + 1</code> and <code>2i + 2</code></li>
+  <li>parent of index <code>i</code> is at <code>(i − 1) / 2</code></li>
+  <li>example: index 1's children are 3 and 4; index 4's parent is (4 − 1) / 2 = 1</li>
+</ul>
+<p><b>Insert (sift-up):</b> put the new value at the end of the array, then while it is smaller than its parent, swap them. It climbs at most the height of the tree, about log₂ n levels — 20 swaps for a million items.</p>
+<p><b>Poll / remove the min (sift-down):</b> take the root, move the <b>last</b> value into the root, then while it is bigger than its smaller child, swap with that child. Again at most log₂ n steps.</p>
+<p>In Java: <code>PriorityQueue&lt;Integer&gt;</code> is a min-heap. For a max-heap, pass <code>Collections.reverseOrder()</code>.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A company org chart where every boss is more senior than the people under them. A new hire joins at the bottom; if they are more senior than their boss, they swap places, and keep climbing until their boss outranks them. When the CEO leaves, the newest bottom person temporarily takes the seat and gets demoted step by step until everyone below is junior to them.</p></div>
+
+<h2>Watch it work</h2>
+<p>Insert <code>5, 3, 8, 1, 4, 2</code> into an empty min-heap. Watch the <b>tree</b> and the <b>array</b> — they are the same data, drawn two ways.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const heap = [];
+  const r = Viz.recorder();
+  const tree = (m = {}) => {
+    const nodes = {};
+    heap.forEach((v, i) => nodes['n' + v] = { val: v, left: heap[2 * i + 1] != null ? 'n' + heap[2 * i + 1] : null, right: heap[2 * i + 2] != null ? 'n' + heap[2 * i + 2] : null });
+    const marks = {}; for (const [i, c] of Object.entries(m)) marks['n' + heap[i]] = c;
+    return { type: 'tree', id: 't', label: 'as a tree (parent ≤ children)', root: heap.length ? 'n' + heap[0] : null, nodes, marks };
+  };
+  const arr = (m = {}, ptr = {}) => ({ type: 'array', id: 'a', label: 'as an array (what is really stored)', values: heap.slice(), keys: heap.map(v => 'k' + v), marks: m, pointers: ptr });
+  const P = (m, ptr, vars) => [tree(m), arr(m, ptr), ...(vars ? [{ type: 'vars', id: 'v', vars }] : [])];
+  r.step([{ type: 'text', id: 'x', text: 'empty heap' }], [2], 'The heap starts empty. Every insert keeps the rule <b>parent ≤ children</b>.');
+  for (const x of [5, 3, 8, 1, 4, 2]) {
+    heap.push(x);
+    let i = heap.length - 1;
+    r.step(P({ [i]: 'active' }, { i }, { insert: x }), [2, 3], `Insert <b>${x}</b>: put it at the <b>end</b> of the array, which is the next free spot in the bottom row of the tree.`);
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (heap[p] <= heap[i]) {
+        r.step(P({ [i]: 'done', [p]: 'compare' }, { i, parent: p }, { parent: `(${i}−1)/2 = ${p}` }), [6],
+          `Parent of index ${i} is (${i} − 1) / 2 = ${p}, value ${heap[p]}. ${heap[p]} ≤ ${heap[i]}, so the rule holds. Stop.`);
+        break;
+      }
+      r.step(P({ [i]: 'active', [p]: 'bad' }, { i, parent: p }, { parent: `(${i}−1)/2 = ${p}` }), [6, 7],
+        `Parent of index ${i} is index ${p}, value ${heap[p]}. ${heap[i]} &lt; ${heap[p]} breaks the rule, so <b>swap</b>: the smaller value climbs up.`);
+      [heap[p], heap[i]] = [heap[i], heap[p]];
+      i = p;
+      if (i === 0) r.step(P({ 0: 'done' }, { i }), [8], `${heap[0]} reached the root. It is the new smallest value in the heap.`);
+    }
+  }
+  r.step(P({ 0: 'done' }), [], `All six inserted. The array is <b>[${heap.join(', ')}]</b> — not sorted, but every parent is ≤ its children, and the minimum <b>${heap[0]}</b> is at index 0.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Heap insert with sift-up', code:
+`void push(int x) {
+    heap.add(x);                  // next free spot = end
+    int i = heap.size() - 1;
+    while (i > 0) {
+        int p = (i - 1) / 2;      // parent index
+        if (heap.get(p) <= heap.get(i)) break; // rule holds
+        swap(i, p);               // smaller value climbs
+        i = p;
+    }
+}` });
+})();
+</script>
+
+<h3>Poll: remove the minimum with sift-down</h3>
+<p>Starting from the heap we just built, <code>[1, 3, 2, 5, 4, 8]</code>, poll twice.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const heap = [1, 3, 2, 5, 4, 8];
+  const out = [];
+  const r = Viz.recorder();
+  const tree = (m = {}) => {
+    const nodes = {};
+    heap.forEach((v, i) => nodes['n' + v] = { val: v, left: heap[2 * i + 1] != null ? 'n' + heap[2 * i + 1] : null, right: heap[2 * i + 2] != null ? 'n' + heap[2 * i + 2] : null });
+    const marks = {}; for (const [i, c] of Object.entries(m)) marks['n' + heap[i]] = c;
+    return { type: 'tree', id: 't', label: 'tree', root: 'n' + heap[0], nodes, marks };
+  };
+  const arr = (m = {}, ptr = {}) => ({ type: 'array', id: 'a', label: 'array', values: heap.slice(), keys: heap.map(v => 'k' + v), marks: m, pointers: ptr });
+  const P = (m, ptr) => [tree(m), arr(m, ptr), { type: 'stack', id: 'o', label: 'polled so far', items: out.map(v => ({ id: 'o' + v, val: v })), kind: 'queue' }];
+  r.step(P({ 0: 'compare' }, {}), [2], `The minimum is always at index 0: <b>${heap[0]}</b>. We want to remove it without breaking the rule.`);
+  for (let round = 0; round < 2; round++) {
+    const top = heap[0];
+    r.step(P({ 0: 'active', [heap.length - 1]: 'compare' }, { last: heap.length - 1 }), [2, 3],
+      `Take <b>${top}</b> out. The hole at the root is filled by the <b>last</b> value (${heap[heap.length - 1]}), because removing the last spot keeps the tree complete.`);
+    const last = heap.pop();
+    out.push(top);
+    heap[0] = last;
+    let i = 0;
+    r.step(P({ 0: 'bad' }, { i: 0 }), [5, 6], `${last} now sits at the root. It is probably too big for this spot, so it must <b>sink</b>.`);
+    while (true) {
+      const l = 2 * i + 1, rr = l + 1;
+      let s = i;
+      if (l < heap.length && heap[l] < heap[s]) s = l;
+      if (rr < heap.length && heap[rr] < heap[s]) s = rr;
+      const kids = [l, rr].filter(k => k < heap.length);
+      if (s === i) {
+        r.step(P({ [i]: 'done', ...Object.fromEntries(kids.map(k => [k, 'compare'])) }, { i }), [11],
+          kids.length ? `Children (${kids.map(k => heap[k]).join(', ')}) are all ≥ ${heap[i]}. The rule holds again. Stop.` : `${heap[i]} has no children now. Stop.`);
+        break;
+      }
+      r.step(P({ [i]: 'bad', [s]: 'active', ...Object.fromEntries(kids.filter(k => k !== s).map(k => [k, 'compare'])) }, { i, child: s }), [9, 10, 12],
+        `Children of index ${i} are at ${l}${rr < heap.length ? ` and ${rr}` : ''}. The smaller child is <b>${heap[s]}</b> and it is smaller than ${heap[i]}, so swap with it (the smaller child must be the one to move up, or the rule breaks).`);
+      [heap[i], heap[s]] = [heap[s], heap[i]];
+      i = s;
+    }
+  }
+  r.step(P({ 0: 'done' }, {}), [15], `Polled <b>${out.join(', ')}</b> — the smallest values, in order. Each poll took about log₂ n swaps. Heap is now [${heap.join(', ')}].`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Heap poll with sift-down', code:
+`int poll() {
+    int top = heap.get(0);                 // the minimum
+    int last = heap.remove(heap.size() - 1);
+    if (heap.isEmpty()) return top;
+    heap.set(0, last);                     // last leaf to root
+    int i = 0;
+    while (true) {
+        int l = 2 * i + 1, r = l + 1, s = i; // s = smallest
+        if (l < heap.size() && heap.get(l) < heap.get(s)) s = l;
+        if (r < heap.size() && heap.get(r) < heap.get(s)) s = r;
+        if (s == i) break;                 // children bigger
+        swap(i, s);                        // sink one level
+        i = s;
+    }
+    return top;
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"A heap only promises that every parent is smaller than its children, so the root is the minimum. Insert and poll each repair that promise along one root-to-leaf path, and a complete tree has height log n, so both are O(log n); peek is O(1)."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code>PriorityQueue&lt;Integer&gt; minH = <span class="k">new</span> PriorityQueue&lt;&gt;();
+PriorityQueue&lt;Integer&gt; maxH = <span class="k">new</span> PriorityQueue&lt;&gt;(Collections.reverseOrder());
+PriorityQueue&lt;<span class="k">int</span>[]&gt; byDist = <span class="k">new</span> PriorityQueue&lt;&gt;((a, b) -&gt; a[<span class="n">0</span>] - b[<span class="n">0</span>]);
+minH.offer(x);      <span class="c">// O(log n)  sift-up</span>
+minH.peek();        <span class="c">// O(1)      the smallest</span>
+minH.poll();        <span class="c">// O(log n)  sift-down</span>
+<span class="c">// array view: kids 2i+1, 2i+2   parent (i-1)/2</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Insert at the end and bubble up; remove the root, put the last in its place, sink down.</b> Kids 2i+1, 2i+2 — parent (i−1)/2.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Thinking a heap is sorted. Only the root is guaranteed; iterating a <code>PriorityQueue</code> does <b>not</b> give sorted order.</li>
+  <li>Sift-down swapping with the <i>left</i> child instead of the <b>smaller</b> child — the rule breaks one level up.</li>
+  <li>Comparator <code>(a, b) -&gt; a - b</code> can overflow for huge values; use <code>Integer.compare(a, b)</code>.</li>
+  <li><code>pq.remove(x)</code> of an arbitrary element is O(n), not O(log n).</li>
+  <li>Building a heap from n items with n offers is O(n log n); <code>new PriorityQueue&lt;&gt;(list)</code> heapifies in O(n).</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/last-stone-weight/">1046. Last Stone Weight</a> — max-heap, poll two, offer the difference.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/kth-largest-element-in-a-stream/">703. Kth Largest Element in a Stream</a> — size-k min-heap.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/k-closest-points-to-origin/">973. K Closest Points to Origin</a> — max-heap by distance, size k.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/task-scheduler/">621. Task Scheduler</a> — max-heap of counts plus a cooldown queue.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-an-array/">912. Sort an Array</a> — write heapsort with your own sift-down.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/merge-k-sorted-lists/">23. Merge k Sorted Lists</a> — heap holds the head of each list.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>In a heap array, where are the children of index 2, and where is the parent of index 6?</summary>
+<p>Children at 5 and 6. Parent of 6 is (6 − 1) / 2 = 2.</p></details>
+<details class="quiz"><summary>Is <code>[1, 4, 2, 7, 3]</code> a valid min-heap?</summary>
+<p>No. Index 1 (value 4) has a child at index 4 with value 3, and 3 &lt; 4.</p></details>
+<details class="quiz"><summary>Why does poll move the <i>last</i> element to the root instead of promoting a child?</summary>
+<p>Removing the last slot keeps the tree complete (no gaps in the array). Then a single sift-down fixes the order.</p></details>
+<details class="quiz"><summary>You need the largest values but Java's PriorityQueue is a min-heap. What do you do?</summary>
+<p><code>new PriorityQueue&lt;&gt;(Collections.reverseOrder())</code>, or a comparator <code>(a, b) -&gt; Integer.compare(b, a)</code>.</p></details>
+
+<nav class="pager"><a href="monotonic-stack.html">← Monotonic stack</a><a href="top-k.html">Top K →</a></nav>
+</main>
+</body>
+</html>

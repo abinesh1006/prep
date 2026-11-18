@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DP Intro</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Dynamic programming</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 42 · Dynamic programming</div>
+<h1>Dynamic programming: the idea</h1>
+<p class="lede">Dynamic programming (DP) is recursion that writes down every answer it works out, so the same small question is never solved twice.</p>
+<p class="meta">Time to learn: about 3 hours · Prerequisites: <a href="recursion.html">Recursion</a>, <a href="big-o.html">Big-O</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>The question asks for a <b>count</b> ("how many ways"), a <b>best value</b> ("minimum cost", "maximum profit", "longest") or a <b>yes/no</b> ("can you reach"), and the choices at each step depend on the choices before — "climb 1 or 2 steps", "rob or skip each house". If a brute-force recursion would call the <b>same arguments again and again</b>, it is DP.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>You can climb a staircase 1 or 2 steps at a time. How many different ways reach step 5? Think about the <b>last</b> move: you arrived either from step 4 (one step) or from step 3 (two steps). So <code>ways(5) = ways(4) + ways(3)</code>. The same rule works for every step — that is the <b>recurrence</b> (the formula linking a big answer to smaller answers).</p>
+<p>Written as plain recursion this is correct but slow: ways(5) asks for ways(3) <b>twice</b>, ways(2) three times. For step 40 the number of calls is over 100 million, because the same questions are recomputed endlessly.</p>
+<p>DP fixes it by <b>remembering</b>. There are two ways to do it:</p>
+<ul>
+  <li><b>Memoization (top-down)</b>: keep the recursion, but store each result in an array the first time; the next time, look it up.</li>
+  <li><b>Tabulation (bottom-up)</b>: fill a table from the smallest step upwards: dp[0], dp[1], dp[2]… each from cells already filled. No recursion at all.</li>
+</ul>
+<p>Often each cell only needs the last one or two cells, so the table can shrink to <b>two variables</b> — O(1) memory.</p>
+<p>Recipe for every DP problem: (1) what does <code>dp[i]</code> mean, in one sentence? (2) what is the recurrence? (3) what are the smallest answers you know for sure (base cases)? (4) in which order do you fill it?</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A child asked "what is 1+1+1+1+1?" counts to 5. Then you write "+1" on the left: they answer 6 at once — they remembered the 5 instead of counting again. DP is writing your sub-answers on a notepad so you never have to count again.</p></div>
+
+<h2>Watch it work</h2>
+<h3>1. Plain recursion — the repeated work</h3>
+<p>Each circle is one call <code>ways(n)</code>; the number under it is what it returns. Red = a call whose answer we had <b>already</b> computed somewhere else.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const nodes = {}; let k = 0;
+  const build = n => { const id = 't' + k++; nodes[id] = { val: n, left: null, right: null }; if (n > 2) { nodes[id].left = build(n - 1); nodes[id].right = build(n - 2); } return id; };
+  const root = build(5);
+  const r = Viz.recorder();
+  const marks = Object.fromEntries(Object.keys(nodes).map(id => [id, 'dim'])), badges = {}, known = new Set();
+  let calls = 0;
+  const snap = (line, say, cur, stack) => {
+    const m = { ...marks }; for (const s of stack) if (m[s] === 'dim' || m[s] === '') m[s] = 'compare';
+    if (cur) m[cur] = marks[cur] === 'bad' || marks[cur] === 'done' ? marks[cur] : 'active';
+    r.step([{ type: 'tree', id: 't', label: 'call tree for ways(5)', root, nodes, marks: m, badges },
+      { type: 'vars', id: 'v', vars: { calls } }], line, say);
+  };
+  snap([1], 'We want <b>ways(5)</b>. Every call splits into two smaller calls until n is 1 or 2, which we know directly.', null, []);
+  function ways(id, stack) {
+    const n = nodes[id].val; calls++;
+    const repeat = known.has(n);
+    if (n <= 2) {
+      badges[id] = n; marks[id] = repeat ? 'bad' : 'done'; known.add(n);
+      snap([2], `ways(${n}) is a base case: <b>${n}</b> way${n > 1 ? 's' : ''} (${n === 1 ? 'a single 1-step' : '1+1 or 2'}).${repeat ? ` <b>Again!</b> We already worked out ways(${n}) earlier.` : ''}`, id, stack);
+      return n;
+    }
+    marks[id] = ''; snap([3], `ways(${n}) = ways(${n - 1}) + ways(${n - 2}). Go down the left side first.${repeat ? ` Notice: ways(${n}) was <b>already solved</b> — the whole subtree below will be recomputed.` : ''}`, id, stack);
+    const v = ways(nodes[id].left, [...stack, id]) + ways(nodes[id].right, [...stack, id]);
+    badges[id] = v; marks[id] = repeat ? 'bad' : 'done'; known.add(n);
+    snap([3], `ways(${n}) = ${badges[nodes[id].left]} + ${badges[nodes[id].right]} = <b>${v}</b>.${repeat ? ' Same answer as before — wasted work (red).' : ''}`, id, stack);
+    return v;
+  }
+  ways(root, []);
+  snap([3], `Answer: <b>ways(5) = 8</b>, but it took <b>${calls} calls</b> for only 5 different questions. The red calls are the waste; for n = 40 they number in the hundreds of millions.`, null, []);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Climbing stairs recursion tree', code:
+`int ways(int n) {
+    if (n <= 2) return n;              // 1 stair: 1 way, 2 stairs: 2
+    return ways(n - 1) + ways(n - 2);  // last move was 1 or 2 steps
+}` });
+})();
+</script>
+
+<h3>2. Memoization — remember each answer</h3>
+<p>Same recursion, plus an array <code>memo</code>. Before working, look in it; after working, write the answer in it. Green chips in the memo row are answers already saved.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const nodes = {}; let k = 0; const memoSeen = new Set();
+  const build = n => { const id = 'm' + k++; nodes[id] = { val: n, left: null, right: null };
+    if (n > 2 && !memoSeen.has(n)) { nodes[id].left = build(n - 1); nodes[id].right = build(n - 2); }
+    memoSeen.add(n); return id; };
+  const root = build(5);
+  const r = Viz.recorder();
+  const marks = Object.fromEntries(Object.keys(nodes).map(id => [id, 'dim'])), badges = {};
+  const memo = Array(6).fill(0);
+  let calls = 0;
+  const snap = (line, say, cur, mm = {}) => {
+    const m = { ...marks }; if (cur && m[cur] !== 'done') m[cur] = 'active';
+    r.step([{ type: 'tree', id: 't', label: 'call tree with memo', root, nodes, marks: m, badges },
+      { type: 'array', id: 'memo', label: 'memo[n] (0 = not stored; n ≤ 2 never needs it)', values: memo,
+        marks: Object.assign(Object.fromEntries(memo.map((v, i) => [i, v ? 'done' : (i === 0 ? 'dim' : '')])), mm) },
+      { type: 'vars', id: 'v', vars: { calls } }], line, say);
+  };
+  snap([1], 'The memo row holds ways(1)…ways(5). All 0 = nothing known yet.', null);
+  function ways(id) {
+    const n = nodes[id].val; calls++;
+    if (n <= 2) { badges[id] = n; marks[id] = 'done'; snap([3], `ways(${n}) is a base case: ${n}.`, id); return n; }
+    if (memo[n]) { badges[id] = memo[n]; marks[id] = 'visited';
+      snap([4], `ways(${n}) again — but memo[${n}] = <b>${memo[n]}</b> is already written down. Return it at once: <b>no subtree</b> this time.`, id, { [n]: 'active' }); return memo[n]; }
+    marks[id] = ''; snap([4, 5], `memo[${n}] is empty, so work it out: ways(${n - 1}) + ways(${n - 2}).`, id, { [n]: 'compare' });
+    const v = ways(nodes[id].left) + ways(nodes[id].right);
+    memo[n] = v; badges[id] = v; marks[id] = 'done';
+    snap([5], `ways(${n}) = <b>${v}</b>. Write it into memo[${n}] before returning.`, id, { [n]: 'active' });
+    return v;
+  }
+  ways(root);
+  snap([6], `Answer 8 with <b>${calls} calls</b> instead of 9 — and for n = 40 it is 79 calls instead of hundreds of millions. Each n is computed once: O(n) time.`, null);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Memoization', code:
+`int[] memo = new int[n + 1];          // 0 means "not known yet"
+int ways(int n) {
+    if (n <= 2) return n;
+    if (memo[n] != 0) return memo[n];  // already worked out
+    return memo[n] = ways(n - 1) + ways(n - 2); // save, then return
+}` });
+})();
+</script>
+
+<h3>3. Table, then two variables</h3>
+<p>Turn it around: start from the bottom. <code>dp[i]</code> = number of ways to reach step i. <code>dp[0] = 1</code> (one way to stand still at the bottom) and <code>dp[1] = 1</code>. Every later cell is the sum of the two before it.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const n = 6, r = Viz.recorder();
+  const dp = Array(n + 1).fill('');
+  const arr = (marks, extra = {}) => ({ type: 'array', id: 'dp', label: 'dp[i] = ways to reach step i', values: [...dp], marks, ...extra });
+  dp[0] = 1; dp[1] = 1;
+  r.step([arr({ 0: 'done', 1: 'done' }), { type: 'vars', id: 'v', vars: { n } }], [3], 'Base cases: <b>dp[0] = 1</b>, <b>dp[1] = 1</b>. These we know without any work.');
+  for (let i = 2; i <= n; i++) {
+    dp[i] = dp[i - 1] + dp[i - 2];
+    const m = {}; for (let j = 0; j < i; j++) m[j] = 'done'; m[i - 1] = 'compare'; m[i - 2] = 'compare'; m[i] = 'active';
+    r.step([arr(m, { pointers: { 'i-2': i - 2, 'i-1': i - 1, i } }), { type: 'vars', id: 'v', vars: { i, [`dp[${i}]`]: `${dp[i - 1]} + ${dp[i - 2]} = ${dp[i]}` } }], [4, 5],
+      `dp[${i}] = dp[${i - 1}] + dp[${i - 2}] = ${dp[i - 1]} + ${dp[i - 2]} = <b>${dp[i]}</b>. Both cells it needs (blue) are already filled — that is why we go left to right.`);
+  }
+  r.step([arr(Object.fromEntries(dp.map((_, j) => [j, j === n ? 'active' : 'done']))), { type: 'vars', id: 'v', vars: { answer: dp[n] } }], [6],
+    `Table version: <b>dp[6] = 13</b>, O(n) time and O(n) memory. But look: each step only ever read the <b>last two</b> cells.`);
+  let prev2 = 1, prev1 = 1;
+  for (let i = 2; i <= n; i++) {
+    const cur = prev1 + prev2;
+    const m = {}; for (let j = 0; j <= n; j++) m[j] = j < i - 2 || j > i ? 'dim' : j === i ? 'active' : 'compare';
+    r.step([arr(m, { window: [i - 2, i - 1] }), { type: 'vars', id: 'v', vars: { prev2, prev1, cur: `${prev1} + ${prev2} = ${cur}` }, marks: { cur: 'active' } }], [11, 12],
+      `Two-variable version, i = ${i}: only <b>prev2 = ${prev2}</b> and <b>prev1 = ${prev1}</b> matter (the dashed window). cur = ${cur}. Everything faded is no longer needed.`);
+    prev2 = prev1; prev1 = cur;
+  }
+  r.step([arr(Object.fromEntries(dp.map((_, j) => [j, j === n ? 'done' : 'dim']))), { type: 'vars', id: 'v', vars: { prev2, prev1, answer: prev1 }, marks: { answer: 'done' } }], [14],
+    `Same answer <b>13</b> with just two variables: O(n) time, <b>O(1) memory</b>. Recursion → memo → table → two variables: the standard DP journey.`);
+  Viz.mount('#demo3', { frames: r.frames, title: 'Bottom-up table and two variables', code:
+`int climbTable(int n) {
+    int[] dp = new int[n + 1];
+    dp[0] = 1; dp[1] = 1;              // known answers
+    for (int i = 2; i <= n; i++)
+        dp[i] = dp[i - 1] + dp[i - 2]; // from two filled cells
+    return dp[n];
+}
+int climbTwoVars(int n) {
+    int prev2 = 1, prev1 = 1;          // dp[i-2], dp[i-1]
+    for (int i = 2; i <= n; i++) {
+        int cur = prev1 + prev2;
+        prev2 = prev1; prev1 = cur;    // slide the window right
+    }
+    return prev1;
+}` });
+})();
+</script>
+
+<h3>4. House Robber — a choice in every cell</h3>
+<p>Houses hold <code>[2, 7, 9, 3, 1]</code> coins. You cannot rob two neighbours. <code>dp[i]</code> = most money from houses 0..i. For house i there are two options: <b>skip</b> it (keep dp[i−1]) or <b>rob</b> it (its coins + dp[i−2], because house i−1 must then be skipped). Take the bigger.</p>
+<div id="demo4"></div>
+<script>
+(() => {
+  const nums = [2, 7, 9, 3, 1], n = nums.length, r = Viz.recorder();
+  const dp = Array(n).fill('');
+  const step = (hm, dm, vars, line, say, ptr = {}) => r.step([
+    { type: 'array', id: 'h', label: 'coins in each house', values: nums, marks: hm, pointers: ptr },
+    { type: 'array', id: 'dp', label: 'dp[i] = best from houses 0..i', values: [...dp], marks: dm },
+    { type: 'vars', id: 'v', vars }], line, say);
+  step({}, {}, { houses: n }, [1], 'Five houses in a row. Robbing two neighbours sets off the alarm. We fill <b>dp</b> left to right: dp[i] = the most we can carry away using only houses 0..i.');
+  dp[0] = nums[0];
+  step({ 0: 'active' }, { 0: 'done' }, { 'dp[0]': 2 }, [4], 'With only house 0, rob it: <b>dp[0] = 2</b>.', { i: 0 });
+  dp[1] = Math.max(nums[0], nums[1]);
+  step({ 1: 'active' }, { 0: 'done', 1: 'done' }, { 'dp[1]': 'max(2, 7) = 7' }, [5], 'With houses 0 and 1 you can rob only one of them: the better is 7. <b>dp[1] = 7</b>.', { i: 1 });
+  for (let i = 2; i < n; i++) {
+    const skip = dp[i - 1], take = dp[i - 2] + nums[i];
+    const dm0 = {}; for (let j = 0; j < i; j++) dm0[j] = 'done'; dm0[i - 1] = 'compare'; dm0[i - 2] = 'compare';
+    step({ [i]: 'compare' }, dm0, { skip: `dp[${i - 1}] = ${skip}`, rob: `${nums[i]} + dp[${i - 2}] = ${take}` }, [7, 8],
+      `House ${i} has ${nums[i]} coins. Two options: <b>skip</b> it and keep dp[${i - 1}] = ${skip}, or <b>rob</b> it — then house ${i - 1} is off limits, so add dp[${i - 2}] = ${dp[i - 2]}.`, { i });
+    dp[i] = Math.max(skip, take);
+    const dm = {}; for (let j = 0; j < i; j++) dm[j] = 'done'; dm[i - 1] = skip >= take ? 'active' : 'compare'; dm[i - 2] = take > skip ? 'active' : 'compare'; dm[i] = 'active';
+    step({ [i]: 'active', [i - 1]: 'compare' }, dm, { skip: `dp[${i - 1}] = ${skip}`, rob: `${nums[i]} + dp[${i - 2}] = ${take}`, [`dp[${i}]`]: dp[i] }, [7, 8, 9],
+      `House ${i} (${nums[i]} coins). Skip it → ${skip}. Rob it → ${nums[i]} + dp[${i - 2}] = ${take}. ${take > skip ? '<b>Rob</b>' : '<b>Skip</b>'} wins: dp[${i}] = <b>${dp[i]}</b>.`, { i });
+  }
+  // walk back to see which houses were robbed
+  const robbed = []; for (let i = n - 1; i >= 0;) { if (i === 0 || (i >= 1 && dp[i] !== dp[i - 1])) { robbed.push(i); i -= 2; } else i--; }
+  step(Object.fromEntries(nums.map((_, j) => [j, robbed.includes(j) ? 'done' : 'dim'])), Object.fromEntries(dp.map((_, j) => [j, j === n - 1 ? 'active' : 'done'])),
+    { answer: dp[n - 1], robbed: robbed.reverse().map(j => nums[j]).join(' + ') }, [11],
+    `Answer <b>dp[4] = ${dp[n - 1]}</b>: rob houses ${robbed.join(', ')} (${robbed.map(j => nums[j]).join(' + ')}). Like the stairs, only dp[i−1] and dp[i−2] are used, so two variables would do.`);
+  Viz.mount('#demo4', { frames: r.frames, title: 'House robber', code:
+`int rob(int[] nums) {
+    int n = nums.length;
+    int[] dp = new int[n];              // dp[i] = best from 0..i
+    dp[0] = nums[0];
+    if (n > 1) dp[1] = Math.max(nums[0], nums[1]);
+    for (int i = 2; i < n; i++) {
+        int skip = dp[i - 1];            // leave house i alone
+        int take = dp[i - 2] + nums[i];  // rob i, so skip i-1
+        dp[i] = Math.max(skip, take);
+    }
+    return dp[n - 1];
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"The problem has <b>optimal substructure</b> — the answer for n is built from answers for smaller n — and <b>overlapping subproblems</b> — the same smaller n is needed many times. Storing each subproblem's answer once turns exponential recursion into O(number of subproblems × work per subproblem)."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// 1. dp[i] means: ...one sentence...</span>
+<span class="k">int</span>[] dp = <span class="k">new int</span>[n + <span class="n">1</span>];
+dp[<span class="n">0</span>] = ...;                          <span class="c">// 2. base cases</span>
+<span class="k">for</span> (<span class="k">int</span> i = <span class="n">1</span>; i &lt;= n; i++)          <span class="c">// 3. order: smaller first</span>
+    dp[i] = combine(dp[i - <span class="n">1</span>], dp[i - <span class="n">2</span>], ...); <span class="c">// 4. recurrence</span>
+<span class="k">return</span> dp[n];</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Same question asked twice → write the answer down.</b> Define dp[i] in one sentence, find the last choice, fill smallest first.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Starting to code before writing what dp[i] <b>means</b> — the recurrence then comes out wrong.</li>
+  <li>Wrong base cases (dp[0] for stairs is 1, not 0) or forgetting the n = 1 case (House Robber with one house).</li>
+  <li>Memo with 0 as "unknown" when 0 is a real answer — use -1 or an <code>Integer[]</code> with null.</li>
+  <li>Filling the table in an order where a cell needs one that is not filled yet.</li>
+  <li>int overflow for counting problems with big n — use long, or the requested modulo.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/climbing-stairs/">70. Climbing Stairs</a> — the first three animations.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/min-cost-climbing-stairs/">746. Min Cost Climbing Stairs</a> — min instead of +.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/fibonacci-number/">509. Fibonacci Number</a> — the same recurrence.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/house-robber/">198. House Robber</a> — the fourth animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/house-robber-ii/">213. House Robber II</a> — houses in a circle: run twice, without first / without last.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/decode-ways/">91. Decode Ways</a> — like stairs: one digit or two digits.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/delete-and-earn/">740. Delete and Earn</a> — turn it into House Robber over values.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>What two properties make a problem a DP problem?</summary>
+<p>Optimal substructure (big answer from smaller answers) and overlapping subproblems (the same smaller answer is needed many times).</p></details>
+<details class="quiz"><summary>Memoization vs tabulation: which one recurses?</summary>
+<p>Memoization (top-down) keeps the recursion and caches results. Tabulation (bottom-up) fills a table with loops, no recursion and no stack-overflow risk.</p></details>
+<details class="quiz"><summary>When can a DP table shrink to a few variables?</summary>
+<p>When each cell only reads a fixed number of recent cells (here the last two). Keep just those and slide them forward.</p></details>
+<details class="quiz"><summary>House Robber: dp = [2, 7, 11, 11, 12]. Why is dp[3] = 11 and not 3 + 7 = 10?</summary>
+<p>Robbing house 3 gives 3 + dp[1] = 10, skipping it keeps dp[2] = 11. The skip is bigger.</p></details>
+
+<nav class="pager"><a href="n-queens.html">← N-Queens</a><a href="coin-change.html">Coin change →</a></nav>
+</main>
+</body>
+</html>

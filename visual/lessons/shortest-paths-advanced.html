@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Advanced Shortest Paths</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>MAANG extras</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 51 · MAANG extras</div>
+<h1>Advanced Shortest Paths</h1>
+<p class="lede">Beyond Dijkstra: Bellman-Ford when the number of edges is limited (or weights are negative), 0-1 BFS when weights are only 0 or 1, and Floyd–Warshall when you need every pair.</p>
+<p class="meta">Time to learn: about 3 hours · Prerequisites: <a href="graph-basics.html">Graph basics</a>, <a href="dijkstra.html">Dijkstra</a>, <a href="grid-bfs-dfs.html">Grid BFS / DFS</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"Cheapest price with <b>at most k stops</b>" or "<b>negative</b> weights" → Bellman-Ford. "Each move costs <b>0 or 1</b>" (free moves along an arrow, pay 1 to change direction or remove an obstacle) → 0-1 BFS. "Distance between <b>every pair</b> of cities", "n ≤ 100–400" → Floyd–Warshall.</p></div>
+
+<h2>The idea in plain words</h2>
+<p><b>Relax</b> an edge u → v with weight w = "if going through u is cheaper, update v": <code>if (dist[u] + w &lt; dist[v]) dist[v] = dist[u] + w</code>. All three algorithms are just different orders of relaxing.</p>
+<ul>
+  <li><b>Bellman-Ford</b>: relax <i>every</i> edge, in rounds. After round 1 you know the best price using at most 1 edge, after round 2 at most 2 edges, and so on. With "at most k stops" you run exactly k + 1 rounds — and each round must read the <b>previous</b> round's prices (a copy), or a path could sneak in extra edges in one round. O(k · E).</li>
+  <li><b>0-1 BFS</b>: like normal BFS, but use a deque. A 0-cost edge does not make you "further away", so push its node to the <b>front</b>; a 1-cost edge goes to the <b>back</b>. The deque then always pops nodes in order of distance, like Dijkstra without a heap. O(V + E).</li>
+  <li><b>Floyd–Warshall</b>: a table <code>d[i][j]</code> of all pairs. For each city k in turn, ask for every pair: "is going i → k → j cheaper?". Three nested loops, k on the outside. O(V³).</li>
+</ul>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Bellman-Ford is news spreading by daily phone calls: on day 1 only your direct friends know the cheapest fare, on day 2 their friends, and so on — limiting the days limits the number of hops. 0-1 BFS is a queue at a theme park where fast-pass holders (0-cost) jump to the front. Floyd–Warshall is adding one new airport hub at a time and checking every route that could now go through it.</p></div>
+
+<h2>Watch it work</h2>
+<h3>1. Bellman-Ford rounds — Cheapest Flights Within K Stops (k = 1)</h3>
+<p>From city 0 to city 3 with at most <b>1 stop</b> (= at most 2 flights). The overall cheapest route 0 → 1 → 2 → 3 costs 400 but has 2 stops, so it is not allowed.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const nodes = [{ id: 0, x: 90, y: 100 }, { id: 1, x: 300, y: 30 }, { id: 2, x: 300, y: 180 }, { id: 3, x: 520, y: 100 }];
+  const flights = [[0, 1, 100], [1, 2, 100], [2, 0, 100], [1, 3, 600], [2, 3, 200]];
+  const edges = flights.map(([a, b, w]) => ({ a, b, w, dir: true }));
+  const src = 0, dst = 3, k = 1, INF = Infinity;
+  const show = v => v === INF ? '∞' : v;
+  let price = [INF, INF, INF, INF]; price[src] = 0;
+  let tmp = price.slice();
+  const r = Viz.recorder();
+  const panels = (round, em = {}, nm = {}, tm = {}) => [
+    { type: 'graph', id: 'g', label: 'flights (price on each arrow)', h: 215, nodes, edges, edgeMarks: em, marks: nm, badges: Object.fromEntries(price.map((p, i) => [i, show(p)])) },
+    { type: 'array', id: 'p', label: 'price (from last round — read only)', values: price.map(show) },
+    { type: 'array', id: 't', label: 'tmp (this round — we write here)', values: tmp.map(show), marks: tm },
+    { type: 'vars', id: 'v', vars: { round, 'flights allowed': round === '-' ? 0 : round + 1 } }];
+  r.step(panels('-', {}, { 0: 'done' }), [3, 4, 5], 'price[0] = 0, everything else ∞ (unknown). Badges show the price known so far. k = 1 stop means at most <b>2 flights</b>, so we run 2 rounds.');
+  for (let round = 0; round <= k; round++) {
+    tmp = price.slice();
+    r.step(panels(round, {}, {}), [6, 7], `Round ${round + 1}: copy price into tmp. We <b>read</b> old prices and <b>write</b> tmp, so one round can only add one flight to a route.`);
+    for (const [u, v, w] of flights) {
+      const ek = `${u}-${v}`;
+      if (price[u] !== INF && price[u] + w < tmp[v]) {
+        const old = tmp[v]; tmp[v] = price[u] + w;
+        r.step(panels(round, { [ek]: 'active' }, { [u]: 'compare', [v]: 'active' }, { [v]: 'active' }), [10, 11],
+          `Flight ${u} → ${v} (${w}): price[${u}] + ${w} = ${price[u] + w} &lt; ${show(old)}. Cheaper! tmp[${v}] = <b>${tmp[v]}</b>.`);
+      } else if (price[u] === INF) {
+        r.step(panels(round, { [ek]: 'dim' }, { [u]: 'dim' }), [10],
+          `Flight ${u} → ${v}: we cannot reach ${u} yet ${round > 0 ? '(in the <i>old</i> prices — that is the point of the copy)' : ''}, so skip it.`);
+      } else {
+        r.step(panels(round, { [ek]: 'bad' }, { [u]: 'compare', [v]: 'compare' }), [10],
+          `Flight ${u} → ${v} (${w}): ${price[u]} + ${w} = ${price[u] + w} is not cheaper than ${show(tmp[v])}. No change.`);
+      }
+    }
+    price = tmp.slice();
+    r.step(panels(round, {}, {}), [13], `End of round ${round + 1}: price = tmp. These are the cheapest prices using <b>at most ${round + 1} flight${round ? 's' : ''}</b>.`);
+  }
+  r.step(panels(k, { '0-1': 'path', '1-3': 'path' }, { 0: 'path', 1: 'path', 3: 'done' }), [15],
+    `Done after k + 1 = 2 rounds. Cheapest with at most 1 stop: <b>${price[dst]}</b> (0 → 1 → 3). The 400 route via city 2 needed a third round, which we did not allow.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Bellman-Ford with k stops', code:
+`int cheapest(int n, int[][] flights, int src, int dst, int k) {
+    final int INF = Integer.MAX_VALUE;
+    int[] price = new int[n];
+    Arrays.fill(price, INF);
+    price[src] = 0;
+    for (int round = 0; round <= k; round++) { // k+1 flights
+        int[] tmp = price.clone();       // read old, write new
+        for (int[] f : flights) {
+            int u = f[0], v = f[1], w = f[2];
+            if (price[u] != INF && price[u] + w < tmp[v])
+                tmp[v] = price[u] + w;   // relax the edge
+        }
+        price = tmp;
+    }
+    return price[dst] == INF ? -1 : price[dst];
+}` });
+})();
+</script>
+
+<h3>2. 0-1 BFS — free edges jump the queue</h3>
+<p>Edge weights are 0 or 1. Badges show <code>dist</code> from node 0.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const nodes = [{ id: 0, x: 80, y: 100 }, { id: 1, x: 250, y: 30 }, { id: 2, x: 250, y: 175 }, { id: 3, x: 420, y: 100 }, { id: 4, x: 590, y: 30 }, { id: 5, x: 590, y: 175 }];
+  const E = [[0, 1, 1], [0, 2, 0], [2, 3, 1], [1, 3, 0], [3, 4, 0], [1, 4, 1], [4, 5, 1], [2, 5, 1]];
+  const edges = E.map(([a, b, w]) => ({ a, b, w }));
+  const adj = nodes.map(() => []);
+  for (const [a, b, w] of E) { adj[a].push([b, w]); adj[b].push([a, w]); }
+  const INF = Infinity, dist = Array(6).fill(INF); dist[0] = 0;
+  const popped = new Set();
+  const dq = [0];
+  const r = Viz.recorder();
+  const panels = (u, em = {}, nm = {}, dm = {}) => {
+    const marks = {};
+    popped.forEach(x => { marks[x] = 'done'; });
+    Object.assign(marks, nm);
+    return [{ type: 'graph', id: 'g', label: 'graph (weight 0 or 1 on each edge)', h: 210, nodes, edges, edgeMarks: em, marks, pointers: u != null ? { u } : {}, badges: Object.fromEntries(dist.map((d, i) => [i, d === INF ? '∞' : d])) },
+      { type: 'stack', id: 'dq', label: 'deque (front → back)', kind: 'queue', items: dq.map((x, i) => ({ id: 'q' + i + '_' + x, val: x })), marks: dm }];
+  };
+  r.step(panels(null, {}, { 0: 'active' }, { 0: 'active' }), [4, 5, 6], 'dist[0] = 0, all others ∞. Put 0 in the deque.');
+  while (dq.length) {
+    const u = dq.shift();
+    const stale = popped.has(u);
+    popped.add(u);
+    if (stale) { r.step(panels(u, {}, { [u]: 'dim' }), [8], `Pop ${u} again — an old copy. Nothing can improve from it (its neighbours are already as cheap as possible).`); continue; }
+    const notes = [], em = {}, nm = { [u]: 'active' };
+    for (const [v, w] of adj[u]) {
+      if (dist[u] + w < dist[v]) {
+        dist[v] = dist[u] + w;
+        if (w === 0) dq.unshift(v); else dq.push(v);
+        em[`${u}-${v}`] = 'active'; nm[v] = 'compare';
+        notes.push(`${v} gets ${dist[v]} via a ${w}-edge → <b>${w === 0 ? 'front' : 'back'}</b>`);
+      } else em[`${u}-${v}`] = 'dim';
+    }
+    r.step(panels(u, em, nm), [8, 11, 12, 13, 14], `Pop ${u} (dist ${dist[u]}). ` + (notes.length ? notes.join('; ') + '.' : 'No neighbour gets cheaper.'));
+  }
+  r.step(panels(null), [18], `Deque empty. dist = <b>[${dist.join(', ')}]</b>. Because 0-edges go to the front, nodes come out in order of distance — Dijkstra's result in O(V + E), no heap.`);
+  Viz.mount('#demo2', { frames: r.frames, title: '0-1 BFS', code:
+`int[] zeroOneBfs(List<int[]>[] g, int src) { // g[u]: {v, w}
+    int[] dist = new int[g.length];
+    Arrays.fill(dist, Integer.MAX_VALUE);
+    dist[src] = 0;
+    Deque<Integer> dq = new ArrayDeque<>();
+    dq.offer(src);
+    while (!dq.isEmpty()) {
+        int u = dq.pollFirst();
+        for (int[] e : g[u]) {
+            int v = e[0], w = e[1];
+            if (dist[u] + w < dist[v]) {
+                dist[v] = dist[u] + w;
+                if (w == 0) dq.offerFirst(v); // free: front
+                else dq.offerLast(v);         // cost 1: back
+            }
+        }
+    }
+    return dist;
+}` });
+})();
+</script>
+
+<h3>3. Floyd–Warshall — every pair, one stop-over city at a time</h3>
+<div id="demo3"></div>
+<script>
+(() => {
+  const nodes = [{ id: 0, x: 120, y: 30 }, { id: 1, x: 400, y: 30 }, { id: 2, x: 400, y: 150 }, { id: 3, x: 120, y: 150 }];
+  const E = [[0, 1, 3], [0, 3, 7], [1, 0, 8], [1, 2, 2], [2, 0, 5], [2, 3, 1], [3, 0, 2]];
+  const edges = E.map(([a, b, w]) => ({ a, b, w, dir: true, bend: (a === 0 && b === 1) || (a === 1 && b === 0) || (a === 0 && b === 3) || (a === 3 && b === 0) ? 14 : 0 }));
+  const INF = Infinity, n = 4;
+  const d = [...Array(n)].map((_, i) => [...Array(n)].map((_, j) => i === j ? 0 : INF));
+  for (const [a, b, w] of E) d[a][b] = w;
+  const show = v => v === INF ? '∞' : v;
+  const r = Viz.recorder();
+  const panels = (k, gm = {}, nm = {}) => [
+    { type: 'graph', id: 'g', label: 'directed graph', h: 175, nodes, edges, marks: nm },
+    { type: 'grid', id: 'd', label: 'd[i][j] = cheapest i → j so far', cells: d.map(row => row.map(show)), rowLabels: ['from 0', 'from 1', 'from 2', 'from 3'], colLabels: ['to 0', 'to 1', 'to 2', 'to 3'], marks: gm }];
+  r.step(panels(-1), [1], 'Start: d[i][j] = direct edge price, 0 on the diagonal, ∞ when there is no direct edge.');
+  for (let k = 0; k < n; k++) {
+    const km = {}; for (let t = 0; t < n; t++) { km[`${k},${t}`] = 'compare'; km[`${t},${k}`] = 'compare'; }
+    r.step(panels(k, km, { [k]: 'active' }), [3], `Now allow city <b>${k}</b> as a stop-over. For each pair, compare d[i][j] with d[i][${k}] + d[${k}][j] (row ${k} and column ${k} are highlighted).`);
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      if (d[i][k] + d[k][j] < d[i][j]) {
+        const old = d[i][j]; d[i][j] = d[i][k] + d[k][j];
+        r.step(panels(k, { ...km, [`${i},${j}`]: 'active', [`${i},${k}`]: 'done', [`${k},${j}`]: 'done' }, { [k]: 'active', [i]: 'compare', [j]: 'compare' }), [6, 7, 8],
+          `${i} → ${k} → ${j} costs ${d[i][k]} + ${d[k][j]} = ${d[i][j]}, cheaper than ${show(old)}. Update d[${i}][${j}] = <b>${d[i][j]}</b>.`);
+      }
+    }
+  }
+  const all = {}; for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) all[`${i},${j}`] = 'done';
+  r.step(panels(n, all), [9], 'Done: every pair now has its cheapest price, with any cities as stop-overs. Three nested loops → O(V³), fine for a few hundred nodes.');
+  Viz.mount('#demo3', { frames: r.frames, title: 'Floyd–Warshall', code:
+`void floyd(int[][] d) {          // d[i][j] = edge or INF
+    int n = d.length;
+    for (int k = 0; k < n; k++)       // k = allowed stop-over
+        for (int i = 0; i < n; i++)
+            for (int j = 0; j < n; j++)
+                if (d[i][k] != INF && d[k][j] != INF
+                        && d[i][k] + d[k][j] < d[i][j])
+                    d[i][j] = d[i][k] + d[k][j];
+}` });
+})();
+</script>
+
+<h2>Which shortest-path algorithm?</h2>
+<table>
+<thead><tr><th>Situation</th><th>Use</th><th>Time</th></tr></thead>
+<tbody>
+<tr><td>Every edge costs the same (or unweighted grid)</td><td>Plain BFS</td><td>O(V + E)</td></tr>
+<tr><td>Weights are only 0 or 1</td><td>0-1 BFS (deque)</td><td>O(V + E)</td></tr>
+<tr><td>Non-negative weights, one source</td><td>Dijkstra (heap)</td><td>O(E log V)</td></tr>
+<tr><td>Negative weights, or "at most k edges / stops"</td><td>Bellman-Ford (k + 1 or V − 1 rounds)</td><td>O(k · E) or O(V · E)</td></tr>
+<tr><td>Detect a negative cycle</td><td>Bellman-Ford: a V-th round still improves something</td><td>O(V · E)</td></tr>
+<tr><td>All pairs, V up to ~400</td><td>Floyd–Warshall</td><td>O(V³)</td></tr>
+<tr><td>DAG (no cycles), any weights</td><td>Topological order + relax</td><td>O(V + E)</td></tr>
+</tbody></table>
+
+<h2>Why it works</h2>
+<p>"After round r of Bellman-Ford, every price is the cheapest using at most r edges, because any such path is a path of r − 1 edges plus one more edge, which we just relaxed — reading the previous round's copy keeps that exact." "In 0-1 BFS the deque only ever holds two distance values, d and d + 1, with the d's at the front, so it pops in distance order like Dijkstra." "Floyd–Warshall: after processing k, d[i][j] is the cheapest path whose stop-overs are only cities 0..k."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// Bellman-Ford with at most k stops</span>
+<span class="k">for</span> (round = <span class="n">0</span>; round &lt;= k; round++) {
+    tmp = price.clone();
+    <span class="k">for</span> (edge u→v,w) <span class="k">if</span> (price[u] + w &lt; tmp[v]) tmp[v] = price[u] + w;
+    price = tmp;
+}
+<span class="c">// 0-1 BFS: w == 0 ? offerFirst(v) : offerLast(v)</span>
+<span class="c">// Floyd: k OUTSIDE, then i, then j</span>
+d[i][j] = min(d[i][j], d[i][k] + d[k][j]);</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Limited stops → Bellman-Ford with a copy each round. 0/1 weights → deque, 0 to the front. All pairs → Floyd, k outermost.</b></p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Bellman-Ford with k stops <b>without the copy</b> — one round can chain several edges and break the stop limit.</li>
+  <li>Running Dijkstra on "at most k stops" — it throws away a more expensive path with fewer stops that you may need.</li>
+  <li>Floyd–Warshall with <code>k</code> as the inner loop — the answers come out wrong.</li>
+  <li><code>INF + w</code> overflowing when INF is <code>Integer.MAX_VALUE</code>: check for INF first, or use a smaller INF like 1e9.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/network-delay-time/">743. Network Delay Time</a> — solve it with both Dijkstra and Bellman-Ford.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/cheapest-flights-within-k-stops/">787. Cheapest Flights Within K Stops</a> — animation 1.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance/">1334. City With the Smallest Number of Neighbors</a> — Floyd–Warshall.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/minimum-obstacle-removal-to-reach-corner/">2290. Minimum Obstacle Removal to Reach Corner</a> — 0-1 BFS on a grid.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/minimum-cost-to-make-at-least-one-valid-path-in-a-grid/">1368. Minimum Cost to Make a Valid Path in a Grid</a> — follow the arrow = 0, change it = 1.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/course-schedule-iv/">1462. Course Schedule IV</a> — Floyd–Warshall on true/false reachability.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Why does Bellman-Ford need V − 1 rounds without a stop limit?</summary>
+<p>A shortest path without cycles uses at most V − 1 edges, and each round extends the known paths by one edge.</p></details>
+<details class="quiz"><summary>How do you detect a negative cycle with Bellman-Ford?</summary>
+<p>Run one extra (V-th) round. If any price still gets cheaper, a negative cycle is reachable.</p></details>
+<details class="quiz"><summary>When is 0-1 BFS better than Dijkstra?</summary>
+<p>When every weight is 0 or 1: it gives the same answer in O(V + E) without a heap.</p></details>
+<details class="quiz"><summary>Why must k be the outer loop in Floyd–Warshall?</summary>
+<p>The table after step k must mean "paths using only 0..k as stop-overs". With k inside, you would combine entries that were not finished yet.</p></details>
+
+<nav class="pager"><a href="monotonic-deque.html">← Monotonic deque</a><a href="segment-tree-fenwick.html">Segment tree and Fenwick →</a></nav>
+</main>
+</body>
+</html>

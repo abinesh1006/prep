@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Binary Search</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Searching</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 8 · Searching</div>
+<h1>Binary Search</h1>
+<p class="lede">Look at the middle of a sorted list, decide which half cannot hold the answer, throw that half away, and repeat — a million items take only 20 looks.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="big-o.html">Big-O</a>, <a href="two-pointers.html">Two pointers</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>The input is <b>sorted</b> (or "rotated sorted"), and the question says "find", "first position", "last position", "insert position", or demands <b>O(log n)</b>. More generally: any yes/no question whose answers look like <code>no no no yes yes yes</code> as you move along.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>You have 10 sorted numbers and want to know where 23 is. Checking them one by one takes up to 10 looks. Instead, look at the <b>middle</b> number, 16.</p>
+<ul>
+  <li>16 is <b>smaller</b> than 23. The list is sorted, so everything left of 16 is even smaller — none of it can be 23. Throw away the left half in one go.</li>
+  <li>If the middle were <b>bigger</b> than 23, throw away the right half instead.</li>
+  <li>If the middle <b>is</b> 23, you are done.</li>
+</ul>
+<p>Each look halves what is left: 10 → 5 → 2 → 1. A list of 1,000,000 numbers needs at most about 20 looks, because 2<sup>20</sup> ≈ 1,000,000. That is what <b>O(log n)</b> means: the work grows with the number of halvings, not with the size.</p>
+<p>We keep two markers, <b>lo</b> and <b>hi</b>, around the part that might still hold the answer, and <b>mid</b> is the middle of that part.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Finding a word in a paper dictionary. You open it near the middle, see "M", know "giraffe" comes earlier, and never look at the second half again. You open the middle of the first half, and so on, until you are on the right page.</p></div>
+
+<h2>Watch it work</h2>
+<p>Classic search: is the target in <code>[2, 5, 8, 12, 16, 23, 38, 56, 72, 91]</code>? First target <b>23</b> (found), then target <b>10</b> (not found). Press ▶ or use the arrow keys to step.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const a = [2, 5, 8, 12, 16, 23, 38, 56, 72, 91];
+  const r = Viz.recorder();
+  const dimOut = (lo, hi) => Object.fromEntries(a.map((_, i) => [i, 'dim']).filter(([i]) => i < lo || i > hi));
+  const arr = (ptr, marks) => ({ type: 'array', id: 'a', label: 'nums (sorted)', values: a, pointers: ptr, marks });
+  for (const target of [23, 10]) {
+    let lo = 0, hi = a.length - 1, found = -1;
+    r.step([arr({ lo, hi }, {}), { type: 'vars', id: 'v', vars: { target, lo, hi } }], [2],
+      `New search for <b>${target}</b>. The answer could be anywhere, so <b>lo</b> = 0 and <b>hi</b> = ${hi} cover the whole array.`);
+    while (lo <= hi) {
+      const mid = lo + Math.floor((hi - lo) / 2);
+      r.step([arr({ lo, mid, hi }, { ...dimOut(lo, hi), [mid]: 'compare' }), { type: 'vars', id: 'v', vars: { target, lo, hi, mid } }], [3, 4],
+        `The range [${lo}..${hi}] is not empty. Its middle is mid = ${lo} + (${hi} − ${lo}) / 2 = <b>${mid}</b>. Look at nums[${mid}] = ${a[mid]}.`);
+      if (a[mid] === target) {
+        found = mid;
+        r.step([arr({ lo, mid, hi }, { ...dimOut(lo, hi), [mid]: 'done' }), { type: 'vars', id: 'v', vars: { target, answer: mid }, marks: { answer: 'done' } }], [5],
+          `${a[mid]} equals the target. Found it at index <b>${mid}</b> after only a few looks.`);
+        break;
+      } else if (a[mid] < target) {
+        const m = { ...dimOut(lo, hi) }; for (let i = lo; i <= mid; i++) m[i] = 'bad';
+        r.step([arr({ lo, mid, hi }, m), { type: 'vars', id: 'v', vars: { target, lo, hi, mid } }], [6],
+          `${a[mid]} &lt; ${target}. Everything from lo up to mid is ${a[mid]} or smaller, so the target cannot be there. Throw that part away: <b>lo = mid + 1 = ${mid + 1}</b>.`);
+        lo = mid + 1;
+      } else {
+        const m = { ...dimOut(lo, hi) }; for (let i = mid; i <= hi; i++) m[i] = 'bad';
+        r.step([arr({ lo, mid, hi }, m), { type: 'vars', id: 'v', vars: { target, lo, hi, mid } }], [7],
+          `${a[mid]} &gt; ${target}. Everything from mid up to hi is ${a[mid]} or bigger, so the target cannot be there. Throw that part away: <b>hi = mid − 1 = ${mid - 1}</b>.`);
+        hi = mid - 1;
+      }
+    }
+    if (found < 0) {
+      r.step([arr({ hi, lo }, Object.fromEntries(a.map((_, i) => [i, 'dim']))), { type: 'vars', id: 'v', vars: { target, lo, hi, answer: -1 }, marks: { answer: 'bad' } }], [3, 9],
+        `Now lo = ${lo} is past hi = ${hi}: the range is empty, nothing is left to check. ${target} is not in the array, return <b>−1</b>. (lo = ${lo} is also where ${target} would be inserted.)`);
+    }
+  }
+  Viz.mount('#demo1', { frames: r.frames, title: 'Classic binary search', code:
+`int search(int[] nums, int target) {
+    int lo = 0, hi = nums.length - 1;   // whole array
+    while (lo <= hi) {                  // range not empty
+        int mid = lo + (hi - lo) / 2;   // middle, no overflow
+        if (nums[mid] == target) return mid;
+        else if (nums[mid] < target) lo = mid + 1; // go right
+        else hi = mid - 1;              // go left
+    }
+    return -1;                          // not found
+}` });
+})();
+</script>
+
+<h2>Second flavour: first and last occurrence (lower bound)</h2>
+<p>With duplicates, <code>[1, 3, 5, 5, 5, 5, 8, 9]</code>, plain search may land on <i>any</i> 5. Interviews usually ask for the <b>first</b> one (and the last). The trick: when <code>nums[mid] &gt;= target</code>, do <b>not</b> stop — mid might be the first 5, or there might be another 5 to its left, so keep mid and search left (<code>hi = mid</code>). The search ends when lo and hi meet, on the first index whose value is <code>&gt;= target</code>. This is called the <b>lower bound</b>.</p>
+<p>Last occurrence = (lower bound of <code>target + 1</code>) − 1: the first number bigger than 5 sits right after the last 5.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const a = [1, 3, 5, 5, 5, 5, 8, 9];
+  const r = Viz.recorder();
+  const dimOut = (lo, hi) => Object.fromEntries(a.map((_, i) => [i, 'dim']).filter(([i]) => i < lo || i >= hi));
+  const arr = (ptr, marks) => ({ type: 'array', id: 'a', label: 'nums (sorted, with duplicates)', values: a, pointers: ptr, marks });
+  const results = {};
+  for (const [target, why] of [[5, 'first 5'], [6, 'first number after the last 5']]) {
+    let lo = 0, hi = a.length;
+    r.step([arr({ lo, hi }, {}), { type: 'vars', id: 'v', vars: { target, lo, hi } }], [2],
+      `Lower bound of <b>${target}</b> (${why}). Half-open range: <b>hi = ${hi}</b> is one past the end, because the answer may be "after everything".`);
+    while (lo < hi) {
+      const mid = lo + Math.floor((hi - lo) / 2);
+      if (a[mid] >= target) {
+        const m = dimOut(lo, hi); for (let i = mid + 1; i < hi; i++) m[i] = 'bad'; m[mid] = 'active';
+        r.step([arr({ lo, mid, hi }, m), { type: 'vars', id: 'v', vars: { target, lo, mid, hi } }], [4, 5],
+          `mid = ${mid}, nums[mid] = ${a[mid]} ≥ ${target}. Mid <i>might</i> be the answer, but a smaller index might be too. Keep mid, drop the right side: <b>hi = mid = ${mid}</b>.`);
+        hi = mid;
+      } else {
+        const m = dimOut(lo, hi); for (let i = lo; i <= mid; i++) m[i] = 'bad';
+        r.step([arr({ lo, mid, hi }, m), { type: 'vars', id: 'v', vars: { target, lo, mid, hi } }], [4, 6],
+          `mid = ${mid}, nums[mid] = ${a[mid]} &lt; ${target}. Mid and everything left of it are too small. <b>lo = mid + 1 = ${mid + 1}</b>.`);
+        lo = mid + 1;
+      }
+    }
+    results[target] = lo;
+    r.step([arr({ lo }, { ...Object.fromEntries(a.map((_, i) => [i, 'dim'])), [lo]: 'done' }), { type: 'vars', id: 'v', vars: { target, answer: lo }, marks: { answer: 'done' } }], [8],
+      `lo = hi = ${lo}: only one spot is left, so it is the answer. Lower bound of ${target} = <b>${lo}</b>.`);
+  }
+  const first = results[5], last = results[6] - 1;
+  const m = {}; for (let i = first; i <= last; i++) m[i] = 'done';
+  r.step([arr({ first, last }, m), { type: 'vars', id: 'v', vars: { first, last: `${results[6]} − 1 = ${last}` }, marks: { first: 'done', last: 'done' } }], [8],
+    `First 5 is at index <b>${first}</b>. The first number after the 5s is at ${results[6]}, so the last 5 is at <b>${last}</b>. Count of 5s = ${last - first + 1}. Two O(log n) searches.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Lower bound: first and last occurrence', code:
+`int lowerBound(int[] nums, int target) {
+    int lo = 0, hi = nums.length;      // answer lies in [lo, hi]
+    while (lo < hi) {                  // until one spot is left
+        int mid = lo + (hi - lo) / 2;
+        if (nums[mid] >= target) hi = mid; // mid may be the answer
+        else lo = mid + 1;             // answer is right of mid
+    }
+    return lo;      // first index with nums[i] >= target
+}
+// first = lowerBound(t)  (check nums[first] == t)
+// last  = lowerBound(t + 1) - 1` });
+})();
+</script>
+
+<h2>Why <code>lo + (hi - lo) / 2</code> and not <code>(lo + hi) / 2</code>?</h2>
+<p>A Java <code>int</code> holds at most 2,147,483,647. With a huge array, say <code>lo = 1,500,000,000</code> and <code>hi = 2,000,000,000</code>, the sum <code>lo + hi = 3,500,000,000</code> does not fit: it wraps round to a <b>negative</b> number, mid becomes negative, and the program crashes. <code>hi - lo = 500,000,000</code> is small, half of it is 250,000,000, and <code>lo + 250,000,000 = 1,750,000,000</code> always fits. Same middle, no overflow. (Java's own <code>Arrays.binarySearch</code> had this exact bug for 9 years.)</p>
+
+<h2>Why it works</h2>
+<p>"The array is sorted, so one comparison with the middle tells me a whole half cannot contain the answer. Every loop keeps the answer inside [lo, hi] and halves that range, so the loop runs O(log n) times."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// Lower bound: first index where ok(i) is true (half-open)</span>
+<span class="k">int</span> lo = <span class="n">0</span>, hi = n;
+<span class="k">while</span> (lo &lt; hi) {
+    <span class="k">int</span> mid = lo + (hi - lo) / <span class="n">2</span>;
+    <span class="k">if</span> (ok(mid)) hi = mid;     <span class="c">// mid could be the answer</span>
+    <span class="k">else</span> lo = mid + <span class="n">1</span>;     <span class="c">// answer is to the right</span>
+}
+<span class="k">return</span> lo;                 <span class="c">// n means "nowhere"</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Sorted → halve it.</b> Exact match: <code>lo &lt;= hi</code>, move to <code>mid ± 1</code>. First/last: <code>lo &lt; hi</code>, <code>hi = mid</code> keeps the candidate.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Mixing the two styles: <code>while (lo &lt; hi)</code> with <code>hi = mid - 1</code> skips answers; <code>while (lo &lt;= hi)</code> with <code>hi = mid</code> loops forever.</li>
+  <li><code>(lo + hi) / 2</code> overflowing on big values — always write <code>lo + (hi - lo) / 2</code>.</li>
+  <li>Returning the lower bound without checking <code>i &lt; n &amp;&amp; nums[i] == target</code> — the target may not exist.</li>
+  <li>Binary searching an unsorted array. It silently gives wrong answers.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/binary-search/">704. Binary Search</a> — the first animation, exactly.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/search-insert-position/">35. Search Insert Position</a> — it is the lower bound.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/first-bad-version/">278. First Bad Version</a> — first true in <code>no no yes yes</code>.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/">34. Find First and Last Position</a> — two lower bounds.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/search-a-2d-matrix/">74. Search a 2D Matrix</a> — treat the matrix as one sorted array: row = i / cols, col = i % cols.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-peak-element/">162. Find Peak Element</a> — not sorted, but "go uphill" still halves the range.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>How many looks does binary search need for 1,000 sorted items at most?</summary>
+<p>About 10, because 2<sup>10</sup> = 1,024. For a million items, about 20.</p></details>
+<details class="quiz"><summary>In the lower-bound version, why <code>hi = mid</code> and not <code>hi = mid - 1</code>?</summary>
+<p>Because <code>nums[mid] &gt;= target</code> means mid itself may be the first match. <code>mid - 1</code> would throw it away.</p></details>
+<details class="quiz"><summary>The target is missing. What does lower bound return, and what does it mean?</summary>
+<p>The index where the target would be inserted to keep the array sorted (possibly <code>n</code>). That is exactly LeetCode 35.</p></details>
+<details class="quiz"><summary>How do you count how many times x appears in a sorted array in O(log n)?</summary>
+<p><code>lowerBound(x + 1) - lowerBound(x)</code>.</p></details>
+
+<nav class="pager"><a href="in-place-tricks.html">← In-place tricks</a><a href="binary-search-answer.html">Binary search on the answer →</a></nav>
+</main>
+</body>
+</html>

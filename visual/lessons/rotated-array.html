@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rotated Sorted Array</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Searching</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 10 · Searching</div>
+<h1>Rotated Sorted Array</h1>
+<p class="lede">A sorted array that was cut in two and swapped around is still easy to binary search: at every middle, one of the two halves is perfectly sorted, and that half tells you where to go.</p>
+<p class="meta">Time to learn: about 1.5 hours · Prerequisites: <a href="binary-search.html">Binary search</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"Sorted array <b>rotated</b> at an unknown pivot", "find the <b>minimum</b>", "search in rotated array", O(log n) required. Also: a circular sorted list, or a log file sorted by time that wraps around.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>Take the sorted array <code>[0, 1, 2, 4, 5, 6, 7]</code>, cut it after the 2 and put the front part at the back: <code>[4, 5, 6, 7, 0, 1, 2]</code>. That is a <b>rotated</b> sorted array. It is two sorted runs, <code>4 5 6 7</code> and <code>0 1 2</code>, and the minimum is where the second run starts (the "drop").</p>
+<ul>
+  <li>Pick any middle. The drop is on one side of it, so the <b>other side has no drop — it is fully sorted</b>.</li>
+  <li>How to tell which side? Compare ends. If <code>nums[lo] &lt;= nums[mid]</code>, the left half rises smoothly, so it is sorted. Otherwise the right half is.</li>
+  <li><b>Find minimum:</b> if <code>nums[mid] &gt; nums[hi]</code>, the drop (and the minimum) is to the right of mid. Otherwise mid..hi is sorted, so the minimum is mid or to its left.</li>
+  <li><b>Search for a target:</b> look at the sorted half. Its smallest and largest values are its two ends, so you can tell instantly whether the target is inside it. If yes, go there; if no, go to the other half.</li>
+</ul>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A round clock face read starting from 4 o'clock: 4, 5, 6, … 12, then 1, 2, 3. The numbers are in order except for one jump back. Whichever half of the dial you look at, at least one half has no jump, and you can trust its order.</p></div>
+
+<h2>Watch it work</h2>
+<p><b>Find Minimum</b> in <code>[4, 5, 6, 7, 0, 1, 2]</code>. The green frame shows the half that is known to be sorted.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const a = [4, 5, 6, 7, 0, 1, 2];
+  const r = Viz.recorder();
+  const dimOut = (lo, hi) => Object.fromEntries(a.map((_, i) => [i, 'dim']).filter(([i]) => i < lo || i > hi));
+  const arr = (ptr, marks, win) => ({ type: 'array', id: 'a', label: 'nums (rotated sorted)', values: a, pointers: ptr, marks, window: win });
+  let lo = 0, hi = a.length - 1;
+  r.step([arr({ lo, hi }, {}), { type: 'vars', id: 'v', vars: { lo, hi } }], [2],
+    'Two sorted runs: 4 5 6 7 and 0 1 2. The minimum is where the second run starts. <b>lo</b> and <b>hi</b> cover everything.');
+  while (lo < hi) {
+    const mid = lo + Math.floor((hi - lo) / 2);
+    r.step([arr({ lo, mid, hi }, { ...dimOut(lo, hi), [mid]: 'compare', [hi]: 'compare' }), { type: 'vars', id: 'v', vars: { lo, mid, hi, 'nums[mid]': a[mid], 'nums[hi]': a[hi] } }], [4],
+      `mid = <b>${mid}</b>. Compare nums[mid] = ${a[mid]} with the last value in range, nums[hi] = ${a[hi]}.`);
+    if (a[mid] > a[hi]) {
+      const m = dimOut(lo, hi); for (let i = lo; i <= mid; i++) m[i] = 'bad';
+      r.step([arr({ lo, mid, hi }, m, [lo, mid]), { type: 'vars', id: 'v', vars: { lo, mid, hi } }], [5],
+        `${a[mid]} &gt; ${a[hi]}: a bigger number sits <i>before</i> a smaller one, so the drop is somewhere after mid. The left part lo..mid is sorted and all big — no minimum there. <b>lo = mid + 1 = ${mid + 1}</b>.`);
+      lo = mid + 1;
+    } else {
+      const m = dimOut(lo, hi); for (let i = mid + 1; i <= hi; i++) m[i] = 'bad';
+      r.step([arr({ lo, mid, hi }, m, [mid, hi]), { type: 'vars', id: 'v', vars: { lo, mid, hi } }], [6],
+        `${a[mid]} ≤ ${a[hi]}: mid..hi rises smoothly (sorted), so its smallest value is nums[mid]. Anything right of mid is bigger. Keep mid: <b>hi = mid = ${mid}</b>.`);
+      hi = mid;
+    }
+  }
+  r.step([arr({ lo }, { ...Object.fromEntries(a.map((_, i) => [i, 'dim'])), [lo]: 'done' }), { type: 'vars', id: 'v', vars: { min: a[lo], index: lo }, marks: { min: 'done' } }], [8],
+    `lo = hi = ${lo}. The minimum is <b>${a[lo]}</b> at index ${lo} — also the number of places the array was rotated.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Find minimum in rotated array', code:
+`int findMin(int[] nums) {
+    int lo = 0, hi = nums.length - 1;
+    while (lo < hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (nums[mid] > nums[hi]) lo = mid + 1; // drop is right
+        else hi = mid;          // mid..hi sorted: min at mid or left
+    }
+    // lo == hi: the start of the second run
+    return nums[lo];
+}` });
+})();
+</script>
+
+<p><b>Search</b> for <b>target = 1</b> in <code>[5, 6, 7, 8, 9, 1, 2, 3, 4]</code>. At each mid, find the sorted half and ask: "is 1 inside its range?"</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const a = [5, 6, 7, 8, 9, 1, 2, 3, 4], target = 1;
+  const r = Viz.recorder();
+  const dimOut = (lo, hi) => Object.fromEntries(a.map((_, i) => [i, 'dim']).filter(([i]) => i < lo || i > hi));
+  const arr = (ptr, marks, win) => ({ type: 'array', id: 'a', label: 'nums (rotated sorted)', values: a, pointers: ptr, marks, window: win });
+  let lo = 0, hi = a.length - 1;
+  r.step([arr({ lo, hi }, {}), { type: 'vars', id: 'v', vars: { target, lo, hi } }], [2], `Looking for <b>${target}</b>. Plain binary search would fail here, because the array is not fully sorted.`);
+  while (lo <= hi) {
+    const mid = lo + Math.floor((hi - lo) / 2);
+    r.step([arr({ lo, mid, hi }, { ...dimOut(lo, hi), [mid]: 'compare' }), { type: 'vars', id: 'v', vars: { target, lo, mid, hi } }], [4, 5],
+      `mid = <b>${mid}</b>, nums[mid] = ${a[mid]}. ${a[mid] === target ? 'That is the target!' : `Not ${target}. Which half is sorted?`}`);
+    if (a[mid] === target) {
+      r.step([arr({ mid }, { ...Object.fromEntries(a.map((_, i) => [i, 'dim'])), [mid]: 'done' }), { type: 'vars', id: 'v', vars: { target, answer: mid }, marks: { answer: 'done' } }], [5],
+        `Found ${target} at index <b>${mid}</b>.`);
+      break;
+    }
+    if (a[lo] <= a[mid]) {
+      const inside = a[lo] <= target && target < a[mid];
+      r.step([arr({ lo, mid, hi }, { ...dimOut(lo, hi), [mid]: 'compare' }, [lo, mid]), { type: 'vars', id: 'v', vars: { target, sorted: `left ${a[lo]}..${a[mid]}` }, marks: { sorted: 'done' } }], [6],
+        `nums[lo] = ${a[lo]} ≤ nums[mid] = ${a[mid]}: the <b>left half is sorted</b>, it holds exactly the values ${a[lo]} to ${a[mid]}.`);
+      const m = dimOut(lo, hi);
+      if (inside) { for (let i = mid; i <= hi; i++) m[i] = 'bad'; } else { for (let i = lo; i <= mid; i++) m[i] = 'bad'; }
+      r.step([arr({ lo, mid, hi }, m), { type: 'vars', id: 'v', vars: { target, lo, mid, hi } }], [inside ? 7 : 8],
+        inside ? `${target} is between ${a[lo]} and ${a[mid]}, so it can only be in the left half. <b>hi = mid − 1 = ${mid - 1}</b>.`
+               : `${target} is <b>not</b> between ${a[lo]} and ${a[mid]}, so it cannot be in the sorted left half. Go right: <b>lo = mid + 1 = ${mid + 1}</b>.`);
+      if (inside) hi = mid - 1; else lo = mid + 1;
+    } else {
+      const inside = a[mid] < target && target <= a[hi];
+      r.step([arr({ lo, mid, hi }, { ...dimOut(lo, hi), [mid]: 'compare' }, [mid, hi]), { type: 'vars', id: 'v', vars: { target, sorted: `right ${a[mid]}..${a[hi]}` }, marks: { sorted: 'done' } }], [9],
+        `nums[lo] = ${a[lo]} &gt; nums[mid] = ${a[mid]}: the drop is on the left, so the <b>right half is sorted</b>, holding values ${a[mid]} to ${a[hi]}.`);
+      const m = dimOut(lo, hi);
+      if (inside) { for (let i = lo; i <= mid; i++) m[i] = 'bad'; } else { for (let i = mid; i <= hi; i++) m[i] = 'bad'; }
+      r.step([arr({ lo, mid, hi }, m), { type: 'vars', id: 'v', vars: { target, lo, mid, hi } }], [inside ? 10 : 11],
+        inside ? `${target} is between ${a[mid]} and ${a[hi]}: go right, <b>lo = mid + 1 = ${mid + 1}</b>.`
+               : `${target} is <b>not</b> between ${a[mid]} and ${a[hi]}, so it is not in the sorted right half. Go left: <b>hi = mid − 1 = ${mid - 1}</b>.`);
+      if (inside) lo = mid + 1; else hi = mid - 1;
+    }
+  }
+  Viz.mount('#demo2', { frames: r.frames, title: 'Search in rotated array', code:
+`int search(int[] nums, int target) {
+    int lo = 0, hi = nums.length - 1;
+    while (lo <= hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (nums[mid] == target) return mid;
+        if (nums[lo] <= nums[mid]) {       // left half sorted
+            if (nums[lo] <= target && target < nums[mid]) hi = mid - 1;
+            else lo = mid + 1;
+        } else {                           // right half sorted
+            if (nums[mid] < target && target <= nums[hi]) lo = mid + 1;
+            else hi = mid - 1;
+        }
+    }
+    return -1;
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"A rotation creates only one drop, so at any mid at least one half is fully sorted. A sorted half's range is just its two end values, so one comparison tells me whether the target can be there — and I discard half the array each time, O(log n)."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// Find min: compare with the right end</span>
+<span class="k">if</span> (nums[mid] &gt; nums[hi]) lo = mid + <span class="n">1</span>; <span class="k">else</span> hi = mid;
+
+<span class="c">// Search: find the sorted half, test the range</span>
+<span class="k">if</span> (nums[lo] &lt;= nums[mid]) {          <span class="c">// left sorted</span>
+    <span class="k">if</span> (nums[lo] &lt;= t &amp;&amp; t &lt; nums[mid]) hi = mid - <span class="n">1</span>; <span class="k">else</span> lo = mid + <span class="n">1</span>;
+} <span class="k">else</span> {                               <span class="c">// right sorted</span>
+    <span class="k">if</span> (nums[mid] &lt; t &amp;&amp; t &lt;= nums[hi]) lo = mid + <span class="n">1</span>; <span class="k">else</span> hi = mid - <span class="n">1</span>;
+}</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>One half is always sorted. Find it, ask "is the target in its range?", go there or go to the other half.</b></p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Using <code>&lt;</code> instead of <code>&lt;=</code> in <code>nums[lo] &lt;= nums[mid]</code>: when lo == mid (two elements left), the left "half" is one element and is sorted.</li>
+  <li>For find-min, comparing with <code>nums[lo]</code> instead of <code>nums[hi]</code> — it breaks on an array that is not rotated at all.</li>
+  <li>With <b>duplicates</b> (LC 81, 154), <code>nums[mid] == nums[hi]</code> tells you nothing; shrink with <code>hi--</code>. Worst case becomes O(n).</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/">153. Find Minimum in Rotated Sorted Array</a> — first animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/search-in-rotated-sorted-array/">33. Search in Rotated Sorted Array</a> — second animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/search-in-rotated-sorted-array-ii/">81. Search in Rotated Sorted Array II</a> — duplicates: when ends are equal, shrink by one.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-peak-element/">162. Find Peak Element</a> — another "not sorted, still halvable" array.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/find-minimum-in-rotated-sorted-array-ii/">154. Find Minimum in Rotated Sorted Array II</a> — find-min with <code>hi--</code> on ties.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>The array is not rotated at all, <code>[1, 2, 3, 4, 5]</code>. Does findMin still work?</summary>
+<p>Yes. nums[mid] is never &gt; nums[hi], so hi keeps moving left until it reaches index 0, the value 1.</p></details>
+<details class="quiz"><summary>How would you find how many times the array was rotated?</summary>
+<p>It is the index of the minimum — the same findMin loop, return <code>lo</code>.</p></details>
+<details class="quiz"><summary>Why can't you just search the sorted half every time?</summary>
+<p>The target may be in the unsorted half. The sorted half is only used as a quick test: "is the target in this range?" If not, it must be in the other half.</p></details>
+
+<nav class="pager"><a href="binary-search-answer.html">← Binary search on the answer</a><a href="merge-sort.html">Merge sort →</a></nav>
+</main>
+</body>
+</html>

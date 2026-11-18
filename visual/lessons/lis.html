@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Longest Increasing Subsequence</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Dynamic programming</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 44 · Dynamic programming</div>
+<h1>Longest Increasing Subsequence</h1>
+<p class="lede">For each number, ask "what is the longest rising run that <i>ends here</i>?" — then speed it up by keeping only the smallest possible ending for each length.</p>
+<p class="meta">Time to learn: about 2.5 hours · Prerequisites: <a href="dp-intro.html">DP intro</a>, <a href="binary-search.html">Binary search</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"Longest <b>increasing subsequence</b>", "longest chain", "maximum number of envelopes you can nest", "longest sequence where each item is bigger than the one before". A <i>subsequence</i> = items kept in their original order, but you may skip items (they do not have to be next to each other).</p></div>
+
+<h2>The idea in plain words</h2>
+<p>Take <code>[10, 9, 2, 5, 3, 7, 101, 18]</code>. One increasing subsequence is 2, 5, 7, 101 — length 4, and nothing longer exists.</p>
+<p><b>O(n²) version.</b> Let <code>dp[i]</code> = length of the longest increasing subsequence that <b>ends exactly at index i</b>. Every number alone is a run of length 1. For index i, look at every earlier index j: if <code>nums[j] &lt; nums[i]</code>, the run ending at j can be extended by nums[i], giving dp[j] + 1. Keep the best. The answer is the largest dp value anywhere (the best run may end anywhere).</p>
+<p><b>O(n log n) version.</b> Keep an array <code>tails</code>: <code>tails[k]</code> = the <b>smallest</b> number that can end an increasing run of length k + 1. A small ending is better, because more future numbers can extend it. For each new number x:</p>
+<ul>
+  <li>If x is bigger than every tail, it extends the longest run → append it.</li>
+  <li>Otherwise find (by binary search) the first tail ≥ x and replace it with x — same length, smaller ending.</li>
+</ul>
+<p>The length of tails is the answer. Careful: tails itself is <b>not</b> always a real subsequence; only its length is meaningful.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Patience, the card game: deal cards one at a time onto piles; a card goes on the leftmost pile whose top card is bigger or equal, or starts a new pile on the right. The number of piles at the end is the length of the longest increasing subsequence. The pile tops are the <code>tails</code> array.</p></div>
+
+<h2>Watch it work</h2>
+<h3>1. The O(n²) table</h3>
+<p>Blue = earlier numbers that are smaller (they can be extended), grey = bigger or equal (they cannot), green = the best one to extend.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const nums = [10, 9, 2, 5, 3, 7, 101, 18], n = nums.length, r = Viz.recorder();
+  const dp = Array(n).fill(1), prev = Array(n).fill(-1);
+  const step = (nm, dm, ptr, vars, line, say) => r.step([
+    { type: 'array', id: 'a', label: 'nums', values: nums, marks: nm, pointers: ptr },
+    { type: 'array', id: 'dp', label: 'dp[i] = longest run ending at i', values: [...dp], marks: dm },
+    { type: 'vars', id: 'v', vars }], line, say);
+  step({}, {}, {}, { best: 1 }, [3, 4], 'Every number on its own is an increasing run of length 1, so dp starts as all 1s.');
+  let best = 1;
+  for (let i = 1; i < n; i++) {
+    const detail = i === 5;
+    for (let j = 0; j < i; j++) {
+      const ok = nums[j] < nums[i];
+      if (ok && dp[j] + 1 > dp[i]) { dp[i] = dp[j] + 1; prev[i] = j; }
+      if (detail) step({ [j]: ok ? 'compare' : 'dim', [i]: 'active' }, { [j]: ok ? 'compare' : 'dim', [i]: 'active' }, { j, i }, { [`nums[${j}] < nums[${i}]`]: `${nums[j]} < ${nums[i]}: ${ok}`, [`dp[${i}]`]: dp[i] }, [6, 7, 8],
+        ok ? `Inner loop, j = ${j}: ${nums[j]} &lt; ${nums[i]}, so ${nums[i]} can extend the run ending at ${nums[j]} (length ${dp[j]}) → ${dp[j] + 1}. dp[${i}] is now <b>${dp[i]}</b>.`
+           : `Inner loop, j = ${j}: ${nums[j]} is not smaller than ${nums[i]} → cannot come before it. Skip.`);
+    }
+    best = Math.max(best, dp[i]);
+    const nm = { [i]: 'active' }, dm = { [i]: 'active' };
+    for (let j = 0; j < i; j++) { const ok = nums[j] < nums[i]; nm[j] = ok ? 'compare' : 'dim'; dm[j] = ok ? 'compare' : 'dim'; }
+    if (prev[i] >= 0) { nm[prev[i]] = 'done'; dm[prev[i]] = 'done'; }
+    step(nm, dm, { i }, { [`dp[${i}]`]: dp[i], best }, [8, 9],
+      prev[i] < 0 ? `i = ${i} (${nums[i]}): no earlier number is smaller, so the best run ending here is just ${nums[i]} itself. dp[${i}] = 1.`
+        : `i = ${i} (${nums[i]}): smaller earlier numbers are ${nums.slice(0, i).filter(x => x < nums[i]).join(', ')}. The longest run among them ends at ${nums[prev[i]]} (dp = ${dp[prev[i]]}), so <b>dp[${i}] = ${dp[i]}</b>.`);
+  }
+  const end = dp.indexOf(best), seq = []; for (let k = end; k >= 0; k = prev[k]) seq.unshift(k);
+  step(Object.fromEntries(nums.map((_, k) => [k, seq.includes(k) ? 'done' : 'dim'])), Object.fromEntries(dp.map((_, k) => [k, k === end ? 'active' : seq.includes(k) ? 'done' : 'dim'])), {}, { answer: best }, [11],
+    `Answer: the biggest dp value, <b>${best}</b>. Following the "extended from" links back from index ${end} gives ${seq.map(k => nums[k]).join(', ')}. Two nested loops → O(n²).`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'LIS O(n squared)', code:
+`int lengthOfLIS(int[] nums) {
+    int n = nums.length, best = 1;
+    int[] dp = new int[n];   // dp[i] = LIS ending at i
+    Arrays.fill(dp, 1);      // each number alone
+    for (int i = 1; i < n; i++) {
+        for (int j = 0; j < i; j++)
+            if (nums[j] < nums[i])   // i extends j's run
+                dp[i] = Math.max(dp[i], dp[j] + 1);
+        best = Math.max(best, dp[i]);
+    }
+    return best;             // the run may end anywhere
+}` });
+})();
+</script>
+
+<h3>2. The tails array + binary search</h3>
+<p>Same input. <code>tails[k]</code> = smallest number that ends an increasing run of length k + 1. Yellow = the slot just changed.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const nums = [10, 9, 2, 5, 3, 7, 101, 18], r = Viz.recorder();
+  const tails = [];
+  const step = (i, tm, ptr, line, say) => r.step([
+    { type: 'array', id: 'a', label: 'nums', values: nums, pointers: i >= 0 ? { x: i } : {}, marks: Object.fromEntries(nums.map((_, k) => [k, k === i ? 'active' : k < i ? 'visited' : ''])) },
+    { type: 'array', id: 't', label: 'tails (length = answer so far)', values: [...tails], marks: tm, pointers: ptr },
+    { type: 'vars', id: 'v', vars: { 'LIS length': tails.length } }], line, say);
+  step(-1, {}, {}, [2], '<b>tails</b> starts empty. For each number x we binary-search tails for the first value ≥ x.');
+  nums.forEach((x, i) => {
+    let lo = 0, hi = tails.length;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (tails[mid] < x) lo = mid + 1; else hi = mid; }
+    if (lo === tails.length) {
+      tails.push(x);
+      step(i, { [lo]: 'active' }, { pos: lo }, [10], tails.length === 1
+        ? `x = ${x}: tails is empty → append. A run of length 1 can end with ${x}.`
+        : `x = ${x} is bigger than every tail (last is ${tails[lo - 1]}) → it <b>extends</b> the longest run. Append: length is now <b>${tails.length}</b>.`);
+    } else {
+      const old = tails[lo]; tails[lo] = x;
+      step(i, { [lo]: 'active' }, { pos: lo }, [4, 5, 6, 7, 8, 11],
+        `x = ${x}: binary search finds the first tail ≥ ${x} at position ${lo} (it was ${old}). Replace it: a run of length ${lo + 1} can now end with the <b>smaller</b> ${x}, which is easier to extend later.`);
+    }
+  });
+  step(-1, Object.fromEntries(tails.map((_, k) => [k, 'done'])), {}, [13],
+    `Answer: tails has length <b>${tails.length}</b>. Here tails = [${tails}] happens to be a real subsequence, but in general it is not (for [3, 4, 1] tails ends as [1, 4]) — only its length is guaranteed. n numbers × log n search = <b>O(n log n)</b>.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'LIS tails with binary search', code:
+`int lengthOfLIS(int[] nums) {
+    List<Integer> tails = new ArrayList<>();
+    for (int x : nums) {
+        int lo = 0, hi = tails.size(); // first tail >= x
+        while (lo < hi) {
+            int mid = (lo + hi) / 2;
+            if (tails.get(mid) < x) lo = mid + 1;
+            else hi = mid;
+        }
+        if (lo == tails.size()) tails.add(x); // longer
+        else tails.set(lo, x);       // same length, smaller end
+    }
+    return tails.size();
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"dp[i] fixes the <b>last element</b> of the subsequence, which is what makes the subproblem well defined: any run ending at i is a run ending at some smaller j plus nums[i]. In the fast version, tails stays sorted, and replacing a tail with a smaller value never shortens any run — it only makes future extensions easier — so binary search finds where each number belongs."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// O(n²)</span>
+<span class="k">for</span> (i) <span class="k">for</span> (j &lt; i) <span class="k">if</span> (a[j] &lt; a[i]) dp[i] = max(dp[i], dp[j] + <span class="n">1</span>);
+<span class="c">// O(n log n)</span>
+<span class="k">for</span> (x : a) { pos = firstIndexWith(tails[pos] &gt;= x);
+              <span class="k">if</span> (pos == size) tails.add(x); <span class="k">else</span> tails.set(pos, x); }</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>dp[i] = longest run ending at i; answer = max of dp.</b> Fast: <b>tails, binary search, replace or append</b>.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Returning <code>dp[n-1]</code> instead of the maximum over all dp — the best run need not end at the last number.</li>
+  <li>Searching for the first tail <b>&gt;</b> x instead of <b>≥</b> x: that allows equal numbers, which breaks "strictly increasing".</li>
+  <li>Thinking tails is the subsequence. To print one, store a parent index per element.</li>
+  <li>Russian Doll Envelopes: sort width ascending but height <b>descending</b> for equal widths, then LIS on heights.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-increasing-subsequence/">300. Longest Increasing Subsequence</a> — both animations.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/number-of-longest-increasing-subsequence/">673. Number of LIS</a> — keep a count next to each dp.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/largest-divisible-subset/">368. Largest Divisible Subset</a> — sort, "divides" instead of "smaller", keep parents.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-length-of-pair-chain/">646. Maximum Length of Pair Chain</a> — LIS on pairs (or greedy).</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/russian-doll-envelopes/">354. Russian Doll Envelopes</a> — sort trick + tails version.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>For [3, 1, 2], what is dp and what is the answer?</summary>
+<p>dp = [1, 1, 2]; the answer is 2 (1, 2).</p></details>
+<details class="quiz"><summary>Why replace a tail with a smaller number instead of ignoring the number?</summary>
+<p>A run of the same length that ends lower can be extended by more future numbers. Ignoring it could miss a longer run later.</p></details>
+<details class="quiz"><summary>Is tails always sorted? Why does that matter?</summary>
+<p>Yes, strictly increasing — a longer run's end is always bigger than a shorter run's best end. That is what lets us binary search it.</p></details>
+
+<nav class="pager"><a href="coin-change.html">← Coin change</a><a href="lcs-edit-distance.html">LCS &amp; edit distance →</a></nav>
+</main>
+</body>
+</html>

@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Advanced Graphs</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>MAANG extras</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 54 · MAANG extras</div>
+<h1>Advanced Graphs</h1>
+<p class="lede">Four classic graph questions beyond plain BFS/DFS: can the nodes be split into two teams, which single edge would cut the network, how to use every ticket exactly once, and which groups of nodes can all reach each other.</p>
+<p class="meta">Time to learn: about 4 hours · Prerequisites: <a href="graph-basics.html">Graph basics</a>, <a href="grid-bfs-dfs.html">BFS / DFS</a>, <a href="topo-sort.html">Topological sort</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"Split into <b>two groups</b> so every edge goes between groups", "possible bipartition", "two colours" → <b>bipartite check</b>. "<b>Critical</b> connection", "edge whose removal disconnects the network", "<b>bridge</b>", "articulation point" → <b>Tarjan</b>. "Use <b>every edge exactly once</b>", "reconstruct itinerary", "valid arrangement of pairs" → <b>Hierholzer</b> (Euler path). "Groups where everyone can reach everyone" in a <b>directed</b> graph → <b>strongly connected components</b>.</p></div>
+
+<h2>The idea in plain words</h2>
+<ul>
+  <li><b>Bipartite</b> = the nodes can be painted with two colours so that every edge joins different colours. Paint the start A, its neighbours B, their neighbours A, and so on (BFS). If an edge ever joins two nodes of the same colour, it is impossible — this happens exactly when the graph has a cycle of <b>odd</b> length.</li>
+  <li><b>Bridge</b> = an edge that, if removed, splits the graph. Run DFS and give each node a visit time <code>disc</code>. <code>low[u]</code> = the earliest visit time u (or anything below it in the DFS) can reach using one back edge. If a child v has <code>low[v] &gt; disc[u]</code>, v's whole subtree has no other way back up, so u–v is a bridge.</li>
+  <li><b>Euler path</b> = a walk that uses every edge exactly once. <b>Hierholzer</b>: keep walking along unused edges; when you get stuck, the current city is the <i>last</i> unfinished part of the route, so add it to the <b>front</b> of the answer and back up. Stuck cities come out in reverse order.</li>
+  <li><b>Strongly connected component</b> (SCC) = a largest group of nodes in a directed graph where each can reach every other. <b>Kosaraju</b>: (1) DFS and note the order nodes finish, (2) reverse every edge, (3) DFS again in reverse finish order — each DFS in step 3 paints exactly one SCC.</li>
+</ul>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Bipartite: seating guests at two tables so that no two people who dislike each other share a table. Bridge: the single bridge to an island — if it closes, the island is cut off, but a road inside a ring of roads can close and everyone still gets home. Hierholzer: a postman who must walk every street once — when he reaches a dead end, that dead end is where his day finishes.</p></div>
+
+<h2>Watch it work</h2>
+<h3>1. Bipartite check — two colours with BFS</h3>
+<div id="demo1"></div>
+<script>
+(() => {
+  const nodes = [{ id: 0, x: 80, y: 40 }, { id: 1, x: 260, y: 40 }, { id: 2, x: 440, y: 40 }, { id: 3, x: 80, y: 180 }, { id: 4, x: 260, y: 180 }, { id: 5, x: 440, y: 180 }];
+  const E = [[0, 1], [0, 3], [1, 2], [1, 4], [3, 4], [2, 5], [4, 5]];
+  const adj = nodes.map(() => []); for (const [a, b] of E) { adj[a].push(b); adj[b].push(a); }
+  const color = Array(6).fill(0);
+  const r = Viz.recorder();
+  let edges = E.map(([a, b]) => ({ a, b }));
+  const q = [];
+  const panels = (cur, em = {}) => {
+    const marks = {}, badges = {};
+    color.forEach((c, i) => { if (c) { marks[i] = c === 1 ? 'compare' : 'done'; badges[i] = c === 1 ? 'A' : 'B'; } });
+    if (cur != null) marks[cur] = 'active';
+    return [{ type: 'graph', id: 'g', label: 'graph (badge = colour)', h: 215, nodes, edges, marks, badges, edgeMarks: em, pointers: cur != null ? { u: cur } : {} },
+      { type: 'stack', id: 'q', label: 'BFS queue', kind: 'queue', items: q.map(x => ({ id: 'q' + x, val: x })) }];
+  };
+  color[0] = 1; q.push(0);
+  r.step(panels(null), [5, 6], 'Paint node 0 with colour <b>A</b> and put it in the queue. Rule: every neighbour must get the <i>other</i> colour.');
+  while (q.length) {
+    const u = q.shift();
+    const em = {}, notes = [];
+    for (const v of adj[u]) {
+      if (!color[v]) { color[v] = -color[u]; q.push(v); em[`${u}-${v}`] = 'active'; notes.push(`paint ${v} ${color[v] === 1 ? 'A' : 'B'}`); }
+      else { em[`${u}-${v}`] = 'done'; notes.push(`${v} is already ${color[v] === 1 ? 'A' : 'B'} ✓`); }
+    }
+    r.step(panels(u, em), [8, 9, 10, 11], `Pop ${u} (colour ${color[u] === 1 ? 'A' : 'B'}). Neighbours: ${notes.join('; ')}.`);
+  }
+  r.step(panels(null), [15], 'Queue empty and no edge joins two equal colours → the graph is <b>bipartite</b>: teams A = {0, 2, 4}, B = {1, 3, 5}.');
+  edges = [...edges, { a: 2, b: 4 }];
+  r.step(panels(null, { '2-4': 'bad' }), [11], 'What if we add an edge 2–4? Both ends are colour <b>A</b> → clash → <b>not bipartite</b>. The cycle 1 → 2 → 4 → 1 has 3 edges: an odd cycle can never alternate two colours.');
+  Viz.mount('#demo1', { frames: r.frames, title: 'Bipartite check', code:
+`boolean isBipartite(int[][] g) {       // g[u] = neighbours
+    int[] color = new int[g.length];    // 0 none, 1 A, -1 B
+    for (int s = 0; s < g.length; s++) {
+        if (color[s] != 0) continue;    // already painted
+        color[s] = 1;
+        Deque<Integer> q = new ArrayDeque<>(List.of(s));
+        while (!q.isEmpty()) {
+            int u = q.poll();
+            for (int v : g[u]) {
+                if (color[v] == 0) { color[v] = -color[u]; q.offer(v); }
+                else if (color[v] == color[u]) return false; // clash
+            }
+        }
+    }
+    return true;
+}` });
+})();
+</script>
+
+<h3>2. Tarjan bridges — Critical Connections (badge = disc / low)</h3>
+<div id="demo2"></div>
+<script>
+(() => {
+  const nodes = [{ id: 0, x: 80, y: 35 }, { id: 1, x: 250, y: 110 }, { id: 2, x: 80, y: 185 }, { id: 3, x: 430, y: 110 }, { id: 4, x: 600, y: 35 }, { id: 5, x: 600, y: 185 }];
+  const E = [[0, 1], [1, 2], [2, 0], [1, 3], [3, 4], [4, 5], [5, 3]];
+  const edges = E.map(([a, b]) => ({ a, b }));
+  const adj = nodes.map(() => []); for (const [a, b] of E) { adj[a].push(b); adj[b].push(a); }
+  const disc = Array(6).fill(-1), low = Array(6).fill(-1);
+  const em = {}, bridges = [];
+  let timer = 0;
+  const r = Viz.recorder();
+  const panels = (cur, extraN = {}, extraE = {}) => {
+    const marks = {}, badges = {};
+    disc.forEach((d, i) => { if (d >= 0) { marks[i] = 'visited'; badges[i] = `${d}/${low[i]}`; } });
+    if (cur != null) marks[cur] = 'active';
+    Object.assign(marks, extraN);
+    return [{ type: 'graph', id: 'g', label: 'network', h: 220, nodes, edges, marks, badges, edgeMarks: { ...em, ...extraE }, pointers: cur != null ? { u: cur } : {} },
+      { type: 'text', id: 'o', text: `bridges = [${bridges.map(([a, b]) => `${a}–${b}`).join(', ')}]` }];
+  };
+  r.step(panels(null), [1, 2], 'DFS from node 0. Each badge will read <b>disc / low</b>: disc = when we first visited it, low = the earliest visit time it can climb back to.');
+  (function dfs(u, p) {
+    disc[u] = low[u] = timer++;
+    r.step(panels(u), [4], `Visit ${u}: disc = low = ${disc[u]}.`);
+    for (const v of adj[u]) {
+      if (v === p) continue;
+      if (disc[v] === -1) {
+        em[`${u}-${v}`] = 'visited';
+        dfs(v, u);
+        const old = low[u];
+        low[u] = Math.min(low[u], low[v]);
+        const isBridge = low[v] > disc[u];
+        if (isBridge) { bridges.push([u, v]); em[`${u}-${v}`] = 'done'; }
+        r.step(panels(u, { [v]: 'compare' }, { [`${u}-${v}`]: isBridge ? 'done' : 'active' }), [8, 9, 10],
+          `Back at ${u} from child ${v}: low[${u}] = min(${old}, low[${v}] = ${low[v]}) = ${low[u]}. ` +
+          (isBridge ? `low[${v}] = ${low[v]} &gt; disc[${u}] = ${disc[u]}: nothing under ${v} can reach ${u} or above except through this edge → <b>${u}–${v} is a bridge</b>.`
+            : `low[${v}] = ${low[v]} ≤ disc[${u}] = ${disc[u]}: ${v}'s part has another way up, so ${u}–${v} is not a bridge.`));
+      } else if (disc[v] < disc[u]) {
+        const old = low[u];
+        low[u] = Math.min(low[u], disc[v]);
+        em[`${u}-${v}`] = 'compare';
+        r.step(panels(u, { [v]: 'compare' }), [12], `${u} sees ${v}, which was visited earlier (and is not its parent): a <b>back edge</b>. low[${u}] = min(${old}, disc[${v}] = ${disc[v]}) = ${low[u]}.`);
+      }
+    }
+  })(0, -1);
+  r.step(panels(null, {}, {}), [10], `DFS finished. The only bridge is <b>${bridges.map(([a, b]) => `${a}–${b}`).join(', ')}</b>: each triangle is a cycle, so its edges always have a second route. O(V + E).`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Tarjan bridges', code:
+`int timer = 0; int[] disc, low;          // disc = visit time
+List<List<Integer>> bridges = new ArrayList<>();
+void dfs(int u, int parent, List<Integer>[] g) {
+    disc[u] = low[u] = timer++;
+    for (int v : g[u]) {
+        if (v == parent) continue;        // not straight back
+        if (disc[v] == -1) {              // tree edge: go down
+            dfs(v, u, g);
+            low[u] = Math.min(low[u], low[v]);
+            if (low[v] > disc[u]) bridges.add(List.of(u, v));
+        } else {
+            low[u] = Math.min(low[u], disc[v]); // back edge
+        }
+    }
+}` });
+})();
+</script>
+
+<h3>3. Hierholzer — Reconstruct Itinerary</h3>
+<p>Tickets: JFK→SFO, JFK→ATL, SFO→ATL, ATL→JFK, ATL→SFO. Use every ticket once, start at JFK, and pick the alphabetically smaller city when there is a choice.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const T = [['JFK', 'SFO'], ['JFK', 'ATL'], ['SFO', 'ATL'], ['ATL', 'JFK'], ['ATL', 'SFO']];
+  const nodes = [{ id: 'JFK', x: 90, y: 110 }, { id: 'ATL', x: 330, y: 30 }, { id: 'SFO', x: 330, y: 195 }];
+  const edges = T.map(([a, b]) => ({ a, b, dir: true, bend: (a === 'JFK' && b === 'SFO') ? 0 : 16 }));
+  const g = {}; for (const [a, b] of T) (g[a] ||= []).push(b);
+  for (const k of Object.keys(g)) g[k].sort();
+  const used = {}, stack = ['JFK'], route = [];
+  const r = Viz.recorder();
+  const panels = (em = {}, nm = {}, sm = {}) => [
+    { type: 'graph', id: 'g', label: 'tickets (grey = used)', h: 225, nodes, edges, edgeMarks: { ...used, ...em }, marks: nm },
+    { type: 'stack', id: 's', label: 'stack (current walk)', items: stack.map((c, i) => ({ id: 's' + i, val: c })), marks: sm },
+    { type: 'text', id: 'o', text: `route = [${route.join(', ')}]` }];
+  r.step(panels({}, { JFK: 'active' }, { 0: 'active' }), [6, 7], 'Each city keeps its outgoing tickets in alphabetical order (a min-heap). Start with JFK on the stack.');
+  while (stack.length) {
+    const top = stack[stack.length - 1];
+    if (g[top] && g[top].length) {
+      const nxt = g[top].shift();
+      stack.push(nxt);
+      r.step(panels({ [`${top}-${nxt}`]: 'active' }, { [nxt]: 'active' }, { [stack.length - 1]: 'active' }), [9, 10],
+        `${top} still has unused tickets; the smallest is to <b>${nxt}</b>. Use it and push ${nxt}.`);
+      used[`${top}-${nxt}`] = 'dim';
+    } else {
+      stack.pop(); route.unshift(top);
+      r.step(panels({}, { [top]: 'done' }), [11],
+        `${top} has no unused tickets left — we are stuck. That means ${top} is the <b>end</b> of what is left, so pop it and add it to the <b>front</b> of the route.`);
+    }
+  }
+  r.step(panels({}, {}), [13], `Stack empty, all 5 tickets used. Itinerary: <b>${route.join(' → ')}</b>. Each ticket is used once → O(E log E) with the heaps.`);
+  Viz.mount('#demo3', { frames: r.frames, title: 'Hierholzer itinerary', code:
+`List<String> findItinerary(List<List<String>> tickets) {
+    Map<String, PriorityQueue<String>> g = new HashMap<>();
+    for (List<String> t : tickets)          // smallest name first
+        g.computeIfAbsent(t.get(0), k -> new PriorityQueue<>())
+         .add(t.get(1));
+    LinkedList<String> route = new LinkedList<>();
+    Deque<String> stack = new ArrayDeque<>(List.of("JFK"));
+    while (!stack.isEmpty()) {
+        PriorityQueue<String> out = g.get(stack.peek());
+        if (out != null && !out.isEmpty()) stack.push(out.poll());
+        else route.addFirst(stack.pop()); // stuck: goes at front
+    }
+    return route;
+}` });
+})();
+</script>
+
+<h3>4. Strongly connected components — Kosaraju's two passes</h3>
+<div id="demo4"></div>
+<script>
+(() => {
+  const nodes = [{ id: 0, x: 80, y: 35 }, { id: 1, x: 250, y: 35 }, { id: 2, x: 165, y: 185 }, { id: 3, x: 400, y: 185 }, { id: 4, x: 410, y: 35 }, { id: 5, x: 600, y: 120 }];
+  const E = [[0, 1], [1, 2], [2, 0], [2, 3], [3, 4], [4, 5], [5, 3]];
+  const adj = nodes.map(() => []), radj = nodes.map(() => []);
+  for (const [a, b] of E) { adj[a].push(b); radj[b].push(a); }
+  const r = Viz.recorder();
+  const seen = Array(6).fill(false), order = [], comp = Array(6).fill(-1);
+  let edges = E.map(([a, b]) => ({ a, b, dir: true }));
+  const panels = (cur, label, extra = {}) => {
+    const marks = {}, badges = {};
+    seen.forEach((s, i) => { if (s) marks[i] = 'visited'; });
+    comp.forEach((c, i) => { if (c >= 0) { marks[i] = c === 0 ? 'done' : 'compare'; badges[i] = 'SCC ' + (c + 1); } });
+    order.forEach((u, k) => { if (comp[u] < 0) badges[u] = 'fin ' + (k + 1); });
+    if (cur != null) marks[cur] = 'active';
+    Object.assign(marks, extra);
+    return [{ type: 'graph', id: 'g', label, h: 220, nodes, edges, marks, badges },
+      { type: 'stack', id: 'o', label: 'finish order (top = last to finish)', items: order.map(u => ({ id: 'f' + u, val: u })) }];
+  };
+  r.step(panels(null, 'original graph'), [2], 'Pass 1: DFS on the original graph. A node is pushed when it <b>finishes</b> (all its arrows explored).');
+  (function dfs1(u) {
+    seen[u] = true;
+    for (const v of adj[u]) if (!seen[v]) dfs1(v);
+    order.push(u);
+    r.step(panels(u, 'original graph'), [4, 5], `Node ${u} has no unvisited arrows left → it finishes and is pushed (finish #${order.length}).`);
+  })(0);
+  edges = E.map(([a, b]) => ({ a: b, b: a, dir: true }));
+  seen.fill(false);
+  r.step(panels(null, 'REVERSED graph'), [7], 'Pass 2: reverse every arrow. Now pop nodes from the finish stack (0 first) and DFS in the reversed graph.');
+  let id = 0;
+  const st = order.slice();
+  while (st.length) {
+    const u = st.pop();
+    if (comp[u] !== -1) continue;
+    const members = [];
+    (function dfs2(x) {
+      comp[x] = id; members.push(x);
+      r.step(panels(x, 'REVERSED graph'), [9, 10], `Pop/reach ${x} → it joins <b>SCC ${id + 1}</b>. Follow reversed arrows to nodes that are still unpainted.`);
+      for (const v of radj[x]) if (comp[v] === -1) dfs2(v);
+    })(u);
+    r.step(panels(null, 'REVERSED graph'), [13, 14], `This DFS is stuck: SCC ${id + 1} = <b>{${members.sort().join(', ')}}</b>. In the reversed graph it cannot leak into another component.`);
+    id++;
+  }
+  edges = E.map(([a, b]) => ({ a, b, dir: true }));
+  r.step(panels(null, 'original graph'), [12], `Done: <b>2 SCCs</b> {0, 1, 2} and {3, 4, 5}. The edge 2 → 3 goes one way only, so the groups are separate. Two DFS passes → O(V + E).`);
+  Viz.mount('#demo4', { frames: r.frames, title: 'Kosaraju SCC', code:
+`// pass 1: DFS on g, push each node when it FINISHES
+void dfs1(int u) {
+    seen[u] = true;
+    for (int v : g[u]) if (!seen[v]) dfs1(v);
+    order.push(u);                       // finished
+}
+// pass 2: DFS on the REVERSED graph rg
+void dfs2(int u, int id) {
+    comp[u] = id;
+    for (int v : rg[u]) if (comp[v] == -1) dfs2(v, id);
+}
+// main: for every u: if (!seen[u]) dfs1(u);
+//   while (!order.isEmpty()) { int u = order.pop();
+//       if (comp[u] == -1) dfs2(u, count++); }` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"BFS paints by distance from the start, so a same-colour edge means two paths of the same parity meet — an odd cycle." "A tree edge u–v is a bridge exactly when nothing in v's subtree has a back edge to u or above, which is <code>low[v] &gt; disc[u]</code>." "Hierholzer: a city where we get stuck has used all its out-tickets, so it must come after everything still on the stack — prepending builds the route backwards correctly." "Kosaraju: the node that finishes last lies in a 'source' component; in the reversed graph that component has no way out, so one DFS paints exactly it."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// Bipartite: color[v] = -color[u]; same colour → false</span>
+<span class="c">// Bridges (Tarjan)</span>
+disc[u] = low[u] = timer++;
+tree edge:  dfs(v); low[u] = min(low[u], low[v]); <span class="k">if</span> (low[v] &gt; disc[u]) bridge;
+back edge:  low[u] = min(low[u], disc[v]);
+<span class="c">// Euler path (Hierholzer)</span>
+<span class="k">while</span> (stack not empty) { top has edge ? push(next) : route.addFirst(pop()); }
+<span class="c">// SCC (Kosaraju): finish order → reverse edges → DFS in reverse finish order</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Two colours fail only on odd cycles. Bridge: low[child] &gt; disc[parent]. Itinerary: walk until stuck, stuck city goes to the front. SCC: two DFS passes, the second on reversed edges.</b></p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Bipartite: only starting BFS from node 0 — the graph may have several separate pieces. Loop over every uncoloured node.</li>
+  <li>Tarjan: skipping the parent by <i>node</i> when there are parallel edges — skip by edge index instead. Also using <code>low[v]</code> instead of <code>disc[v]</code> for a back edge.</li>
+  <li>Itinerary: greedily following the smallest ticket and appending — you can get stuck early with tickets left. Append when stuck, then reverse (or add to front).</li>
+  <li>Kosaraju: running pass 2 on the original graph — then components leak into each other.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/is-graph-bipartite/">785. Is Graph Bipartite?</a> — animation 1.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/possible-bipartition/">886. Possible Bipartition</a> — build the "dislike" graph, then two colours.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/critical-connections-in-a-network/">1192. Critical Connections in a Network</a> — animation 2.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/reconstruct-itinerary/">332. Reconstruct Itinerary</a> — animation 3.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/valid-arrangement-of-pairs/">2097. Valid Arrangement of Pairs</a> — Euler path; start where out − in = 1.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/cracking-the-safe/">753. Cracking the Safe</a> — Euler circuit on a de Bruijn graph.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-eventual-safe-states/">802. Find Eventual Safe States</a> — nodes not on any cycle (related to SCC thinking).</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Is a tree always bipartite?</summary>
+<p>Yes — a tree has no cycles at all, so no odd cycles. Colour by depth: even depth A, odd depth B.</p></details>
+<details class="quiz"><summary>Why is an edge inside a cycle never a bridge?</summary>
+<p>If you remove it, the rest of the cycle still connects its two ends.</p></details>
+<details class="quiz"><summary>When does a directed graph have an Euler path?</summary>
+<p>All edges are in one connected piece, and every node has out-degree = in-degree, except at most one start (out − in = 1) and one end (in − out = 1).</p></details>
+<details class="quiz"><summary>How many SCCs does a DAG with n nodes have?</summary>
+<p>n — with no cycles, every node is its own component.</p></details>
+
+<nav class="pager"><a href="dp-advanced.html">← Advanced DP</a><a href="design-patterns-dsa.html">Data-structure design →</a></nav>
+</main>
+</body>
+</html>

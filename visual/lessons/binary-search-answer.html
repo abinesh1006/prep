@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Binary Search on the Answer</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Searching</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 9 · Searching</div>
+<h1>Binary Search on the Answer</h1>
+<p class="lede">When you cannot search the array, search the <i>answer</i>: guess a value, check "does this work?", and halve the range of guesses.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="binary-search.html">Binary search</a>, <a href="big-o.html">Big-O</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"Find the <b>minimum</b> speed / capacity / days / size <b>such that</b> it is possible", "<b>minimize the maximum</b>", "<b>maximize the minimum</b>", and the answer can be as large as 10<sup>9</sup>. If you can write a quick <code>feasible(x)</code> that says yes or no, and bigger x never turns a yes into a no, this is the pattern.</p></div>
+
+<h2>The idea in plain words</h2>
+<p><b>Koko Eating Bananas:</b> piles of <code>[3, 6, 7, 9]</code> bananas, and 8 hours. Each hour Koko picks one pile and eats up to <b>k</b> bananas from it (if the pile has fewer, she finishes it and waits for the next hour). What is the <b>smallest</b> k that lets her finish in 8 hours?</p>
+<ul>
+  <li>For any one speed, checking is easy: at k = 4 the piles take 1 + 2 + 2 + 3 = 8 hours. Yes, that works.</li>
+  <li>Faster is never worse: if k = 4 works, k = 5, 6, 7… work too. If k = 3 fails, k = 2 and 1 fail too.</li>
+  <li>So over the speeds 1 to 9 the answers look like <code>no no no YES yes yes yes yes yes</code>. We want the <b>first yes</b> — exactly what lower-bound binary search finds.</li>
+</ul>
+<p>The array we search is not stored anywhere: it is the range of possible answers, 1 to the biggest pile. Each guess costs one O(n) check, and we need only log(range) guesses — about 30 even when piles hold a billion bananas.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Choosing the cheapest phone plan that covers your data use. You do not try all 50 plans from the bottom. You try a middle plan: "enough?" Yes → maybe a cheaper one is enough too, look lower. No → look higher. A few tries and you have the cheapest plan that works.</p></div>
+
+<h2>Watch it work</h2>
+<p>First, the slow way: test every speed from 1 to 9, to <b>see</b> the yes/no shape. Each test adds up the hours per pile (a pile of p takes ⌈p / k⌉ hours, "⌈ ⌉" = round up).</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const piles = [3, 6, 7, 9], h = 8, maxP = Math.max(...piles);
+  const speeds = Array.from({ length: maxP }, (_, i) => i + 1);
+  const r = Viz.recorder();
+  const verdict = {};
+  const sp = (k, extra = {}) => ({ type: 'array', id: 's', label: 'speed k (bananas / hour)', values: speeds, indices: false, cell: 52,
+    pointers: k ? { k: k - 1 } : {}, marks: { ...Object.fromEntries(Object.entries(verdict).map(([kk, ok]) => [kk - 1, ok ? 'done' : 'bad'])), ...extra } });
+  const pl = { type: 'array', id: 'p', label: 'piles', values: piles, indices: false };
+  r.step([sp(0), pl, { type: 'vars', id: 'v', vars: { h } }], [2], `Koko has <b>h = ${h}</b> hours. Speeds to consider: 1 up to the biggest pile, ${maxP} (faster than that is never needed — she can only eat one pile per hour anyway).`);
+  for (const k of speeds) {
+    const hrs = piles.map(p => Math.ceil(p / k)), tot = hrs.reduce((x, y) => x + y, 0);
+    verdict[k] = tot <= h;
+    r.step([sp(k), { ...pl, label: `hours per pile at k = ${k}`, values: hrs }, { type: 'vars', id: 'v', vars: { h, hours: hrs.join(' + ') + ' = ' + tot }, marks: { hours: tot <= h ? 'done' : 'bad' } }], [4, 8, 9],
+      `k = ${k}: ${hrs.map((x, i) => `${piles[i]}→${x}`).join(', ')} hours, total <b>${tot}</b>. ${tot <= h ? `${tot} ≤ ${h}: <b>yes</b>, she finishes.` : `${tot} &gt; ${h}: <b>no</b>, too slow.`}${k === 4 ? ' This is the first yes — the slow way would stop here.' : ''}`);
+  }
+  r.step([sp(4, { 3: 'path' }), { ...pl, label: 'piles' }, { type: 'vars', id: 'v', vars: { answer: 4 }, marks: { answer: 'done' } }], [4],
+    'See the shape: <b>no no no</b> then <b>yes yes yes…</b> — sorted yes/no answers. The answer is the first yes, <b>k = 4</b>. Sorted means we can binary search it instead of testing every speed.');
+  Viz.mount('#demo1', { frames: r.frames, title: 'Koko: the yes/no line', code:
+`// slow way: try every speed from 1 up
+int maxPile = Arrays.stream(piles).max().getAsInt();
+for (int k = 1; k <= maxPile; k++) {
+    if (canFinish(piles, k, h)) return k;
+}
+boolean canFinish(int[] piles, int k, int h) {
+    long hours = 0;
+    for (int p : piles) hours += (p + k - 1) / k; // ceil
+    return hours <= h;
+}` });
+})();
+</script>
+
+<p>Now the fast way: binary search over the speeds. Each guess runs the feasibility check pile by pile, then throws away half of the speeds.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const piles = [3, 6, 7, 9], h = 8;
+  const r = Viz.recorder();
+  let lo = 1, hi = Math.max(...piles);
+  const speeds = Array.from({ length: hi }, (_, i) => i + 1);
+  const known = {};
+  const sp = (ptr, extra = {}) => {
+    const m = {};
+    speeds.forEach(k => { if (k < lo || k > hi) m[k - 1] = 'dim'; });
+    for (const [k, ok] of Object.entries(known)) m[k - 1] = ok ? 'done' : 'bad';
+    return { type: 'array', id: 's', label: 'speed k — the "array" we search', values: speeds, indices: false, cell: 52, pointers: ptr, marks: { ...m, ...extra } };
+  };
+  const pl = (hrs, cur) => ({ type: 'array', id: 'p', label: 'piles  →  hours at this speed', values: piles.map((p, i) => i < hrs.length ? `${p}→${hrs[i]}` : p), indices: false, cell: 64,
+    marks: Object.fromEntries(piles.map((_, i) => [i, i === cur ? 'active' : i < hrs.length ? 'visited' : ''])) });
+  r.step([sp({ lo: lo - 1, hi: hi - 1 }), pl([], -1), { type: 'vars', id: 'v', vars: { h, lo, hi } }], [2, 3],
+    `The answer is somewhere in speeds <b>lo = 1</b> to <b>hi = ${hi}</b> (the biggest pile always works).`);
+  while (lo < hi) {
+    const mid = lo + Math.floor((hi - lo) / 2);
+    r.step([sp({ lo: lo - 1, mid: mid - 1, hi: hi - 1 }, { [mid - 1]: 'compare' }), pl([], -1), { type: 'vars', id: 'v', vars: { h, lo, hi, mid } }], [4, 5],
+      `Guess the middle speed: mid = ${lo} + (${hi} − ${lo}) / 2 = <b>${mid}</b>. Can Koko finish at ${mid} bananas per hour?`);
+    const hrs = []; let tot = 0;
+    for (let i = 0; i < piles.length; i++) {
+      hrs.push(Math.ceil(piles[i] / mid)); tot += hrs[i];
+      r.step([sp({ lo: lo - 1, mid: mid - 1, hi: hi - 1 }, { [mid - 1]: 'compare' }), pl(hrs, i), { type: 'vars', id: 'v', vars: { k: mid, hours: tot, h } }], [13],
+        `Pile of ${piles[i]} at ${mid}/hour takes ⌈${piles[i]}/${mid}⌉ = <b>${hrs[i]}</b> hour${hrs[i] > 1 ? 's' : ''}. Running total: ${tot}.`);
+    }
+    const ok = tot <= h;
+    known[mid] = ok;
+    if (ok) {
+      r.step([sp({ lo: lo - 1, mid: mid - 1, hi: hi - 1 }), pl(hrs, -1), { type: 'vars', id: 'v', vars: { k: mid, hours: tot, h }, marks: { hours: 'done' } }], [6, 14],
+        `${tot} ≤ ${h}: speed ${mid} <b>works</b>. Maybe a slower speed works too, so keep ${mid} as a candidate and search left: <b>hi = mid = ${mid}</b>.`);
+      hi = mid;
+    } else {
+      r.step([sp({ lo: lo - 1, mid: mid - 1, hi: hi - 1 }), pl(hrs, -1), { type: 'vars', id: 'v', vars: { k: mid, hours: tot, h }, marks: { hours: 'bad' } }], [7, 14],
+        `${tot} &gt; ${h}: speed ${mid} is <b>too slow</b>, and so is every speed below it. Search right: <b>lo = mid + 1 = ${mid + 1}</b>.`);
+      lo = mid + 1;
+    }
+  }
+  r.step([sp({ answer: lo - 1 }, { [lo - 1]: 'path' }), pl([], -1), { type: 'vars', id: 'v', vars: { answer: lo }, marks: { answer: 'done' } }], [9],
+    `lo = hi = ${lo}: one speed is left and it is the first one that works. Answer <b>k = ${lo}</b>, found with 3 checks instead of 9. With piles up to 10⁹ it would be ~30 checks instead of a billion.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Koko: binary search on speed', code:
+`int minEatingSpeed(int[] piles, int h) {
+    int lo = 1, hi = 0;
+    for (int p : piles) hi = Math.max(hi, p); // always enough
+    while (lo < hi) {
+        int mid = lo + (hi - lo) / 2;     // guess a speed
+        if (canFinish(piles, mid, h)) hi = mid; // try slower
+        else lo = mid + 1;                // too slow: faster
+    }
+    return lo;                            // first speed that works
+}
+boolean canFinish(int[] piles, int k, int h) {
+    long hours = 0;                       // long: sums get big
+    for (int p : piles) hours += (p + k - 1) / k; // ceil(p/k)
+    return hours <= h;
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"<code>feasible(k)</code> is monotonic — once a speed works, every faster speed works — so the answers over the range form <code>no…no yes…yes</code>, and lower-bound binary search finds the first yes in O(n · log(max))."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">int</span> lo = smallestPossible, hi = largestPossible;
+<span class="k">while</span> (lo &lt; hi) {
+    <span class="k">int</span> mid = lo + (hi - lo) / <span class="n">2</span>;
+    <span class="k">if</span> (feasible(mid)) hi = mid;   <span class="c">// works: try smaller</span>
+    <span class="k">else</span> lo = mid + <span class="n">1</span>;           <span class="c">// fails: go bigger</span>
+}
+<span class="k">return</span> lo;
+<span class="c">// "maximize": flip it — find the last x that works</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>"Minimum x such that possible" → binary search x, write <code>feasible(x)</code>.</b> Range = [smallest sensible, largest sensible].</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Wrong range: for Ship Packages, <code>lo</code> must be the <b>heaviest</b> package (a smaller ship can never carry it), not 1.</li>
+  <li>Integer division instead of ceiling: use <code>(p + k - 1) / k</code>.</li>
+  <li>Summing hours in an <code>int</code> — with big inputs it overflows. Use <code>long</code>.</li>
+  <li>Checking that the problem is monotonic is skipped. If a bigger x can turn yes into no, this pattern does not apply.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/sqrtx/">69. Sqrt(x)</a> — last x with x·x ≤ n (use long).</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/koko-eating-bananas/">875. Koko Eating Bananas</a> — the animation above.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/capacity-to-ship-packages-within-d-days/">1011. Capacity To Ship Packages</a> — feasible = fill each day greedily, count days.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/minimum-number-of-days-to-make-m-bouquets/">1482. Minimum Days to Make m Bouquets</a> — feasible = count runs of bloomed flowers.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/magnetic-force-between-two-balls/">1552. Magnetic Force Between Two Balls</a> — maximize the minimum gap.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/split-array-largest-sum/">410. Split Array Largest Sum</a> — same as ship packages with k days.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>What range do you search for Koko, and why is the top of it always feasible?</summary>
+<p>1 to max(piles). At speed max(piles) every pile takes exactly 1 hour, and h ≥ number of piles is guaranteed.</p></details>
+<details class="quiz"><summary>What is the time complexity for n piles with values up to M?</summary>
+<p>O(n log M): log M guesses, each an O(n) check.</p></details>
+<details class="quiz"><summary>How do you know a problem is "binary search on the answer" and not greedy or DP?</summary>
+<p>Ask "if x works, does every bigger (or smaller) x also work?" If yes, the answers are sorted yes/no and you can binary search them with a cheap check.</p></details>
+
+<nav class="pager"><a href="binary-search.html">← Binary search</a><a href="rotated-array.html">Rotated sorted array →</a></nav>
+</main>
+</body>
+</html>

@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Matrix Traversal</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>MAANG extras</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 49 · MAANG extras</div>
+<h1>Matrix Traversal</h1>
+<p class="lede">Walk a 2D grid in an unusual order — a spiral, a rotation, a wipe, a staircase — by keeping a few boundary numbers and moving them inwards.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="two-pointers.html">Two pointers</a>, <a href="in-place-tricks.html">In-place tricks</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>The input is an <code>m × n</code> <b>matrix</b> and the question says "<b>spiral</b> order", "<b>rotate</b> by 90 degrees <b>in place</b>", "if a cell is 0 set its <b>whole row and column</b> to 0", or "each row and each column is <b>sorted</b> — find a target". No graph search is needed: the order of visiting is fixed by the shape.</p></div>
+
+<h2>The idea in plain words</h2>
+<ul>
+  <li><b>Spiral</b>: keep four walls — <code>top</code>, <code>bottom</code>, <code>left</code>, <code>right</code>. Walk along the top wall, then move it down by one. Walk down the right wall, then move it left. Bottom wall right-to-left, move it up. Left wall bottom-to-top, move it right. Repeat until the walls cross. A 3 × 4 matrix is done after 12 cells.</li>
+  <li><b>Rotate 90° clockwise</b> = two simple moves. <b>Transpose</b> (flip across the main diagonal, so row i becomes column i), then <b>reverse each row</b>. <i>In place</i> means without making a copy — just swaps.</li>
+  <li><b>Set zeroes</b>: you cannot wipe while scanning, or new zeros would wipe even more. First <b>remember</b> which rows and columns contain a zero, then wipe in a second pass.</li>
+  <li><b>Sorted rows and columns</b>: stand at the <b>top-right</b> corner. Everything to your left is smaller, everything below is bigger. Too big → step left (that whole column is too big). Too small → step down (that whole row is too small). At most m + n steps.</li>
+</ul>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Spiral order is peeling an orange in one long strip: go around the outside, then the ring inside it, and so on. The staircase search is walking down a staircase in a dark building where each step tells you "too high" or "too low" — you only ever go left or down, never back.</p></div>
+
+<h2>Watch it work</h2>
+<h3>1. Spiral Matrix — four walls closing in</h3>
+<div id="demo1"></div>
+<script>
+(() => {
+  const m = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]];
+  const R = m.length, C = m[0].length;
+  const seen = new Set(), out = [];
+  const r = Viz.recorder();
+  let top = 0, bot = R - 1, left = 0, right = C - 1;
+  const panels = (cur, say, line) => {
+    const marks = {};
+    for (let i = 0; i < R; i++) for (let j = 0; j < C; j++) {
+      const k = `${i},${j}`;
+      if (seen.has(k)) marks[k] = 'done';
+      else if (i < top || i > bot || j < left || j > right) marks[k] = 'dim';
+    }
+    if (cur) marks[cur] = 'active';
+    r.step([{ type: 'grid', id: 'g', label: 'matrix', cells: m, rowLabels: ['r0', 'r1', 'r2'], colLabels: ['c0', 'c1', 'c2', 'c3'], marks },
+      { type: 'vars', id: 'v', vars: { top, bot, left, right } },
+      { type: 'text', id: 'o', text: `out = [${out.join(', ')}]` }], line, say);
+  };
+  panels(null, 'Four walls: <b>top = 0, bot = 2, left = 0, right = 3</b>. Everything inside the walls is still to visit.', [3, 4]);
+  const visit = (i, j, say, line) => { seen.add(`${i},${j}`); out.push(m[i][j]); panels(`${i},${j}`, say, line); };
+  while (top <= bot && left <= right) {
+    for (let c = left; c <= right; c++) visit(top, c, c === right ? `Add ${m[top][c]}. The <b>top</b> row (left → right) is finished, so the top wall moves down.` : `Walk along the top wall: add ${m[top][c]}.`, [6]);
+    top++;
+    for (let rr = top; rr <= bot; rr++) visit(rr, right, rr === bot ? `Add ${m[rr][right]}. The <b>right</b> column is finished, so the right wall moves left.` : `Walk down the right wall: add ${m[rr][right]}.`, [8]);
+    right--;
+    if (top <= bot) {
+      for (let c = right; c >= left; c--) visit(bot, c, c === left ? `Add ${m[bot][c]}. The <b>bottom</b> row (right → left) is finished; the bottom wall moves up.` : `Walk the bottom wall backwards: add ${m[bot][c]}.`, [10, 11]);
+      bot--;
+    }
+    if (left <= right) {
+      for (let rr = bot; rr >= top; rr--) visit(rr, left, rr === top ? `Add ${m[rr][left]}. The <b>left</b> column (bottom → top) is finished; the left wall moves right.` : `Walk up the left wall: add ${m[rr][left]}.`, [14, 15]);
+      left++;
+    }
+  }
+  panels(null, `The walls crossed (top ${top} &gt; bot ${bot}), so every cell is used. Spiral order: <b>[${out.join(', ')}]</b>.`, [19]);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Spiral matrix', code:
+`List<Integer> spiralOrder(int[][] m) {
+    List<Integer> out = new ArrayList<>();
+    int top = 0, bot = m.length - 1;
+    int left = 0, right = m[0].length - 1;
+    while (top <= bot && left <= right) {
+        for (int c = left; c <= right; c++) out.add(m[top][c]);
+        top++;                              // top row used up
+        for (int r = top; r <= bot; r++) out.add(m[r][right]);
+        right--;                            // right column used up
+        if (top <= bot) {                   // a bottom row is left
+            for (int c = right; c >= left; c--) out.add(m[bot][c]);
+            bot--;
+        }
+        if (left <= right) {                // a left column is left
+            for (int r = bot; r >= top; r--) out.add(m[r][left]);
+            left++;
+        }
+    }
+    return out;
+}` });
+})();
+</script>
+
+<h3>2. Rotate Image — transpose, then reverse each row</h3>
+<div id="demo2"></div>
+<script>
+(() => {
+  const m = [[1, 2, 3], [4, 5, 6], [7, 8, 9]], n = 3;
+  const r = Viz.recorder();
+  const g = (marks, arrows = []) => ({ type: 'grid', id: 'g', label: 'matrix', cells: m, marks, arrows });
+  r.step([g({ '0,0': 'compare', '1,1': 'compare', '2,2': 'compare' })], [2],
+    'Goal: turn the picture 90° clockwise without a second matrix. Step 1 is the <b>transpose</b>: mirror across the diagonal 1-5-9 (those three never move).');
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    r.step([g({ [`${i},${j}`]: 'active', [`${j},${i}`]: 'active' }, [[i, j, j, i, 'active']])], [3, 4],
+      `Cell (${i},${j}) = ${m[i][j]} and its mirror (${j},${i}) = ${m[j][i]} trade places.`);
+    const t = m[i][j]; m[i][j] = m[j][i]; m[j][i] = t;
+    r.step([g({ [`${i},${j}`]: 'done', [`${j},${i}`]: 'done' })], [5], `Swapped: now (${i},${j}) = ${m[i][j]} and (${j},${i}) = ${m[j][i]}.`);
+  }
+  r.step([g({})], [7], 'Transpose finished: each row is now an old column (row 0 = 1, 4, 7). Step 2: <b>reverse every row</b>.');
+  for (let row = 0; row < n; row++) {
+    r.step([g({ [`${row},0`]: 'active', [`${row},2`]: 'active' }, [[row, 0, row, 2, 'active']])], [8, 9],
+      `Row ${row}: swap the ends ${m[row][0]} and ${m[row][2]} (the middle stays).`);
+    const t = m[row][0]; m[row][0] = m[row][2]; m[row][2] = t;
+  }
+  r.step([g(Object.fromEntries([0, 1, 2].flatMap(i => [0, 1, 2].map(j => [`${i},${j}`, 'done']))))], [11],
+    'Done. The old first column <b>7, 4, 1</b> is now the top row: the matrix is rotated 90° clockwise, using only swaps (O(1) extra memory).');
+  Viz.mount('#demo2', { frames: r.frames, title: 'Rotate image', code:
+`void rotate(int[][] m) {
+    int n = m.length;
+    for (int i = 0; i < n; i++)           // 1) transpose
+        for (int j = i + 1; j < n; j++) { // only above the diagonal
+            int t = m[i][j]; m[i][j] = m[j][i]; m[j][i] = t;
+        }
+    for (int[] row : m)                   // 2) reverse every row
+        for (int l = 0, r = n - 1; l < r; l++, r--) {
+            int t = row[l]; row[l] = row[r]; row[r] = t;
+        }
+}` });
+})();
+</script>
+
+<h3>3. Set Matrix Zeroes — remember first, wipe second</h3>
+<div id="demo3"></div>
+<script>
+(() => {
+  const m = [[1, 1, 1, 1], [1, 0, 1, 1], [1, 1, 1, 0]];
+  const R = 3, C = 4;
+  const row = Array(R).fill(0), col = Array(C).fill(0);
+  const r = Viz.recorder();
+  const panels = (gm) => [
+    { type: 'grid', id: 'g', label: 'matrix', cells: m.map(x => x.slice()), marks: gm },
+    { type: 'array', id: 'row', label: 'row has a zero?', values: row.map(v => v ? 'yes' : '·'), marks: Object.fromEntries(row.map((v, i) => [i, v ? 'active' : ''])) },
+    { type: 'array', id: 'col', label: 'col has a zero?', values: col.map(v => v ? 'yes' : '·'), marks: Object.fromEntries(col.map((v, i) => [i, v ? 'active' : ''])) }];
+  r.step(panels({}), [3], 'Trap: if we wipe as soon as we see a 0, the new zeros would wipe even more rows. So first only <b>remember</b> rows and columns that hold a zero.');
+  for (let i = 0; i < R; i++) {
+    const gm = {};
+    for (let j = 0; j < C; j++) { gm[`${i},${j}`] = 'compare'; if (m[i][j] === 0) { row[i] = 1; col[j] = 1; gm[`${i},${j}`] = 'bad'; } }
+    const zs = m[i].map((v, j) => v === 0 ? j : -1).filter(j => j >= 0);
+    r.step(panels(gm), [4, 5, 6], zs.length ? `Scan row ${i}: a 0 at column ${zs.join(', ')} → mark <b>row ${i}</b> and <b>column ${zs.join(', ')}</b>.` : `Scan row ${i}: no zero here, nothing to remember.`);
+  }
+  for (let i = 0; i < R; i++) {
+    const gm = {};
+    for (let j = 0; j < C; j++) if (row[i] || col[j]) { m[i][j] = 0; gm[`${i},${j}`] = 'active'; }
+    r.step(panels(gm), [7, 8, 9], `Pass 2, row ${i}: ${row[i] ? `row ${i} is marked, so the whole row becomes 0.` : `row ${i} is not marked, but columns ${col.map((v, j) => v ? j : -1).filter(j => j >= 0).join(' and ')} are, so those cells become 0.`}`);
+  }
+  const fin = {}; for (let i = 0; i < R; i++) for (let j = 0; j < C; j++) if (m[i][j] === 0) fin[`${i},${j}`] = 'done';
+  r.step(panels(fin), [10], 'Done. Two passes, O(m·n) time. The O(1)-memory version stores the same yes/no marks in row 0 and column 0 of the matrix itself.');
+  Viz.mount('#demo3', { frames: r.frames, title: 'Set matrix zeroes', code:
+`void setZeroes(int[][] m) {
+    int R = m.length, C = m[0].length;
+    boolean[] row = new boolean[R], col = new boolean[C];
+    for (int r = 0; r < R; r++)          // pass 1: remember
+        for (int c = 0; c < C; c++)
+            if (m[r][c] == 0) { row[r] = true; col[c] = true; }
+    for (int r = 0; r < R; r++)          // pass 2: wipe
+        for (int c = 0; c < C; c++)
+            if (row[r] || col[c]) m[r][c] = 0;
+}` });
+})();
+</script>
+
+<h3>4. Search a 2D Matrix II — the staircase from the top-right</h3>
+<p>Rows are sorted left to right, columns top to bottom. Find <b>14</b>.</p>
+<div id="demo4"></div>
+<script>
+(() => {
+  const m = [[1, 4, 7, 11, 15], [2, 5, 8, 12, 19], [3, 6, 9, 16, 22], [10, 13, 14, 17, 24]];
+  const target = 14, R = 4, C = 5;
+  const r = Viz.recorder();
+  const outRows = new Set(), outCols = new Set(), path = [];
+  const g = (cur, cls) => {
+    const marks = {};
+    for (let i = 0; i < R; i++) for (let j = 0; j < C; j++) if (outRows.has(i) || outCols.has(j)) marks[`${i},${j}`] = 'dim';
+    path.forEach(([i, j]) => { marks[`${i},${j}`] = 'visited'; });
+    marks[`${cur[0]},${cur[1]}`] = cls;
+    const arrows = path.slice(1).map((p, k) => [path[k][0], path[k][1], p[0], p[1], 'path']);
+    return [{ type: 'grid', id: 'g', label: 'matrix (rows and columns sorted)', cells: m, marks, arrows }, { type: 'vars', id: 'v', vars: { target, r: cur[0], c: cur[1], 'm[r][c]': m[cur[0]][cur[1]] } }];
+  };
+  r.step([{ type: 'grid', id: 'g', label: 'matrix (rows and columns sorted)', cells: m }, { type: 'vars', id: 'v', vars: { target } }], [1],
+    'Checking all 20 cells would be O(m·n). But each row grows to the right and each column grows downwards — we can use that to skip whole rows and columns.');
+  let i = 0, j = C - 1;
+  path.push([i, j]);
+  r.step(g([i, j], 'compare'), [2], 'Start at the <b>top-right</b>: 15. Left of it everything is smaller, below it everything is bigger — so every comparison removes a whole row or column.');
+  while (i < R && j >= 0) {
+    const v = m[i][j];
+    if (v === target) { r.step(g([i, j], 'done'), [4], `m[${i}][${j}] = ${v} = target. <b>Found</b> after ${path.length} cells, out of 20. Time O(m + n).`); break; }
+    if (v > target) {
+      r.step(g([i, j], 'bad'), [5], `${v} &gt; ${target}. Everything below ${v} in column ${j} is even bigger, so <b>drop column ${j}</b>: step left.`);
+      outCols.add(j); j--;
+    } else {
+      r.step(g([i, j], 'bad'), [6], `${v} &lt; ${target}. Everything left of ${v} in row ${i} is even smaller, so <b>drop row ${i}</b>: step down.`);
+      outRows.add(i); i++;
+    }
+    path.push([i, j]);
+  }
+  Viz.mount('#demo4', { frames: r.frames, title: 'Staircase search', code:
+`boolean searchMatrix(int[][] m, int target) {
+    int r = 0, c = m[0].length - 1;      // top-right corner
+    while (r < m.length && c >= 0) {
+        if (m[r][c] == target) return true;
+        if (m[r][c] > target) c--;       // too big: column is out
+        else r++;                        // too small: row is out
+    }
+    return false;
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"Spiral: the four walls shrink by one after each side, so each cell is added exactly once — O(m·n)." "Rotate: a 90° clockwise turn sends (i, j) to (j, n−1−i); transpose does (i, j) → (j, i) and reversing the row does the n−1−i part." "Staircase: from the top-right, one comparison rules out a whole row or a whole column, so at most m + n steps."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// Spiral: four walls, shrink after each side</span>
+<span class="k">while</span> (top &lt;= bot &amp;&amp; left &lt;= right) {
+    top row  → top++;     right col → right--;
+    <span class="k">if</span> (top &lt;= bot)    bottom row ← bot--;
+    <span class="k">if</span> (left &lt;= right) left col ↑  left++;
+}
+<span class="c">// Rotate clockwise = transpose + reverse rows</span>
+<span class="c">// (counter-clockwise = transpose + reverse columns)</span>
+<span class="c">// Staircase: start top-right</span>
+<span class="k">if</span> (v &gt; target) c--; <span class="k">else</span> r++;</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Spiral = four walls. Rotate = transpose + reverse. Zeroes = remember, then wipe. Sorted grid = start top-right.</b></p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Spiral: forgetting the <code>if (top &lt;= bot)</code> / <code>if (left &lt;= right)</code> checks — a single middle row is then added twice.</li>
+  <li>Transposing the full matrix (<code>j</code> from 0) — every pair swaps twice and nothing changes. Start <code>j</code> at <code>i + 1</code>.</li>
+  <li>Set zeroes: wiping during the first scan.</li>
+  <li>Staircase from the top-<b>left</b>: both moves (right, down) make the number bigger, so you cannot decide which way to go.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/transpose-matrix/">867. Transpose Matrix</a> — warm-up for rotate.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/spiral-matrix/">54. Spiral Matrix</a> — animation 1.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/spiral-matrix-ii/">59. Spiral Matrix II</a> — same walls, write 1..n² instead of reading.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/rotate-image/">48. Rotate Image</a> — animation 2.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/set-matrix-zeroes/">73. Set Matrix Zeroes</a> — then do the O(1)-memory version.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/search-a-2d-matrix-ii/">240. Search a 2D Matrix II</a> — animation 4.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/diagonal-traverse/">498. Diagonal Traverse</a> — cells on one diagonal share r + c.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/game-of-life/">289. Game of Life</a> — in place with two-bit states.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>How do you rotate 90° counter-clockwise?</summary>
+<p>Transpose, then reverse each <b>column</b> (or: reverse each row first, then transpose).</p></details>
+<details class="quiz"><summary>In the staircase search, why not start at the top-left?</summary>
+<p>From the top-left both neighbours are bigger, so a comparison does not tell you which direction to move. Top-right (or bottom-left) has one smaller and one bigger direction.</p></details>
+<details class="quiz"><summary>How does Set Matrix Zeroes get O(1) extra memory?</summary>
+<p>Use row 0 and column 0 as the "has a zero" marks, plus one extra boolean for whether row 0 itself (or column 0) originally had a zero. Wipe the inner cells first, then row 0 and column 0 last.</p></details>
+
+<nav class="pager"><a href="strings-palindromes.html">← Strings and palindromes</a><a href="monotonic-deque.html">Monotonic deque →</a></nav>
+</main>
+</body>
+</html>

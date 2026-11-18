@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dijkstra's Algorithm</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Graphs</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 37 · Graphs</div>
+<h1>Dijkstra's Shortest Path</h1>
+<p class="lede">For roads with travel times, always settle the closest unsettled place next (a min-heap gives it to you), and use it to shorten the routes to its neighbours.</p>
+<p class="meta">Time to learn: about 2.5 hours · Prerequisites: <a href="graph-basics.html">Graph basics</a>, <a href="heap.html">Heap</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p><b>Weighted</b> edges (time, cost, distance, effort), all weights <b>≥ 0</b>, and "<b>minimum</b> time / cost from a source". If all weights are equal, plain BFS is enough; if some are negative, Dijkstra is the wrong tool.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>A signal starts at node 1 and travels along one-way cables; each cable takes some milliseconds. When does the last node hear it? We need the <b>shortest time from 1 to every node</b>.</p>
+<p>Keep a table <code>dist[]</code>: the best time found so far to each node. Start with dist[1] = 0 and everything else = ∞ (not reached).</p>
+<ul>
+  <li>Take the node with the <b>smallest</b> dist that is not settled yet — a <b>min-heap</b> (priority queue) hands it over in O(log n).</li>
+  <li>Its dist is now <b>final</b>: any other route would go through a node that is already farther away, and weights cannot be negative, so it cannot get cheaper.</li>
+  <li><b>Relax</b> its outgoing edges: for edge u → v with weight w, if dist[u] + w &lt; dist[v], we found a shorter way to v — update it and push (new dist, v) into the heap.</li>
+</ul>
+<p>An old, larger entry for v may still be in the heap; when it pops later we see it is bigger than dist[v] and skip it (a "stale" entry). Total time O((V + E) log V).</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Water poured at the start of a network of pipes of different lengths. The water reaches the nearest junction first, then flows on from there. A junction is "wet" at the earliest possible moment, and once wet it stays wet — no later water can arrive earlier. Dijkstra simulates that order with a heap instead of a stopwatch.</p></div>
+
+<h2>Watch it work</h2>
+<p><b>1. Network Delay Time.</b> Source = node 1. The badge on a node is its current best distance. Settled nodes turn green; the edge being relaxed is highlighted; the shortest-path tree grows in green.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const nodes = [{ id: 1, x: 120, y: 130 }, { id: 2, x: 270, y: 50 }, { id: 3, x: 270, y: 220 }, { id: 4, x: 430, y: 130 }, { id: 5, x: 590, y: 130 }];
+  const T = [[1, 2, 2], [1, 3, 5], [2, 3, 1], [2, 4, 4], [3, 4, 1], [4, 5, 3], [3, 5, 6]];
+  const edges = T.map(([a, b, w]) => ({ a, b, w, dir: true, bend: a === 3 && b === 5 ? -40 : 0 }));
+  const adj = {}; nodes.forEach(x => adj[x.id] = []); T.forEach(([a, b, w]) => adj[a].push([b, w]));
+  const dist = { 1: 0, 2: Infinity, 3: Infinity, 4: Infinity, 5: Infinity };
+  const prev = {}, done = new Set();
+  let pq = [[0, 1]];
+  const r = Viz.recorder();
+  const fmt = d => d === Infinity ? '∞' : d;
+  const panels = (marks = {}, em = {}, vars = {}) => {
+    const m = {}; done.forEach(u => m[u] = 'done'); Object.assign(m, marks);
+    const e = {}; Object.entries(prev).forEach(([v, u]) => e[`${u}-${v}`] = 'done'); Object.assign(e, em);
+    return [{ type: 'graph', id: 'g', label: 'cables (weight = milliseconds), badge = dist', h: 280, nodes, edges, marks: m, edgeMarks: e,
+        badges: Object.fromEntries(nodes.map(x => [x.id, fmt(dist[x.id])])) },
+      { type: 'stack', id: 'pq', label: 'min-heap of (dist, node), smallest first', kind: 'heap',
+        items: [...pq].sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(([d, v]) => ({ id: `${d}-${v}`, val: `(${d}, ${v})` })) },
+      { type: 'vars', id: 'v', vars }];
+  };
+  r.step(panels({ 1: 'active' }), [8, 9, 12], 'dist[1] = 0, every other node ∞ (not reached). The heap starts with (0, 1).');
+  while (pq.length) {
+    pq.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const [d, u] = pq.shift();
+    if (d > dist[u]) {
+      r.step(panels({ [u]: 'bad' }, {}, { popped: `(${d}, ${u})`, [`dist[${u}]`]: dist[u] }), [14, 15, 16],
+        `Pop (${d}, ${u}) — but dist[${u}] is already ${dist[u]} &lt; ${d}. This is an old <b>stale</b> entry from before we found a shorter way. Skip it.`);
+      continue;
+    }
+    done.add(u);
+    r.step(panels({ [u]: 'active' }, {}, { popped: `(${d}, ${u})` }), [14, 15],
+      `Pop (${d}, ${u}): the smallest distance in the heap. Node ${u} is <b>settled</b> — its shortest time is ${d}. Now relax its ${adj[u].length} outgoing cable${adj[u].length === 1 ? '' : 's'}.`);
+    for (const [v, w] of adj[u]) {
+      const nd = d + w, better = nd < dist[v];
+      const old = dist[v];
+      if (better) { dist[v] = nd; prev[v] = u; pq.push([nd, v]); }
+      r.step(panels({ [u]: 'active', [v]: better ? 'compare' : 'bad' }, { [`${u}-${v}`]: better ? 'active' : 'bad' }, { [`${d} + ${w}`]: nd, [`dist[${v}] was`]: fmt(old) }),
+        better ? [18, 19, 20, 21] : [18, 19],
+        better ? `Edge ${u} → ${v} (${w}): ${d} + ${w} = ${nd} beats ${fmt(old)}. <b>Shorter way found</b>: dist[${v}] = ${nd}, push (${nd}, ${v}).`
+               : `Edge ${u} → ${v} (${w}): ${d} + ${w} = ${nd} is not better than ${old}. Keep the old route.`);
+    }
+  }
+  const ans = Math.max(...Object.values(dist));
+  r.step(panels(Object.fromEntries([...done].map(u => [u, 'done'])), Object.fromEntries(Object.entries(prev).map(([v, u]) => [`${u}-${v}`, 'path'])), { answer: ans }), [25, 26, 27, 28],
+    `Heap empty. Final distances 0, 2, 3, 4, 7. The signal reaches everyone when the <b>farthest</b> node hears it: answer <b>${ans}</b>. Green edges are the shortest routes.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Network Delay Time', code:
+`int networkDelay(int[][] times, int n, int k) {
+    List<int[]>[] adj = new List[n + 1];
+    for (int i = 1; i <= n; i++)
+        adj[i] = new ArrayList<>();
+    for (int[] t : times)
+        adj[t[0]].add(new int[]{t[1], t[2]});
+    int[] dist = new int[n + 1];
+    Arrays.fill(dist, Integer.MAX_VALUE);
+    dist[k] = 0;
+    PriorityQueue<int[]> pq =
+        new PriorityQueue<>((a, b) -> a[0] - b[0]);
+    pq.add(new int[]{0, k});
+    while (!pq.isEmpty()) {
+        int[] top = pq.poll();
+        int d = top[0], u = top[1];
+        if (d > dist[u]) continue;   // stale
+        for (int[] e : adj[u]) {
+            int v = e[0], nd = d + e[1];
+            if (nd < dist[v]) {      // shorter!
+                dist[v] = nd;
+                pq.add(new int[]{nd, v});
+            }
+        }
+    }
+    int ans = 0;
+    for (int i = 1; i <= n; i++)
+        ans = Math.max(ans, dist[i]);
+    return ans == Integer.MAX_VALUE ? -1 : ans;
+}` });
+})();
+</script>
+
+<p><b>2. Why negative weights break it.</b> Edge C → B costs <b>−3</b>. Classic Dijkstra settles B too early and never takes it back.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const nodes = [{ id: 'A', x: 140, y: 130 }, { id: 'B', x: 320, y: 50 }, { id: 'C', x: 320, y: 220 }, { id: 'D', x: 500, y: 50 }];
+  const T = [['A', 'B', 1], ['A', 'C', 3], ['C', 'B', -3], ['B', 'D', 1]];
+  const edges = T.map(([a, b, w]) => ({ a, b, w, dir: true }));
+  const adj = { A: [], B: [], C: [], D: [] }; T.forEach(([a, b, w]) => adj[a].push([b, w]));
+  const dist = { A: 0, B: Infinity, C: Infinity, D: Infinity }, done = new Set();
+  let pq = [[0, 'A']];
+  const r = Viz.recorder();
+  const fmt = d => d === Infinity ? '∞' : d;
+  const panels = (marks = {}, em = {}, vars = {}) => {
+    const m = {}; done.forEach(u => m[u] = 'done'); Object.assign(m, marks);
+    return [{ type: 'graph', id: 'g', label: 'one negative edge: C → B is −3', h: 270, nodes, edges, marks: m, edgeMarks: em,
+        badges: Object.fromEntries(nodes.map(x => [x.id, fmt(dist[x.id])])) },
+      { type: 'stack', id: 'pq', label: 'min-heap', kind: 'heap', items: [...pq].sort((a, b) => a[0] - b[0]).map(([d, v]) => ({ id: d + v, val: `(${d}, ${v})` })) },
+      { type: 'vars', id: 'v', vars }];
+  };
+  r.step(panels({ A: 'active' }), [1], 'Start at A with dist 0. The true shortest way to B is A → C → B = 3 + (−3) = <b>0</b>. Watch what Dijkstra does.');
+  while (pq.length) {
+    pq.sort((a, b) => a[0] - b[0]);
+    const [d, u] = pq.shift();
+    if (done.has(u)) continue;
+    done.add(u);
+    r.step(panels({ [u]: 'active' }), [3, 4, 5], `Pop ${u} (dist ${d}). Dijkstra <b>promises</b> ${u}'s distance is final now.`);
+    for (const [v, w] of adj[u]) {
+      if (done.has(v)) {
+        r.step(panels({ [u]: 'active', [v]: 'bad' }, { [`${u}-${v}`]: 'bad' }, { [`${d} + (${w})`]: d + w, [`dist[${v}]`]: dist[v] }), [8],
+          `Edge ${u} → ${v}: ${d} + (${w}) = <b>${d + w}</b> is smaller than ${dist[v]}! But ${v} is already settled, so the update is refused — and D, which was built on B's old value, stays wrong too.`);
+        continue;
+      }
+      const nd = d + w;
+      if (nd < dist[v]) { dist[v] = nd; pq.push([nd, v]); }
+      r.step(panels({ [u]: 'active', [v]: 'compare' }, { [`${u}-${v}`]: 'active' }, { [`dist[${v}]`]: dist[v] }), [8, 9, 10],
+        `Edge ${u} → ${v} (${w}): dist[${v}] = ${dist[v]}.`);
+    }
+  }
+  r.step(panels({ B: 'bad', D: 'bad' }, { 'C-B': 'bad' }, { 'Dijkstra B': dist.B, 'true B': 0, 'Dijkstra D': dist.D, 'true D': 1 }), [5],
+    'Result: B = 1 and D = 2, but the truth is B = 0 and D = 1. The "closest is final" promise needs weights ≥ 0. With negative edges use <b>Bellman-Ford</b>.');
+  Viz.mount('#demo2', { frames: r.frames, title: 'Negative weights', code:
+`// classic Dijkstra: a popped node is FINAL
+while (!pq.isEmpty()) {
+    int u = pq.poll()[1];
+    if (done[u]) continue;
+    done[u] = true;            // promise: final
+    for (int[] e : adj[u]) {
+        int v = e[0], w = e[1];
+        if (!done[v] && dist[u] + w < dist[v]) {
+            dist[v] = dist[u] + w;
+            pq.add(new int[]{dist[v], v});
+        }
+    }
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"When a node is popped with the smallest tentative distance, every other path to it must leave the settled set through a node that is at least as far, and with non-negative weights the rest of that path cannot make it shorter — so the popped distance is final. With a negative edge, a later path can get cheaper, so Dijkstra fails; use Bellman-Ford instead."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">int</span>[] dist = ∞; dist[src] = <span class="n">0</span>;
+PriorityQueue&lt;<span class="k">int</span>[]&gt; pq = <span class="c">/* min by a[0] */</span>;
+pq.add(<span class="k">new int</span>[]{<span class="n">0</span>, src});
+<span class="k">while</span> (!pq.isEmpty()) {
+    <span class="k">int</span>[] t = pq.poll(); <span class="k">int</span> d = t[<span class="n">0</span>], u = t[<span class="n">1</span>];
+    <span class="k">if</span> (d &gt; dist[u]) <span class="k">continue</span>;               <span class="c">// stale</span>
+    <span class="k">for</span> (edge u -&gt; v, w)
+        <span class="k">if</span> (d + w &lt; dist[v]) { dist[v] = d + w; pq.add(<span class="k">new int</span>[]{dist[v], v}); }
+}</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Pop the smallest, skip if stale, relax the neighbours.</b> Weights ≥ 0 only. Unweighted → BFS; negative → Bellman-Ford.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Forgetting the stale check <code>if (d &gt; dist[u]) continue;</code> — still correct, but it re-relaxes and can be much slower.</li>
+  <li>Comparator <code>a[0] - b[0]</code> can overflow with huge distances — use <code>Integer.compare</code> or <code>long</code>.</li>
+  <li>Adding <code>dist[u] + w</code> when dist[u] is <code>MAX_VALUE</code> — overflow to a negative number.</li>
+  <li>Using Dijkstra when there is a limit on the number of edges (Cheapest Flights Within K Stops) — the state needs the stop count too, or use Bellman-Ford rounds.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/network-delay-time/">743. Network Delay Time</a> — exactly animation 1.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/path-with-maximum-probability/">1514. Path with Maximum Probability</a> — max-heap, multiply instead of add.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/path-with-minimum-effort/">1631. Path With Minimum Effort</a> — grid Dijkstra, path cost = max step instead of sum.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/cheapest-flights-within-k-stops/">787. Cheapest Flights Within K Stops</a> — the stop limit changes the state; Bellman-Ford with k + 1 rounds.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/swim-in-rising-water/">778. Swim in Rising Water</a> — Dijkstra where the cost of a path is its highest cell.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>All edges have weight 1. Do you need Dijkstra?</summary>
+<p>No — BFS gives the same answer in O(V + E) without a heap.</p></details>
+<details class="quiz"><summary>Why can the same node appear in the heap more than once?</summary>
+<p>Java's PriorityQueue cannot lower a key in place, so each improvement pushes a new entry. The older, larger entries are skipped as stale when popped.</p></details>
+<details class="quiz"><summary>What is the time complexity of Dijkstra with a binary heap?</summary>
+<p>O((V + E) log V): every edge can push one heap entry, and each push or pop costs O(log V).</p></details>
+
+<nav class="pager"><a href="union-find.html">← Union-Find</a><a href="mst.html">Minimum spanning tree →</a></nav>
+</main>
+</body>
+</html>

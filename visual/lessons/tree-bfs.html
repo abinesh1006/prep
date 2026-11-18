@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tree BFS</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Recursion &amp; trees</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 28 · Recursion &amp; trees</div>
+<h1>Tree BFS (level order)</h1>
+<p class="lede">Visit the tree one floor at a time, top to bottom, using a queue — and freeze the queue's size at the start of each floor so you know where the floor ends.</p>
+<p class="meta">Time to learn: about 1.5 hours · Prerequisites: <a href="tree-traversals.html">Tree traversals</a>, <a href="stack-basics.html">Stack basics</a> (queues)</p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>The problem says <b>level</b>, <b>row</b>, <b>depth by depth</b>, "<b>right side view</b>", "<b>zigzag</b>", "average of each level", "largest value in each row", "<b>minimum depth</b>" or "nearest". Anything about floors of the tree, or the closest node to the root, is BFS.</p></div>
+
+<h2>The idea in plain words</h2>
+<p><b>BFS</b> = breadth-first search: go wide before going deep. Instead of diving down one path (that is DFS, the traversals lesson), you visit the root, then all nodes 1 step down, then all nodes 2 steps down, and so on.</p>
+<p>The tool is a <b>queue</b> = first in, first out, like a line at a shop. Put the root in. Then repeat: take the node at the front, write it down, and add its children at the back. Because children always join behind everything already waiting, a whole floor leaves the queue before the next floor starts.</p>
+<p>The one trick for "per level" problems: at the start of each floor, read <code>size = q.size()</code>. Right then the queue holds <b>exactly</b> the nodes of this floor (say 3). Take exactly 3 nodes out; the children they add are the next floor and wait for the next round.</p>
+<ul>
+  <li><b>Right side view</b> = the last node of each floor (what you would see standing on the right).</li>
+  <li><b>Zigzag</b> = same floors, but every second floor is written right-to-left.</li>
+</ul>
+<p>Each node goes in and out of the queue once → <b>O(n) time</b>. The queue holds at most one floor plus part of the next → <b>O(width)</b> extra space (up to about n/2 for the bottom floor of a full tree).</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A building evacuation drill, floor by floor. The guard counts the people on floor 1 ("3 people") and sends exactly those 3 out; each one, as they leave, calls down the people on the floor below to join the end of the line. When the 3 are gone, the guard counts again for the next floor. The count is the <code>size</code> you freeze.</p></div>
+
+<h2>Watch it work</h2>
+<h3>1. Level order: one list per floor</h3>
+<p><b>Blue</b> = waiting in the queue, <b>yellow</b> = just taken out, <b>green</b> = written down.</p>
+<div id="demo1"></div>
+<h3>2. Right side view: the last node of each floor</h3>
+<div id="demo2"></div>
+<h3>3. Zigzag: flip the direction every floor</h3>
+<p>The queue part is identical. Only the way we <i>write</i> each floor changes: left-to-right floors add at the back of the level list, right-to-left floors add at the front.</p>
+<div id="demo3"></div>
+<script>
+const BT = {
+  1: { val: 1, left: 2, right: 3 }, 2: { val: 2, left: 4, right: 5 }, 3: { val: 3, left: null, right: 6 },
+  4: { val: 4, left: null, right: null }, 5: { val: 5, left: 7, right: null }, 6: { val: 6, left: null, right: null },
+  7: { val: 7, left: null, right: null }
+};
+const kidsOf = id => [BT[id].left, BT[id].right].filter(c => c != null);
+
+(() => {
+  const r = Viz.recorder();
+  const q = [1], res = [], written = new Set();
+  let level = [], size = '-', cur = null;
+  const snap = (line, say) => {
+    const marks = {};
+    for (const v of written) marks[v] = 'done';
+    for (const v of q) marks[v] = 'compare';
+    if (cur != null) marks[cur] = 'active';
+    r.step([
+      { type: 'tree', id: 't', label: 'tree', root: 1, nodes: BT, marks },
+      { type: 'stack', id: 'q', kind: 'queue', label: 'q (take from the front, add at the back)', items: q.map(v => ({ id: 'q' + v, val: v })), marks: q.length ? { 0: 'compare' } : {} },
+      { type: 'vars', id: 'v', vars: { size, level: `[${level.join(', ')}]` } },
+      { type: 'stack', id: 'r', kind: 'set', label: 'res', items: res.map((l, i) => ({ id: 'r' + i, val: `[${l.join(', ')}]` })), marks: Object.fromEntries(res.map((_, i) => [i, 'done'])) }
+    ], line, say);
+  };
+  snap([5], 'Put the root <b>1</b> in the queue. The queue now holds floor 0.');
+  while (q.length) {
+    size = q.length; level = []; cur = null;
+    snap([7, 8], `Start a new floor. Freeze <b>size = ${size}</b>: the queue holds exactly this floor right now (${q.join(', ')}). We will take out exactly ${size} node${size > 1 ? 's' : ''}.`);
+    for (let i = 0; i < size; i++) {
+      cur = q.shift(); level.push(cur); written.add(cur);
+      const ks = kidsOf(cur); q.push(...ks);
+      snap([10, 11, 12, 13], `Take <b>${cur}</b> from the front and add it to this floor's list. ${ks.length ? `Its children ${ks.join(' and ')} join the <b>back</b> of the queue — they belong to the next floor.` : 'It has no children, so nothing joins the queue.'}`);
+    }
+    res.push([...level]); cur = null;
+    snap([15], `${size} node${size > 1 ? 's' : ''} taken → this floor is complete: <b>[${level.join(', ')}]</b>. ${q.length ? `The queue now holds exactly the next floor: ${q.join(', ')}.` : 'The queue is empty.'}`);
+  }
+  size = '-'; level = [];
+  snap([17], `Queue empty → done. Level order = <b>${JSON.stringify(res).replace(/,/g, ', ')}</b>. Every node entered and left the queue once: O(n).`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Level order BFS', code:
+`List<List<Integer>> levelOrder(TreeNode root) {
+    List<List<Integer>> res = new ArrayList<>();
+    if (root == null) return res;
+    Queue<TreeNode> q = new ArrayDeque<>();
+    q.offer(root);
+    while (!q.isEmpty()) {
+        int size = q.size();          // nodes on THIS floor
+        List<Integer> level = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            TreeNode node = q.poll();   // take from the front
+            level.add(node.val);
+            if (node.left != null) q.offer(node.left);
+            if (node.right != null) q.offer(node.right);
+        }
+        res.add(level);               // floor finished
+    }
+    return res;
+}` });
+})();
+
+(() => {
+  const r = Viz.recorder();
+  const q = [1], res = [], seen = new Set();
+  let cur = null, size = '-', idx = '-';
+  const snap = (line, say) => {
+    const marks = {};
+    for (const v of seen) marks[v] = res.includes(v) ? 'done' : 'visited';
+    for (const v of q) marks[v] = 'compare';
+    if (cur != null && !res.includes(cur)) marks[cur] = 'active';
+    r.step([
+      { type: 'tree', id: 't', label: 'tree (look at it from the right side →)', root: 1, nodes: BT, marks },
+      { type: 'stack', id: 'q', kind: 'queue', label: 'q', items: q.map(v => ({ id: 'q' + v, val: v })) },
+      { type: 'vars', id: 'v', vars: { size, i: idx, res: `[${res.join(', ')}]` }, marks: { res: 'done' } }
+    ], line, say);
+  };
+  snap([4], 'Same BFS as before. Put the root in the queue.');
+  while (q.length) {
+    size = q.length;
+    for (let i = 0; i < size; i++) {
+      idx = i; cur = q.shift(); seen.add(cur); q.push(...kidsOf(cur));
+      if (i === size - 1) {
+        res.push(cur);
+        snap([8, 9], `<b>${cur}</b> is at i = ${i} = size − 1: the <b>last</b> node of this floor, so it is the one you see from the right. Add it to res.`);
+      } else {
+        snap([8, 10, 11], `<b>${cur}</b> is at i = ${i}, not the last on its floor (size = ${size}) — a node to its right hides it. Just add its children.`);
+      }
+    }
+  }
+  cur = null; size = '-'; idx = '-';
+  snap([14], `Right side view = <b>[${res.join(', ')}]</b>. Note <b>7</b>: it sits on the <b>left</b> side of the tree, but nothing is to its right on the bottom floor, so you still see it. That is why "just follow right children" is wrong.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Right side view', code:
+`List<Integer> rightSideView(TreeNode root) {
+    List<Integer> res = new ArrayList<>();
+    Queue<TreeNode> q = new ArrayDeque<>();
+    if (root != null) q.offer(root);
+    while (!q.isEmpty()) {
+        int size = q.size();
+        for (int i = 0; i < size; i++) {
+            TreeNode node = q.poll();
+            if (i == size - 1) res.add(node.val); // last = seen
+            if (node.left != null) q.offer(node.left);
+            if (node.right != null) q.offer(node.right);
+        }
+    }
+    return res;
+}` });
+})();
+
+(() => {
+  const r = Viz.recorder();
+  const q = [1], res = [], written = new Set();
+  let cur = null, level = [], ltr = true;
+  const snap = (line, say) => {
+    const marks = {};
+    for (const v of written) marks[v] = 'done';
+    for (const v of q) marks[v] = 'compare';
+    if (cur != null) marks[cur] = 'active';
+    r.step([
+      { type: 'tree', id: 't', label: 'tree', root: 1, nodes: BT, marks },
+      { type: 'stack', id: 'q', kind: 'queue', label: 'q', items: q.map(v => ({ id: 'q' + v, val: v })) },
+      { type: 'vars', id: 'v', vars: { direction: ltr ? 'left → right' : 'right → left', level: `[${level.join(', ')}]` }, marks: { direction: ltr ? 'done' : 'active' } },
+      { type: 'stack', id: 'r', kind: 'set', label: 'res', items: res.map((l, i) => ({ id: 'r' + i, val: `[${l.join(', ')}]` })), marks: Object.fromEntries(res.map((_, i) => [i, 'done'])) }
+    ], line, say);
+  };
+  snap([4, 5], 'Same BFS, plus one flag: <b>leftToRight = true</b> for floor 0.');
+  while (q.length) {
+    const size = q.length; level = [];
+    for (let i = 0; i < size; i++) {
+      cur = q.shift(); written.add(cur); q.push(...kidsOf(cur));
+      if (ltr) level.push(cur); else level.unshift(cur);
+      snap([10, ltr ? 11 : 12], ltr
+        ? `Take <b>${cur}</b>. This floor goes left → right, so add it at the <b>back</b> of the level list.`
+        : `Take <b>${cur}</b>. This floor goes right → left, so add it at the <b>front</b>: [${level.join(', ')}]. The queue order stays normal.`);
+    }
+    res.push([...level]); cur = null;
+    ltr = !ltr;
+    snap([16, 17], `Floor done: <b>[${level.join(', ')}]</b>. Flip the direction for the next floor (now ${ltr ? 'left → right' : 'right → left'}).`);
+  }
+  level = [];
+  snap([19], `Zigzag = <b>${JSON.stringify(res).replace(/,/g, ', ')}</b>. We never reversed the queue — only the order of writing inside each floor.`);
+  Viz.mount('#demo3', { frames: r.frames, title: 'Zigzag level order', code:
+`List<List<Integer>> zigzag(TreeNode root) {
+    List<List<Integer>> res = new ArrayList<>();
+    Queue<TreeNode> q = new ArrayDeque<>();
+    if (root != null) q.offer(root);
+    boolean leftToRight = true;
+    while (!q.isEmpty()) {
+        int size = q.size();
+        LinkedList<Integer> level = new LinkedList<>();
+        for (int i = 0; i < size; i++) {
+            TreeNode node = q.poll();
+            if (leftToRight) level.addLast(node.val);
+            else level.addFirst(node.val);  // fill backwards
+            if (node.left != null) q.offer(node.left);
+            if (node.right != null) q.offer(node.right);
+        }
+        res.add(level);
+        leftToRight = !leftToRight;          // flip direction
+    }
+    return res;
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"A queue is first-in-first-out, and children are always added behind the nodes already waiting, so nodes leave in order of their distance from the root. When a floor starts, the queue holds exactly that floor, so freezing <code>size</code> tells me where the floor ends. O(n) time, O(width) space."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">Queue</span>&lt;<span class="k">TreeNode</span>&gt; q = <span class="k">new</span> <span class="k">ArrayDeque</span>&lt;&gt;();
+<span class="k">if</span> (root != <span class="k">null</span>) q.offer(root);
+<span class="k">while</span> (!q.isEmpty()) {
+    <span class="k">int</span> size = q.size();                <span class="c">// freeze this floor</span>
+    <span class="k">for</span> (<span class="k">int</span> i = <span class="n">0</span>; i &lt; size; i++) {
+        <span class="k">TreeNode</span> node = q.poll();
+        <span class="c">// per-node work (i == 0 first, i == size - 1 last)</span>
+        <span class="k">if</span> (node.left != <span class="k">null</span>) q.offer(node.left);
+        <span class="k">if</span> (node.right != <span class="k">null</span>) q.offer(node.right);
+    }
+    <span class="c">// per-floor work</span>
+}</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Level → queue → freeze <code>size</code>.</b> First of floor: <code>i == 0</code>. Last of floor (right view): <code>i == size − 1</code>.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Writing <code>for (int i = 0; i &lt; q.size(); i++)</code> — the size changes while you add children, so floors get mixed. Save it in a variable first.</li>
+  <li>Right side view by following only right children — misses nodes like 7 above that stick out on the left side.</li>
+  <li>Zigzag by reversing the queue or swapping the child order — it breaks the next floor. Change only how the level list is filled.</li>
+  <li>Forgetting the empty tree: <code>q.offer(null)</code> then <code>node.left</code> → <code>NullPointerException</code>.</li>
+  <li>Using <code>Stack</code> or <code>LinkedList.push</code> by mistake — that is LIFO and turns BFS into DFS.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/binary-tree-level-order-traversal/">102. Binary Tree Level Order Traversal</a> — animation 1, word for word.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/average-of-levels-in-binary-tree/">637. Average of Levels in Binary Tree</a> — sum each floor, divide by size.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/minimum-depth-of-binary-tree/">111. Minimum Depth of Binary Tree</a> — BFS; the first leaf you meet gives the answer.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/binary-tree-right-side-view/">199. Binary Tree Right Side View</a> — animation 2.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/binary-tree-zigzag-level-order-traversal/">103. Binary Tree Zigzag Level Order Traversal</a> — animation 3.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-width-of-binary-tree/">662. Maximum Width of Binary Tree</a> — queue of (node, position index); width = last − first + 1.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Why must <code>size</code> be read before the inner loop starts?</summary>
+<p>During the loop you add children to the same queue, so <code>q.size()</code> keeps changing. Reading it once at the start gives the exact number of nodes on the current floor.</p></details>
+<details class="quiz"><summary>What is the extra space of BFS on a perfect binary tree with 15 nodes?</summary>
+<p>O(width): the bottom floor has 8 nodes, which can all sit in the queue at once — about n/2, so O(n) in the worst case.</p></details>
+<details class="quiz"><summary>How do you get the <b>left</b> side view?</summary>
+<p>Same BFS, but record the node when <code>i == 0</code> (the first node of each floor).</p></details>
+<details class="quiz"><summary>Minimum depth: why is BFS often faster than DFS?</summary>
+<p>BFS goes floor by floor, so it can stop at the first leaf it meets. DFS may explore a very deep branch before finding a shallow leaf elsewhere.</p></details>
+
+<nav class="pager"><a href="tree-traversals.html">← Tree traversals</a><a href="tree-recursion.html">Tree recursion →</a></nav>
+</main>
+</body>
+</html>

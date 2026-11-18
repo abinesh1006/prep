@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sliding Window</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Arrays</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 6 · Arrays</div>
+<h1>Sliding Window</h1>
+<p class="lede">Keep a stretch of neighbouring elements (a "window") and slide it along the array, updating its sum or contents by what enters and what leaves — instead of recomputing every stretch from scratch.</p>
+<p class="meta">Time to learn: about 2.5 hours · Prerequisites: <a href="two-pointers.html">Two pointers</a>, <a href="arrays-hashing.html">Arrays and hashing</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>The question is about a <b>contiguous</b> piece — "<b>subarray</b>" or "<b>substring</b>" — and asks for the <b>longest</b>, <b>shortest</b>, <b>maximum sum of size k</b>, "<b>at most k distinct</b>", "<b>without repeating</b>", "contains all characters of t". If the elements are all non-negative (or the condition only gets worse as the window grows), a window works.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>A <b>subarray</b> is a run of neighbours: in <code>[2, 1, 5, 1, 3]</code>, <code>[1, 5, 1]</code> is one, <code>[2, 5]</code> is not. An array of 10,000 numbers has about 50 million subarrays — checking each is O(n²) or worse.</p>
+<p>A window is a subarray marked by two indices, <b>l</b> (left edge) and <b>r</b> (right edge). When it moves one step right, only <b>one number enters</b> and <b>one leaves</b>. So the new sum is <code>old sum + entering − leaving</code>: one step, not k steps.</p>
+<ul>
+  <li><b>Fixed window</b> (size k given): move both edges together.</li>
+  <li><b>Variable window</b>: grow the right edge every step; when the window breaks the rule (a repeat, too big a sum), shrink from the left until it is valid again. Record the best valid window.</li>
+</ul>
+<p>Each index enters the window once and leaves once, so the whole thing is <b>O(n)</b> even with the inner "shrink" loop.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A train window showing 3 houses at a time. As the train moves, one house appears on the right and one disappears on the left — you do not re-look at the middle house. For the variable window, think of a caterpillar: the head stretches forward, and when the body is too long (breaks a rule), the tail pulls in.</p></div>
+
+<h2>Watch it work</h2>
+<p><b>Fixed window:</b> the largest sum of any <b>k = 3</b> neighbours in <code>[2, 1, 5, 1, 3, 2, 6, 1]</code>.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const a = [2, 1, 5, 1, 3, 2, 6, 1], k = 3;
+  const r = Viz.recorder();
+  let sum = 0;
+  for (let i = 0; i < k; i++) sum += a[i];
+  let best = sum, bestL = 0;
+  const arr = (l, rr, marks = {}) => ({ type: 'array', id: 'a', label: 'nums', values: a, window: [l, rr], pointers: { l, r: rr }, marks });
+  r.step([{ type: 'array', id: 'a', label: 'nums', values: a }, { type: 'vars', id: 'v', vars: { k, windows: a.length - k + 1 } }], [1],
+    `There are ${a.length - k + 1} windows of ${k} neighbours. Re-adding each one costs k steps; sliding costs 1 step per window.`);
+  r.step([arr(0, k - 1), { type: 'vars', id: 'v', vars: { k, sum, best } }], [2, 3, 4, 5],
+    `Add the first ${k} numbers: ${a.slice(0, k).join(' + ')} = <b>${sum}</b>. That is the first window and the best so far.`);
+  for (let rr = k; rr < a.length; rr++) {
+    const out = a[rr - k], inn = a[rr];
+    sum += inn - out;
+    const better = sum > best;
+    if (better) { best = sum; bestL = rr - k + 1; }
+    r.step([arr(rr - k + 1, rr, { [rr]: 'active', [rr - k]: 'dim' }), { type: 'vars', id: 'v', vars: { k, sum: `${sum - inn + out} + ${inn} − ${out} = ${sum}`, best }, marks: { best: better ? 'done' : '' } }], [8, 9],
+      `Slide right: <b>${inn}</b> enters, <b>${out}</b> leaves. New sum ${sum} in one step (no re-adding). ${better ? 'New best!' : `Not better than ${best}.`}`);
+  }
+  r.step([arr(bestL, bestL + k - 1, Object.fromEntries([0, 1, 2].map(d => [bestL + d, 'done']))), { type: 'vars', id: 'v', vars: { best }, marks: { best: 'done' } }], [11],
+    `The best window is [${a.slice(bestL, bestL + k).join(', ')}] with sum <b>${best}</b>. ${a.length - k + 1} windows checked, each in O(1): <b>O(n)</b>.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Fixed sliding window', code:
+`int maxSumK(int[] nums, int k) {
+    int sum = 0;
+    for (int i = 0; i < k; i++)
+        sum += nums[i]; // first window
+    int best = sum;
+    for (int r = k; r < nums.length; r++) {
+        // nums[r] enters, nums[r-k] leaves
+        sum += nums[r] - nums[r - k];
+        best = Math.max(best, sum);
+    }
+    return best;
+}` });
+})();
+</script>
+
+<p><b>Variable window:</b> Longest Substring Without Repeating Characters in <code>"abcabcbb"</code>. The set holds the letters inside the window.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const s = [...'abcabcbb'];
+  const r = Viz.recorder();
+  const win = new Set();
+  let l = 0, best = 0, bestL = 0;
+  const P = (rr, marks, extra = {}) => [
+    { type: 'array', id: 'a', label: 's', values: s, window: [l, rr], pointers: { l, r: rr }, marks },
+    { type: 'stack', id: 'w', label: 'letters in window', kind: 'set', items: [...win].map(c => ({ id: c, val: c })) },
+    { type: 'vars', id: 'v', vars: { 'r − l + 1': Math.max(0, rr - l + 1), best, ...extra }, marks: extra.m || {} }];
+  r.step(P(-1, {}), [2, 3], 'Empty window, empty set. <b>r</b> moves right every step; <b>l</b> moves only when we see a repeat.');
+  for (let rr = 0; rr < s.length; rr++) {
+    const c = s[rr];
+    if (win.has(c)) {
+      const at = s.slice(l, rr).indexOf(c) + l;
+      r.step(P(rr, { [rr]: 'bad', [at]: 'bad' }), [5, 6], `'${c}' is already in the window (at index ${at}). The window would have a repeat, so shrink from the left.`);
+      while (win.has(c)) {
+        const gone = s[l]; win.delete(gone); l++;
+        r.step(P(rr, { [rr]: 'compare', [l - 1]: 'dim' }), [6, 7], `Drop '${gone}' and move <b>l</b> to ${l}. ${win.has(c) ? `Still a '${c}' inside — keep shrinking.` : `No '${c}' left inside.`}`);
+      }
+    }
+    win.add(c);
+    const len = rr - l + 1, better = len > best;
+    if (better) { best = len; bestL = l; }
+    r.step(P(rr, { [rr]: 'active' }, { m: { best: better ? 'done' : '' } }), [8, 9],
+      `Add '${c}'. Window "${s.slice(l, rr + 1).join('')}" has no repeats, length ${len}. ${better ? `New best: <b>${best}</b>.` : `Best stays ${best}.`}`);
+  }
+  r.step([{ type: 'array', id: 'a', label: 's', values: s, window: [bestL, bestL + best - 1], marks: Object.fromEntries([...Array(best)].map((_, d) => [bestL + d, 'done'])) },
+    { type: 'vars', id: 'v', vars: { best }, marks: { best: 'done' } }], [11],
+    `Answer: <b>${best}</b> ("${s.slice(bestL, bestL + best).join('')}"). Each letter entered once and left at most once: O(n).`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Longest substring without repeats', code:
+`int longestUnique(String s) {
+    Set<Character> win = new HashSet<>();
+    int l = 0, best = 0;
+    for (int r = 0; r < s.length(); r++) {
+        char c = s.charAt(r);
+        while (win.contains(c)) // repeat:
+            win.remove(s.charAt(l++));
+        win.add(c);
+        best = Math.max(best, r - l + 1);
+    }
+    return best;
+}` });
+})();
+</script>
+
+<p><b>The Minimum Window Substring idea:</b> smallest piece of <code>s = "AXBYCAB"</code> containing all of <code>t = "ABC"</code>. Grow until the window is <b>valid</b> (nothing missing), then shrink while it stays valid, recording the smallest.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  const s = [...'AXBYCAB'], t = 'ABC';
+  const need = {}; for (const c of t) need[c] = (need[c] || 0) + 1;
+  let missing = t.length, l = 0, bestL = 0, bestLen = Infinity;
+  const r = Viz.recorder();
+  const needVars = () => Object.fromEntries([...t].map(c => [`need ${c}`, need[c]]));
+  const P = (rr, marks, vm = {}) => [
+    { type: 'array', id: 'a', label: 's', values: s, window: [l, rr], pointers: { l, r: rr }, marks },
+    { type: 'vars', id: 'v', vars: { ...needVars(), missing, best: bestLen === Infinity ? '—' : `"${s.slice(bestL, bestL + bestLen).join('')}"` }, marks: vm }];
+  r.step(P(-1, {}), [2, 3, 4, 5], '<b>need</b> counts the letters of t we still need. <b>missing</b> = how many letters of t are not yet covered (3).');
+  for (let rr = 0; rr < s.length; rr++) {
+    const c = s[rr];
+    const useful = (need[c] || 0) > 0;
+    need[c] = (need[c] || 0) - 1;
+    if (useful) missing--;
+    if (!t.includes(c)) delete need[c];
+    r.step(P(rr, { [rr]: useful ? 'active' : 'visited' }, { missing: useful ? 'active' : '' }), [8, 9],
+      useful ? `'${c}' is a letter we needed → missing drops to <b>${missing}</b>.` : `'${c}' ${t.includes(c) ? 'is extra (we already have enough)' : 'is not in t'}, so missing stays ${missing}.`);
+    while (missing === 0) {
+      const len = rr - l + 1, better = len < bestLen;
+      if (better) { bestL = l; bestLen = len; }
+      r.step(P(rr, { [l]: 'compare' }, { best: better ? 'done' : '' }), [10, 11, 12, 13],
+        `Window "${s.slice(l, rr + 1).join('')}" contains A, B and C — <b>valid</b>. ${better ? `Length ${len} is the smallest so far.` : `Length ${len}, not smaller.`} Try to shrink from the left.`);
+      const gone = s[l];
+      if (t.includes(gone)) { need[gone]++; if (need[gone] > 0) missing++; }
+      l++;
+      r.step(P(rr, { [l - 1]: missing ? 'bad' : 'dim' }, { missing: missing ? 'bad' : '' }), [15, 16],
+        missing ? `Dropping '${gone}' breaks it: now we miss a ${gone}. Stop shrinking and grow <b>r</b> again.` : `Dropped '${gone}' — still valid (it was not needed).`);
+    }
+  }
+  r.step([{ type: 'array', id: 'a', label: 's', values: s, window: [bestL, bestL + bestLen - 1], marks: Object.fromEntries([...Array(bestLen)].map((_, d) => [bestL + d, 'done'])) },
+    { type: 'vars', id: 'v', vars: { answer: `"${s.slice(bestL, bestL + bestLen).join('')}"` }, marks: { answer: 'done' } }], [19, 20, 21],
+    `Answer: <b>"${s.slice(bestL, bestL + bestLen).join('')}"</b>. Same caterpillar: r only moves right, l only moves right → O(n).`);
+  Viz.mount('#demo3', { frames: r.frames, title: 'Minimum window substring', code:
+`String minWindow(String s, String t) {
+    int[] need = new int[128];
+    for (char c : t.toCharArray())
+        need[c]++;
+    int missing = t.length(), l = 0;
+    int bestL = 0, bestLen = s.length()+1;
+    for (int r = 0; r < s.length(); r++) {
+        if (need[s.charAt(r)]-- > 0)
+            missing--;
+        while (missing == 0) {  // valid
+            if (r - l + 1 < bestLen) {
+                bestL = l;
+                bestLen = r - l + 1;
+            }
+            if (++need[s.charAt(l++)] > 0)
+                missing++;  // broke it
+        }
+    }
+    if (bestLen > s.length()) return "";
+    return s.substring(bestL,
+        bestL + bestLen);
+}` });
+})();
+</script>
+
+<h2>Why it works (the one sentence to say in an interview)</h2>
+<p>"If a window breaks the rule, every bigger window with the same left edge also breaks it, so the left edge can move forward for good; since l and r each move right at most n times, the total work is O(n)."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="c">// Variable window: longest / shortest valid subarray</span>
+<span class="k">int</span> l = <span class="n">0</span>, best = <span class="n">0</span>;
+<span class="k">for</span> (<span class="k">int</span> r = <span class="n">0</span>; r &lt; n; r++) {
+    add(a[r]);                     <span class="c">// grow the head</span>
+    <span class="k">while</span> (!valid()) remove(a[l++]); <span class="c">// pull in the tail</span>
+    best = Math.max(best, r - l + <span class="n">1</span>);   <span class="c">// longest</span>
+}
+<span class="c">// Shortest: while (valid()) { best = min(...); remove(a[l++]); }</span>
+<span class="c">// Fixed k:  sum += a[r] - a[r - k];</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Contiguous + longest/shortest → window.</b> Right edge always grows; left edge shrinks only when the rule breaks. "Longest" updates after shrinking; "shortest" updates while shrinking.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Using a window when numbers can be <b>negative</b> and the question is about a sum. Adding a number may make the sum smaller, so "shrink when too big" is wrong — use prefix sums + a map instead.</li>
+  <li>Using <code>if</code> instead of <code>while</code> to shrink — one step may not be enough.</li>
+  <li>Off-by-one in the length: it is <code>r − l + 1</code>.</li>
+  <li>For the "shortest" variant, recording the answer after the loop instead of inside the shrink loop.</li>
+  <li>Rebuilding the window's sum or set from scratch each step — that is O(n·k) again.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/maximum-average-subarray-i/">643. Maximum Average Subarray I</a> — the fixed window above, divide by k.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/best-time-to-buy-and-sell-stock/">121. Best Time to Buy and Sell Stock</a> — l is the cheapest day so far.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-substring-without-repeating-characters/">3. Longest Substring Without Repeating Characters</a> — the animation above.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/minimum-size-subarray-sum/">209. Minimum Size Subarray Sum</a> — shortest window with sum ≥ target.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/longest-repeating-character-replacement/">424. Longest Repeating Character Replacement</a> — valid while length − maxCount ≤ k.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/permutation-in-string/">567. Permutation in String</a> — fixed window of size |s1| with letter counts.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/minimum-window-substring/">76. Minimum Window Substring</a> — need counts + missing, as above.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/sliding-window-maximum/">239. Sliding Window Maximum</a> — fixed window plus a monotonic deque.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>The inner while loop can run many times. Why is the whole algorithm still O(n)?</summary>
+<p>l only moves right and never past r, so across the whole run the inner loop executes at most n times in total.</p></details>
+<details class="quiz"><summary>"Longest subarray with sum exactly k", numbers can be negative. Window?</summary>
+<p>No. Negative numbers break the "growing makes it bigger" rule. Use prefix sums with a map of first positions.</p></details>
+<details class="quiz"><summary>In the fixed window, why does <code>sum += a[r] − a[r − k]</code> work?</summary>
+<p>Moving right by one adds exactly the new element a[r] and removes exactly the element that fell off, a[r − k]. Everything in the middle is unchanged.</p></details>
+
+<nav class="pager"><a href="two-pointers.html">← Two pointers</a><a href="prefix-sum.html">Prefix sum →</a></nav>
+</main>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Permutations</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Backtracking</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 40 · Backtracking</div>
+<h1>Permutations</h1>
+<p class="lede">Fill the answer one slot at a time with any number you have not used yet; a <code>used[]</code> array remembers which ones are taken.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="backtracking.html">Backtracking</a>, <a href="recursion.html">Recursion</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>"Return all <b>permutations</b>", "all possible <b>orderings</b> / arrangements", "every way to arrange these letters", "next permutation". Order matters: [1,2] and [2,1] are <b>different</b> answers. If the input "may contain duplicates", you also need the sort-and-skip rule.</p></div>
+
+<h2>The idea in plain words</h2>
+<p>A permutation of <code>[1, 2, 3]</code> is the three numbers in some order. There are 3 × 2 × 1 = 6 of them: 3 choices for the first slot, 2 left for the second, 1 for the last.</p>
+<p>This is the backtracking pattern, with one difference from subsets: at every slot you may pick <b>any</b> number that is not already in the path — even one to the left. So the loop always starts at index 0, and a boolean array <code>used[i]</code> says "nums[i] is already in the path, skip it".</p>
+<ul>
+  <li><b>Choose</b>: mark <code>used[i] = true</code> and add nums[i] to the path.</li>
+  <li><b>Explore</b>: recurse to fill the next slot.</li>
+  <li><b>Un-choose</b>: set <code>used[i] = false</code> and remove the last number.</li>
+  <li>When the path has all n numbers, save a copy.</li>
+</ul>
+<p><b>Duplicates.</b> With <code>[1, 1, 2]</code> the plain method makes [1,1,2] twice (first 1 then second 1, and the other way round). Fix: <b>sort</b> so equal numbers sit next to each other, then skip a number if it equals the one before it <b>and</b> the one before it is not in use. That forces equal copies to be used in left-to-right order only, so each distinct arrangement is built once.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Seating guests at a row of chairs. For the first chair you may pick any guest. Once someone sits, they wear a "seated" badge (used[]). For the next chair you only look at guests without a badge. When you take someone off a chair to try another seating, you take their badge off too. If two guests are identical twins, swapping them gives the same photo — so the younger twin may only sit after the older one.</p></div>
+
+<h2>Watch it work</h2>
+<p>All permutations of <code>[1, 2, 3]</code>. The yellow cells in <b>used[]</b> are the numbers already in the path.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const nums = [1, 2, 3], n = nums.length;
+  const used = [false, false, false], path = [], res = [];
+  const r = Viz.recorder();
+  const show = (line, say, cur = -1) => r.step([
+    { type: 'array', id: 'a', label: 'nums', values: nums, pointers: cur >= 0 ? { i: cur } : {},
+      marks: Object.fromEntries(nums.map((_, k) => [k, k === cur ? 'active' : used[k] ? 'visited' : ''])) },
+    { type: 'array', id: 'u', label: 'used[]', values: used.map(b => b ? 'T' : 'F'),
+      marks: Object.fromEntries(used.map((b, k) => [k, b ? 'active' : ''])) },
+    { type: 'stack', id: 'p', label: 'path', items: [...path] },
+    { type: 'stack', id: 'res', label: 'results', kind: 'set', items: res.map((s, k) => ({ id: 'r' + k, val: s.join('') })) }
+  ], line, say);
+  show([1], 'Nothing chosen yet. For slot 0 we may pick <b>any</b> of the three numbers, so the loop starts at index 0 (not at a start index like subsets).');
+  let undone = [];
+  function bt() {
+    if (path.length === n) { res.push([...path]); return true; }
+    for (let i = 0; i < n; i++) {
+      if (used[i]) continue;
+      used[i] = true; path.push(nums[i]);
+      const skipped = nums.filter((_, k) => k < i && used[k] && k !== i);
+      const undo = undone.length ? `Un-chose ${undone.join(', then ')}. ` : '';
+      undone = [];
+      if (path.length === n) {
+        show([7, 8, 2], `${undo}Slot ${n - 1}: only ${nums[i]} is free. The path <b>[${path}]</b> is full → <b>save a copy</b>.`, i);
+      } else {
+        show([7, 8], `${undo}Slot ${path.length - 1}: ${skipped.length ? `skip ${skipped.join(' and ')} (used[] says taken), ` : ''}choose <b>${nums[i]}</b>. Mark used[${i}] = T, path = [${path}].`, i);
+      }
+      bt();
+      used[i] = false; path.pop();
+      undone.push(nums[i]);
+    }
+  }
+  bt();
+  show([13], `Done: <b>${res.length} permutations</b> = 3 × 2 × 1. After the last return every used[] is back to F — un-choose restored everything.`);
+  Viz.mount('#demo1', { frames: r.frames, title: 'Permutations with used[]', code:
+`void backtrack(int[] nums, boolean[] used, List<Integer> path) {
+    if (path.size() == nums.length) {    // every slot filled
+        res.add(new ArrayList<>(path)); return;
+    }
+    for (int i = 0; i < nums.length; i++) {
+        if (used[i]) continue;           // already in the path
+        used[i] = true;                  // choose
+        path.add(nums[i]);
+        backtrack(nums, used, path);     // explore next slot
+        used[i] = false;                 // un-choose
+        path.remove(path.size() - 1);
+    }
+}` });
+})();
+</script>
+
+<h3>Duplicates: <code>[1, 1, 2]</code></h3>
+<p>After sorting, the two 1s sit side by side (index 0 and index 1). The rule: <b>skip nums[i] if it equals nums[i−1] and used[i−1] is false.</b> In words: the second 1 may only be picked when the first 1 is already in the path. Red = skipped by this rule.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const nums = [1, 1, 2], n = nums.length;
+  const used = [false, false, false], path = [], res = [];
+  const r = Viz.recorder();
+  const show = (line, say, marks = {}, cur = -1) => r.step([
+    { type: 'array', id: 'a', label: 'nums (sorted)', values: nums, pointers: cur >= 0 ? { i: cur } : {},
+      marks: Object.assign(Object.fromEntries(nums.map((_, k) => [k, used[k] ? 'visited' : ''])), marks) },
+    { type: 'array', id: 'u', label: 'used[]', values: used.map(b => b ? 'T' : 'F'),
+      marks: Object.fromEntries(used.map((b, k) => [k, b ? 'active' : ''])) },
+    { type: 'stack', id: 'p', label: 'path', items: [...path] },
+    { type: 'stack', id: 'res', label: 'results', kind: 'set', items: res.map((s, k) => ({ id: 'r' + k, val: s.join('') })) }
+  ], line, say);
+  show([1], 'Sort first so equal values are neighbours: [1, 1, 2]. Without the skip rule we would get 6 results with [1,1,2], [1,2,1] and [2,1,1] each twice.');
+  function bt() {
+    if (path.length === n) {
+      res.push([...path]);
+      show([3, 4], `Path <b>[${path}]</b> is full → save it. That is answer number ${res.length}.`);
+      return;
+    }
+    for (let i = 0; i < n; i++) {
+      if (used[i]) continue;
+      if (i > 0 && nums[i] === nums[i - 1] && !used[i - 1]) {
+        show([8, 9], `Slot ${path.length}: nums[${i}] = ${nums[i]} equals nums[${i - 1}], and nums[${i - 1}] is <b>not</b> in the path. Picking this 1 here would repeat what the first 1 already did in this slot → <b>skip</b>.`,
+          { [i]: 'bad', [i - 1]: 'compare' }, i);
+        continue;
+      }
+      used[i] = true; path.push(nums[i]);
+      show([10, 11], `Slot ${path.length - 1}: choose <b>nums[${i}] = ${nums[i]}</b>${i > 0 && nums[i] === nums[i - 1] ? ' (allowed: the first 1 is already in the path, so this is the only way to place both 1s)' : ''}. Path = [${path}].`, {}, i);
+      bt();
+      used[i] = false; path.pop();
+    }
+  }
+  bt();
+  show([16], `Done: <b>${res.length} unique permutations</b> instead of 6. Equal values are always used left to right, so each arrangement is built exactly once.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Permutations with duplicates', code:
+`// before the first call: Arrays.sort(nums);
+void backtrack(int[] nums, boolean[] used, List<Integer> path) {
+    if (path.size() == nums.length) {
+        res.add(new ArrayList<>(path)); return;
+    }
+    for (int i = 0; i < nums.length; i++) {
+        if (used[i]) continue;
+        if (i > 0 && nums[i] == nums[i - 1] && !used[i - 1])
+            continue;          // twin not in path: same tree again
+        used[i] = true;                  // choose
+        path.add(nums[i]);
+        backtrack(nums, used, path);     // explore
+        used[i] = false;                 // un-choose
+        path.remove(path.size() - 1);
+    }
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"Each level of the recursion fills one slot, and used[] guarantees each element appears once in the path, so we generate exactly the n! orderings. For duplicates, sorting groups equal values and the <code>!used[i-1]</code> rule fixes the order in which equal copies may be used, so two identical arrangements are never built."</p>
+<p>Cost: O(n · n!) — n! answers, each copied in O(n). n is at most about 8–10 in these problems.</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code><span class="k">for</span> (<span class="k">int</span> i = <span class="n">0</span>; i &lt; n; i++) {             <span class="c">// 0, not start: order matters</span>
+    <span class="k">if</span> (used[i]) <span class="k">continue</span>;
+    <span class="k">if</span> (i &gt; <span class="n">0</span> &amp;&amp; nums[i] == nums[i-<span class="n">1</span>] &amp;&amp; !used[i-<span class="n">1</span>]) <span class="k">continue</span>; <span class="c">// duplicates only</span>
+    used[i] = <span class="k">true</span>;  path.add(nums[i]);
+    backtrack(nums, used, path);
+    used[i] = <span class="k">false</span>; path.remove(path.size() - <span class="n">1</span>);
+}</code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Order matters → loop from 0 with used[].</b> Duplicates → <b>sort + skip if twin is unused</b>.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Forgetting to sort before applying the duplicate rule — equal values are not neighbours, so the rule does nothing.</li>
+  <li>Writing <code>used[i-1]</code> instead of <code>!used[i-1]</code>. Surprisingly, both give the right answer, but <code>!used</code> prunes much earlier — use it and know why.</li>
+  <li>Using <code>path.contains(x)</code> instead of used[] — O(n) per check, and wrong when values repeat.</li>
+  <li>Forgetting <code>used[i] = false</code> on the way back.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/permutations/">46. Permutations</a> — the first animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/permutations-ii/">47. Permutations II</a> — the second animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/letter-case-permutation/">784. Letter Case Permutation</a> — two choices per letter.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/letter-combinations-of-a-phone-number/">17. Letter Combinations of a Phone Number</a> — one slot per digit.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/next-permutation/">31. Next Permutation</a> — not backtracking: find the dip from the right, swap, reverse.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/permutation-sequence/">60. Permutation Sequence</a> — count blocks of (n−1)! instead of generating.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Why does the permutation loop start at 0 but the subset loop at <code>start</code>?</summary>
+<p>In permutations order matters, so a number to the left may still go in a later slot. In subsets order does not matter, so we only look right to avoid building {1,2} and {2,1}.</p></details>
+<details class="quiz"><summary>How many permutations does [1, 1, 2, 2] have?</summary>
+<p>4! / (2! · 2!) = 6. The duplicate rule produces exactly these 6.</p></details>
+<details class="quiz"><summary>What does <code>!used[i-1]</code> mean in plain words?</summary>
+<p>"The identical number just before me is not in the path right now — it was already tried in this same slot and un-chosen. Picking me here would rebuild the same branch."</p></details>
+
+<nav class="pager"><a href="backtracking.html">← Backtracking</a><a href="n-queens.html">N-Queens →</a></nav>
+</main>
+</body>
+</html>

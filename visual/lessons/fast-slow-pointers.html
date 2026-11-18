@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fast and Slow Pointers</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Linked lists</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Pattern 14 · Linked lists</div>
+<h1>Fast and Slow Pointers</h1>
+<p class="lede">Two pointers walk the same list at different speeds (or with a fixed gap). Where they are when one finishes tells you the middle, whether there is a loop, where the loop starts, or which node is n-th from the end.</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="linked-list-reverse.html">Reverse a linked list</a>, <a href="two-pointers.html">Two pointers</a></p>
+
+<div class="box signal"><span class="tag">When to use it — the signal</span>
+<p>A linked list (or a "next" function like <i>i → nums[i]</i>) and the words "<b>middle</b>", "<b>cycle</b>" / "loop", "where the cycle begins", "<b>n-th from the end</b>", "palindrome list", "happy number", "find the duplicate with O(1) space". You cannot index a list, and you want one pass with O(1) memory.</p></div>
+
+<h2>The idea in plain words</h2>
+<ul>
+  <li><b>Middle:</b> slow moves 1 node per turn, fast moves 2. When fast reaches the end of a 5-node list, it has walked 4 nodes and slow has walked 2 — slow is on node 3, the middle. No need to count the length first.</li>
+  <li><b>Cycle:</b> if the last node points back into the list, fast never reaches null — it goes round and round. Inside the loop fast gains one node on slow every turn, so it must eventually land on the same node as slow. Meeting = there is a cycle. Reaching null = there is not.</li>
+  <li><b>Cycle start:</b> after they meet, put one pointer back at the head and move both <b>one</b> step at a time. They meet again exactly at the first node of the loop (a neat bit of arithmetic, explained below).</li>
+  <li><b>N-th from the end:</b> start fast n nodes ahead of slow, then move both one step at a time. When fast falls off the end, slow is exactly n nodes behind it — at the node you want.</li>
+</ul>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>Two runners on a track. If the track is a straight road, the fast runner just reaches the end first. If it is a circular track, the fast runner laps the slow one and they meet — that is how you know the road loops. And if two friends walk holding a 2-metre rope, when the front one reaches the wall, the back one is exactly 2 metres from it.</p></div>
+
+<h2>Watch it work</h2>
+<p><b>Middle of the list</b>, first with 5 nodes, then with 6. Blue = slow, orange = fast.</p>
+<div id="demo1"></div>
+<script>
+(() => {
+  const r = Viz.recorder();
+  for (const n of [5, 6]) {
+    const vals = Array.from({ length: n }, (_, i) => i + 1);
+    const nodes = vals.map(v => ({ id: 'n' + v, val: v }));
+    const next = Object.fromEntries(vals.map((v, i) => ['n' + v, i + 1 < n ? 'n' + (v + 1) : null]));
+    const nm = id => id === null ? 'null' : id.slice(1);
+    const pan = (slow, fast, extra = {}) => [{ type: 'list', id: 'L' + n, label: `${n} nodes`, nodes, next, pointers: { slow, fast },
+      marks: { [slow]: 'compare', ...(fast ? { [fast]: slow === fast ? 'compare' : 'active' } : {}), ...extra } },
+      { type: 'vars', id: 'v', vars: { slow: nm(slow), fast: nm(fast) } }];
+    let slow = 'n1', fast = 'n1';
+    r.step(pan(slow, fast), [2], `${n} nodes. Both pointers start at the head.`);
+    while (fast !== null && next[fast] !== null) {
+      slow = next[slow]; fast = next[next[fast]];
+      r.step(pan(slow, fast), [4, 5], `slow moves <b>1</b> (to ${nm(slow)}), fast moves <b>2</b> (to ${nm(fast)}). Fast has always walked twice as far.`);
+    }
+    r.step(pan(slow, fast, { [slow]: 'done' }), [3, 7], fast === null
+      ? `fast is null (it jumped past the last node), so stop. Even length: slow is on node <b>${nm(slow)}</b>, the <b>second</b> of the two middles (what LC 876 wants).`
+      : `fast.next is null (fast is on the last node), so stop. slow is on node <b>${nm(slow)}</b>, the exact middle.`);
+  }
+  Viz.mount('#demo1', { frames: r.frames, title: 'Middle of a linked list', code:
+`ListNode middleNode(ListNode head) {
+    ListNode slow = head, fast = head;
+    while (fast != null && fast.next != null) {
+        slow = slow.next;       // 1 step
+        fast = fast.next.next;  // 2 steps
+    }
+    return slow;                // the middle
+}` });
+})();
+</script>
+
+<p><b>Cycle detection and cycle start</b> (Floyd's algorithm). Node 6 points back to node 3, so the list loops 3 → 4 → 5 → 6 → 3 forever. Blue = slow, orange = fast, green = they are on the same node.</p>
+<div id="demo2"></div>
+<script>
+(() => {
+  const nodes = [1, 2, 3, 4, 5, 6].map(v => ({ id: 'n' + v, val: v }));
+  const next = { n1: 'n2', n2: 'n3', n3: 'n4', n4: 'n5', n5: 'n6', n6: 'n3' };
+  const pos = { n1: [0, 0], n2: [1, 0], n3: [2, 0], n4: [3, 0], n5: [3, 1], n6: [2, 1] };
+  const nm = id => id.slice(1);
+  const r = Viz.recorder();
+  const pan = (a, b, names, extra = {}) => {
+    const marks = { [a]: 'compare' }; marks[b] = a === b ? 'done' : 'active';
+    return [{ type: 'list', id: 'L', label: '1 → 2 → 3 → 4 → 5 → 6 → back to 3', nodes, next, pos, marks: { ...marks, ...extra } },
+      { type: 'vars', id: 'v', vars: { [names[0]]: nm(a), [names[1]]: nm(b) }, marks: { [names[0]]: 'compare', [names[1]]: a === b ? 'done' : 'active' } }];
+  };
+  let slow = 'n1', fast = 'n1', steps = 0;
+  r.step(pan(slow, fast, ['slow', 'fast']), [2], 'Both start at the head, node 1. If there were no loop, fast would hit null. Here it never will.');
+  do {
+    slow = next[slow]; fast = next[next[fast]]; steps++;
+    r.step(pan(slow, fast, ['slow', 'fast']), slow === fast ? [4, 5, 6] : [4, 5], slow === fast
+      ? `slow → ${nm(slow)}, fast → ${nm(fast)}. <b>They meet at node ${nm(slow)}</b> after ${steps} turns. Fast can only catch slow by going round a loop, so <b>there is a cycle</b>.`
+      : `slow → ${nm(slow)}, fast → ${nm(fast)} (2 steps${nm(fast) < nm(slow) ? ', it went round the loop' : ''}). Not the same node yet.`);
+  } while (slow !== fast);
+  let p = 'n1';
+  r.step(pan(p, slow, ['p', 'slow']), [6, 7], `Now find where the loop starts. Put a new pointer <b>p</b> at the head (node 1) and leave slow at the meeting point (node ${nm(slow)}).`);
+  while (p !== slow) {
+    p = next[p]; slow = next[slow];
+    r.step(pan(p, slow, ['p', 'slow']), [8, 9], p === slow
+      ? `Both step 1: p → ${nm(p)}, slow → ${nm(slow)}. <b>Same node!</b>`
+      : `Both step <b>1</b> now: p → ${nm(p)}, slow → ${nm(slow)}.`);
+  }
+  r.step(pan(p, slow, ['p', 'slow'], { [p]: 'path' }), [11], `They meet at node <b>${nm(p)}</b> — the first node of the cycle (node 6 points to it). The distance head → start equals meeting point → start, going round.`);
+  Viz.mount('#demo2', { frames: r.frames, title: 'Floyd cycle detection', code:
+`ListNode detectCycle(ListNode head) {
+    ListNode slow = head, fast = head;
+    while (fast != null && fast.next != null) {
+        slow = slow.next;
+        fast = fast.next.next;
+        if (slow == fast) {       // met: a cycle
+            ListNode p = head;
+            while (p != slow) {   // both 1 step
+                p = p.next; slow = slow.next;
+            }
+            return p;             // cycle start
+        }
+    }
+    return null;                  // no cycle
+}` });
+})();
+</script>
+
+<p><b>Remove the 2nd node from the end</b> of <code>1 → 2 → 3 → 4 → 5</code> (that is node 4), in one pass. A dummy node D in front lets slow stop <i>before</i> the node to delete, even when it is the head.</p>
+<div id="demo3"></div>
+<script>
+(() => {
+  let nodes = [{ id: 'd', val: 'D' }, ...[1, 2, 3, 4, 5].map(v => ({ id: 'n' + v, val: v }))];
+  const next = { d: 'n1', n1: 'n2', n2: 'n3', n3: 'n4', n4: 'n5', n5: null };
+  const n = 2;
+  const nm = id => id === null ? 'null' : id === 'd' ? 'D' : id.slice(1);
+  const r = Viz.recorder();
+  const pan = (slow, fast, extra = {}, em = {}) => [{ type: 'list', id: 'L', label: `remove n = ${n} from the end`, nodes, next: { ...next }, pointers: { slow, fast },
+    marks: { d: 'dim', [slow]: 'compare', ...(fast ? { [fast]: 'active' } : {}), ...extra }, edgeMarks: em },
+    { type: 'vars', id: 'v', vars: { slow: nm(slow), fast: nm(fast), n } }];
+  let slow = 'd', fast = 'd';
+  r.step(pan(slow, fast), [2, 3], 'Both pointers start at the dummy node D.');
+  for (let i = 0; i <= n; i++) {
+    fast = next[fast];
+    r.step(pan(slow, fast), [4], `Move fast ahead alone: ${i + 1} step${i ? 's' : ''} (to ${nm(fast)}). We want a gap of n + 1 = ${n + 1}, so that slow stops one node <i>before</i> the target.`);
+  }
+  while (fast !== null) {
+    fast = next[fast]; slow = next[slow];
+    r.step(pan(slow, fast), [5, 6], `Move both one step: slow → ${nm(slow)}, fast → ${nm(fast)}. The gap stays ${n + 1}.`);
+  }
+  const target = next[slow];
+  r.step(pan(slow, fast, { [target]: 'bad' }, { [slow]: 'bad' }), [5, 8], `fast fell off the end, so slow (node ${nm(slow)}) is ${n + 1} behind null: its next, node <b>${nm(target)}</b>, is ${n}nd from the end.`);
+  next[slow] = next[target];
+  r.step(pan(slow, fast, { [target]: 'bad' }, { [slow]: 'active' }), [8], `<b>slow.next = slow.next.next</b>: the arrow jumps over node ${nm(target)}. Nothing points to it any more.`);
+  nodes = nodes.filter(x => x.id !== target); delete next[target];
+  r.step(pan(slow, fast, { [slow]: '' }), [9], `Return dummy.next: <b>1 → 2 → 3 → 5</b>. One pass, O(1) extra space.`);
+  Viz.mount('#demo3', { frames: r.frames, title: 'Remove nth node from end', code:
+`ListNode removeNthFromEnd(ListNode head, int n) {
+    ListNode dummy = new ListNode(0, head);
+    ListNode fast = dummy, slow = dummy;
+    for (int i = 0; i <= n; i++) fast = fast.next;
+    while (fast != null) {      // keep the gap
+        fast = fast.next; slow = slow.next;
+    }
+    slow.next = slow.next.next; // skip the target
+    return dummy.next;
+}` });
+})();
+</script>
+
+<h2>Why it works</h2>
+<p>"Fast covers twice the distance of slow, so when fast is at the end slow is halfway. In a cycle, fast closes the gap by one node every step, so it cannot jump over slow and they must meet. If the tail before the loop has length a and they meet b steps into the loop of length c, then 2(a + b) = a + b + kc, so a = kc − b: walking a steps from the head and a steps from the meeting point lands both on the loop start."</p>
+
+<h2>The template to remember</h2>
+<pre class="code"><code>ListNode slow = head, fast = head;
+<span class="k">while</span> (fast != <span class="k">null</span> &amp;&amp; fast.next != <span class="k">null</span>) {
+    slow = slow.next;
+    fast = fast.next.next;
+    <span class="k">if</span> (slow == fast) { <span class="c">/* cycle: reset one to head, both step 1 */</span> }
+}
+<span class="c">// no cycle: slow is the middle</span>
+<span class="c">// n-th from end: fast goes n (+1 with dummy) ahead, then both step 1</span></code></pre>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>1 step and 2 steps:</b> middle, cycle. <b>Meet → restart one at head, both 1 step:</b> cycle start. <b>Fixed gap:</b> n-th from the end.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Loop condition <code>fast.next != null</code> alone — crashes when fast itself is null. Check <code>fast != null &amp;&amp; fast.next != null</code>.</li>
+  <li>Comparing values (<code>slow.val == fast.val</code>) instead of nodes (<code>slow == fast</code>) — two different nodes can hold the same value.</li>
+  <li>Remove-nth without a dummy: removing the head (n = length) needs a special case.</li>
+  <li>For "first middle" of an even list (needed when splitting for merge sort), start fast at <code>head.next</code>.</li>
+</ul></div>
+
+<h2>Practice in this order</h2>
+<ul class="practice">
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/middle-of-the-linked-list/">876. Middle of the Linked List</a> — first animation.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/linked-list-cycle/">141. Linked List Cycle</a> — meet or reach null.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/happy-number/">202. Happy Number</a> — "next" is the digit-square sum; detect the loop.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/linked-list-cycle-ii/">142. Linked List Cycle II</a> — second animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/remove-nth-node-from-end-of-list/">19. Remove Nth Node From End</a> — third animation.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-the-duplicate-number/">287. Find the Duplicate Number</a> — treat i → nums[i] as a list; the duplicate is the cycle start.</li>
+</ul>
+
+<h2>Test yourself</h2>
+<details class="quiz"><summary>Why can't fast jump over slow inside the cycle without meeting it?</summary>
+<p>Each turn the gap between them shrinks by exactly 1 (fast +2, slow +1). A gap that shrinks by 1 must pass through 0.</p></details>
+<details class="quiz"><summary>What is the time and space of Floyd's algorithm?</summary>
+<p>O(n) time, O(1) space. A HashSet of visited nodes also works in O(n) time but needs O(n) space.</p></details>
+<details class="quiz"><summary>In remove-nth, why does fast move n + 1 steps and not n?</summary>
+<p>Because we need slow to stop on the node <i>before</i> the target, so we can change its next. Starting both at the dummy and making the gap n + 1 does that.</p></details>
+
+<nav class="pager"><a href="linked-list-reverse.html">← Reverse a linked list</a><a href="merge-lists.html">Merge sorted lists →</a></nav>
+</main>
+</body>
+</html>
