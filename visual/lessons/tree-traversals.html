@@ -228,12 +228,203 @@ traversalDemo('#demo3', 'post');
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/binary-tree-preorder-traversal/">144. Binary Tree Preorder Traversal</a> — animation 1; then do it with a stack (push right before left).</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/binary-tree-inorder-traversal/">94. Binary Tree Inorder Traversal</a> — animations 2 and 4.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/binary-tree-postorder-traversal/">145. Binary Tree Postorder Traversal</a> — iterative: reverse of (me, right, left).</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/same-tree/">100. Same Tree</a> — walk both trees at once, compare node by node.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/construct-binary-tree-from-preorder-and-inorder-traversal/">105. Construct Tree from Preorder and Inorder</a> — preorder[0] is the root; find it in inorder to split left and right.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/serialize-and-deserialize-binary-tree/">297. Serialize and Deserialize Binary Tree</a> — pre-order with "#" for null.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/binary-tree-preorder-traversal/">144. Binary Tree Preorder Traversal</a> — animation 1; then do it with a stack (push right before left).
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Preorder means: visit me, then my whole left subtree, then my whole right subtree. For root 1 with right child 2 whose left child is 3, the answer is [1,2,3]. The recursive version is three lines; the interview follow-up is doing it with an explicit <b>stack</b> (last in, first out), which copies what the call stack does.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If the tree is empty, return an empty list.</li><li>Push the root onto a stack.</li><li>Pop a node and record its value (me first).</li><li>Push its right child, then its left child, so the left one is popped next.</li><li>Repeat until the stack is empty.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;Integer&gt; preorderTraversal(TreeNode root) {
+        List&lt;Integer&gt; out = new ArrayList&lt;&gt;();
+        if (root == null) return out;
+        Deque&lt;TreeNode&gt; stack = new ArrayDeque&lt;&gt;();
+        stack.push(root);
+        while (!stack.isEmpty()) {
+            TreeNode n = stack.pop();
+            out.add(n.val);                  // me first
+            // right goes in first so left comes out first
+            if (n.right != null) stack.push(n.right);
+            if (n.left != null) stack.push(n.left);
+        }
+        return out;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(h) — every node is pushed and popped once; the stack holds about one path plus siblings (h = height).</p>
+<h4>Dry run</h4>
+<p>Tree 1 → (right) 2 → (left) 3. Stack [1] → pop 1, push 2 → pop 2, push 3 → pop 3. Output [1,2,3].</p>
+<h4>Watch out</h4>
+<p>Pushing left before right gives "me, right, left", the wrong order. Push right first. Never push null children.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/binary-tree-inorder-traversal/">94. Binary Tree Inorder Traversal</a> — animations 2 and 4.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Inorder means: left subtree, then me, then right subtree. For 1 → (right) 2 → (left) 3 the answer is [1,3,2]. Iteratively: slide as far left as possible pushing nodes on a stack; the top of the stack is then the next node to print; after printing it, go into its right subtree and repeat.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Start with <code>cur = root</code> and an empty stack.</li><li>While <code>cur</code> is not null, push it and move to <code>cur.left</code>.</li><li>Pop a node: this is the leftmost unprinted node. Record it.</li><li>Set <code>cur</code> to its right child and go back to step 2.</li><li>Stop when <code>cur</code> is null and the stack is empty.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;Integer&gt; inorderTraversal(TreeNode root) {
+        List&lt;Integer&gt; out = new ArrayList&lt;&gt;();
+        Deque&lt;TreeNode&gt; stack = new ArrayDeque&lt;&gt;();
+        TreeNode cur = root;
+        while (cur != null || !stack.isEmpty()) {
+            while (cur != null) { // slide all the way left
+                stack.push(cur);
+                cur = cur.left;
+            }
+            cur = stack.pop(); // leftmost not yet printed
+            out.add(cur.val);
+            cur = cur.right; // then its right subtree
+        }
+        return out;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(h) — each node is pushed and popped once; the stack holds at most one root-to-leaf path.</p>
+<h4>Dry run</h4>
+<p>1 → R 2 → L 3. Push 1, left is null → pop 1, print 1, cur = 2. Push 2, push 3 → pop 3, print → cur = null → pop 2, print. Output [1,3,2].</p>
+<h4>Watch out</h4>
+<p>The outer loop condition needs both parts: <code>cur != null || !stack.isEmpty()</code>. With only the stack check you stop before visiting a right subtree.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/binary-tree-postorder-traversal/">145. Binary Tree Postorder Traversal</a> — iterative: reverse of (me, right, left).
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Postorder means: left subtree, right subtree, then me. For 1 → R 2 → L 3 the answer is [3,2,1]. Trick: "me, right, left" is easy with a stack (it is preorder with the children swapped), and its reverse is exactly "left, right, me". Adding each value at the <b>front</b> of the list does the reversing for free.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Push the root on a stack.</li><li>Pop a node and add its value at the front of the result.</li><li>Push its left child, then its right child (so right is processed first).</li><li>Repeat until the stack is empty; the list is already in postorder.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;Integer&gt; postorderTraversal(TreeNode root) {
+        LinkedList&lt;Integer&gt; out = new LinkedList&lt;&gt;();
+        if (root == null) return out;
+        Deque&lt;TreeNode&gt; stack = new ArrayDeque&lt;&gt;();
+        stack.push(root);
+        while (!stack.isEmpty()) {
+            TreeNode n = stack.pop();
+            // build (me, right, left) backwards by adding
+            // at the front: the list ends up left, right, me
+            out.addFirst(n.val);
+            if (n.left != null) stack.push(n.left);
+            if (n.right != null) stack.push(n.right);
+        }
+        return out;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — each node handled once; the output list itself is n long.</p>
+<h4>Dry run</h4>
+<p>Stack [1] → pop 1, list [1], push 2 → pop 2, list [2,1], push 3 → pop 3, list [3,2,1].</p>
+<h4>Watch out</h4>
+<p>Use a <code>LinkedList</code> (or reverse at the end); <code>ArrayList.add(0, x)</code> is O(n) each time and makes the whole thing O(n²).</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/same-tree/">100. Same Tree</a> — walk both trees at once, compare node by node.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Two trees are the same if they have the same shape and the same values everywhere. Walk both trees at once: the roots must match, and then the left subtrees must be the same and the right subtrees must be the same. This is <b>tree recursion</b>: trust the call on the children.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Both nodes null: same (true).</li><li>Exactly one null: different shape (false).</li><li>Values differ: false.</li><li>Otherwise return same(left, left) and same(right, right).</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean isSameTree(TreeNode p, TreeNode q) {
+        if (p == null &amp;&amp; q == null) return true; // both empty
+        if (p == null || q == null) return false; // one empty
+        if (p.val != q.val) return false;
+        // same value here: both subtrees must match too
+        return isSameTree(p.left, q.left)
+            &amp;&amp; isSameTree(p.right, q.right);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(h) — each pair of nodes is compared once; recursion goes as deep as the tree.</p>
+<h4>Dry run</h4>
+<p>[1,2] vs [1,null,2]: roots 1 = 1. Left: 2 vs null → one is null → false. Answer false.</p>
+<h4>Watch out</h4>
+<p>Check the null cases <b>before</b> reading <code>.val</code>, or you get a NullPointerException.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/construct-binary-tree-from-preorder-and-inorder-traversal/">105. Construct Tree from Preorder and Inorder</a> — preorder[0] is the root; find it in inorder to split left and right.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Rebuild a tree from its preorder (me, left, right) and inorder (left, me, right) lists. preorder[0] is the root; finding that value in inorder splits it into the left subtree (everything before it) and the right subtree (everything after). Then recurse. A map from value to inorder position makes each lookup O(1).</p>
+<h4>Brute force first</h4>
+<p>Search inorder with a loop each time and copy sub-arrays: O(n²) in the worst case.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Store each value's index in inorder in a HashMap (values are unique).</li><li>Keep a pointer <code>next</code> into preorder; the next unused preorder value is always the root of the range you are building.</li><li><code>build(lo, hi)</code> builds the tree whose inorder is <code>inorder[lo..hi]</code>; an empty range gives null.</li><li>Take the root value, find its index <code>mid</code>, build the left range <code>lo..mid-1</code> first, then the right range <code>mid+1..hi</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private Map&lt;Integer, Integer&gt; pos = new HashMap&lt;&gt;();
+    private int next = 0;  // next preorder index to use
+
+    public TreeNode buildTree(int[] preorder, int[] inorder) {
+        // where each value sits in inorder (values unique)
+        for (int i = 0; i &lt; inorder.length; i++) {
+            pos.put(inorder[i], i);
+        }
+        return build(preorder, 0, inorder.length - 1);
+    }
+
+    // build the tree whose inorder is inorder[lo..hi]
+    private TreeNode build(int[] pre, int lo, int hi) {
+        if (lo &gt; hi) return null;          // empty range
+        int val = pre[next++];             // root of range
+        TreeNode root = new TreeNode(val);
+        int mid = pos.get(val);            // split point
+        root.left = build(pre, lo, mid - 1);  // left first!
+        root.right = build(pre, mid + 1, hi);
+        return root;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — every node is created once with O(1) lookup; the map holds n entries.</p>
+<h4>Dry run</h4>
+<p>pre [3,9,20,15,7], in [9,3,15,20,7]. Root 3 at in-index 1 → left range [9], right [15,20,7]. Next pre is 9 → leaf. Next is 20 at in-index 3 → left 15, right 7. Tree [3,9,20,null,null,15,7].</p>
+<h4>Watch out</h4>
+<p>Build the <b>left</b> subtree before the right one: preorder lists all of the left subtree before any of the right, so the shared <code>next</code> pointer only works in that order.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/serialize-and-deserialize-binary-tree/">297. Serialize and Deserialize Binary Tree</a> — pre-order with "#" for null.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Turn a tree into a string and back again. Write it in preorder (me, left, right) and write "#" for every missing child; the markers make the shape unambiguous, so reading the tokens in the same order rebuilds exactly the same tree.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>serialize</code>: recursive preorder; for null append <code>"#,"</code>, else append the value and a comma, then do left, then right.</li><li><code>deserialize</code>: split on commas into a queue of tokens.</li><li><code>read</code>: take the next token; "#" means null; otherwise make a node with that value.</li><li>Read its left subtree, then its right subtree, from the same queue, and return the node.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Codec {
+    // preorder, "#" for an empty child, commas between
+    public String serialize(TreeNode root) {
+        StringBuilder sb = new StringBuilder();
+        write(root, sb);
+        return sb.toString();
+    }
+
+    private void write(TreeNode n, StringBuilder sb) {
+        if (n == null) {
+            sb.append("#,");
+            return;
+        }
+        sb.append(n.val).append(',');
+        write(n.left, sb);
+        write(n.right, sb);
+    }
+
+    public TreeNode deserialize(String data) {
+        Deque&lt;String&gt; tokens =
+            new ArrayDeque&lt;&gt;(Arrays.asList(data.split(",")));
+        return read(tokens);
+    }
+
+    // read tokens in the same order they were written
+    private TreeNode read(Deque&lt;String&gt; tokens) {
+        String t = tokens.poll();
+        if (t.equals("#")) return null;
+        TreeNode n = new TreeNode(Integer.parseInt(t));
+        n.left = read(tokens);
+        n.right = read(tokens);
+        return n;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — each node and each null marker is written and read once.</p>
+<h4>Dry run</h4>
+<p>Tree [1,2,3,null,null,4,5] → "1,2,#,#,3,4,#,#,5,#,#,". Reading: 1, its left is 2 (children #,#), its right is 3 with left 4 and right 5.</p>
+<h4>Watch out</h4>
+<p>Use a separator, because values can be negative or have several digits ("-10"). An empty tree becomes "#," and must read back as null. <code>split(",")</code> drops the trailing empty token, which is what we want.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

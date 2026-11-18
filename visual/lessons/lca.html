@@ -175,11 +175,194 @@ l = lca(left); r = lca(right);
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/">235. LCA of a Binary Search Tree</a> — animation 1.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/">236. LCA of a Binary Tree</a> — animation 2.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/lowest-common-ancestor-of-deepest-leaves/">1123. LCA of Deepest Leaves</a> — return (depth, lca) from each side; equal depths → me.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/step-by-step-directions-from-a-binary-tree-node-to-another/">2096. Step-By-Step Directions From a Binary Tree Node to Another</a> — find both root paths, drop the shared prefix.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/all-nodes-distance-k-in-binary-tree/">863. All Nodes Distance K in Binary Tree</a> — add parent links, then BFS from the target.</li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/">235. LCA of a Binary Search Tree</a> — animation 1.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>The <b>LCA</b> (lowest common ancestor) of p and q is the deepest node that has both of them in its subtree (a node counts as its own ancestor). In a BST you can steer: if both values are smaller than the current node, the LCA is on the left; if both are bigger, on the right; otherwise they split here (or one of them is here), so this is the LCA.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Start at the root.</li><li>If p and q are both smaller, move left.</li><li>If both are bigger, move right.</li><li>Otherwise return the current node.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public TreeNode lowestCommonAncestor(TreeNode root,
+            TreeNode p, TreeNode q) {
+        TreeNode cur = root;
+        while (cur != null) {
+            if (p.val &lt; cur.val &amp;&amp; q.val &lt; cur.val) {
+                cur = cur.left;       // both on the left
+            } else if (p.val &gt; cur.val &amp;&amp; q.val &gt; cur.val) {
+                cur = cur.right;      // both on the right
+            } else {
+                return cur;           // they split here
+            }
+        }
+        return null;                  // never reached
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(h) · <b>Space</b> O(1) — one path down, no recursion.</p>
+<h4>Dry run</h4>
+<p>[6,2,8,0,4,7,9,null,null,3,5], p = 2, q = 4: at 6 both smaller → left; at 2, 2 is not smaller than 2 → split → return 2.</p>
+<h4>Watch out</h4>
+<p>Use strict comparisons: when p or q equals the current node, that node is the answer.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/">236. LCA of a Binary Tree</a> — animation 2.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Same question, but in a plain binary tree, so values do not tell you where to go. Ask each subtree: "did you find p or q?" If p is found on one side and q on the other, I am the LCA. If only one side found something, pass that up. A node that is p or q reports itself.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If the node is null, p, or q, return it.</li><li>Ask the left subtree and the right subtree.</li><li>If both answers are non-null, p and q are on different sides: return this node.</li><li>Otherwise return whichever answer is non-null (or null).</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public TreeNode lowestCommonAncestor(TreeNode root,
+            TreeNode p, TreeNode q) {
+        // empty, or I am one of the two: report myself
+        if (root == null || root == p || root == q) {
+            return root;
+        }
+        TreeNode left = lowestCommonAncestor(root.left, p, q);
+        TreeNode right =
+            lowestCommonAncestor(root.right, p, q);
+        if (left != null &amp;&amp; right != null) {
+            return root;     // one found on each side: me
+        }
+        return left != null ? left : right; // pass it up
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(h) — each node visited at most once.</p>
+<h4>Dry run</h4>
+<p>[3,5,1,6,2,0,8,null,null,7,4], p = 5, q = 4: the left call reaches 5 and returns 5 at once; the right call (subtree 1) finds nothing → null. At 3: only left is non-null → answer 5 (5 is an ancestor of 4).</p>
+<h4>Watch out</h4>
+<p>Returning early when the node is p is correct even if q is below it: then p is the LCA. That is why the problem promises both nodes exist.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/lowest-common-ancestor-of-deepest-leaves/">1123. LCA of Deepest Leaves</a> — return (depth, lca) from each side; equal depths → me.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the smallest subtree that contains all the deepest leaves. Each call returns two things: the depth of its subtree and the LCA of its deepest leaves. If the left side is deeper, the answer lives there; if the right is deeper, there; if equal, the deepest leaves are on both sides, so I am the answer.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Null node: depth 0, no node.</li><li>Get the left and right results.</li><li>Left deeper: return (left depth + 1, left's node).</li><li>Right deeper: return (right depth + 1, right's node).</li><li>Equal: return (depth + 1, me).</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    // what each subtree reports to its parent
+    record Result(int depth, TreeNode lca) {}
+
+    public TreeNode lcaDeepestLeaves(TreeNode root) {
+        return dfs(root).lca();
+    }
+
+    private Result dfs(TreeNode n) {
+        if (n == null) return new Result(0, null);
+        Result l = dfs(n.left);
+        Result r = dfs(n.right);
+        if (l.depth() &gt; r.depth()) { // deeper on left
+            return new Result(l.depth() + 1, l.lca());
+        }
+        if (r.depth() &gt; l.depth()) { // deeper on right
+            return new Result(r.depth() + 1, r.lca());
+        }
+        return new Result(l.depth() + 1, n); // tie: me
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(h) — one visit per node. A Java <code>record</code> is a short way to return two values.</p>
+<h4>Dry run</h4>
+<p>[3,5,1,6,2,0,8,null,null,7,4]: at 2, children 7 and 4 both depth 1 → (2, node 2). At 5: left 6 is depth 1, right is depth 2 → (3, node 2). At 1: (2, node 1). At 3: left 3 &gt; right 2 → node 2.</p>
+<h4>Watch out</h4>
+<p>A single deepest leaf is its own answer: if one leaf is deepest, the result is that leaf, not its parent.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/step-by-step-directions-from-a-binary-tree-node-to-another/">2096. Step-By-Step Directions From a Binary Tree Node to Another</a> — find both root paths, drop the shared prefix.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Give directions from node startValue to node destValue: "U" goes to the parent, "L"/"R" to a child. Every route goes up from the start to their LCA and then down to the destination. Find the path from the root to each node as a string of L/R; the shared beginning of the two strings is the way to the LCA. Drop it: each remaining start step becomes a "U", and the remaining dest steps stay.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>find</code> searches for a value and, on the way back up, appends 'L' or 'R'; this builds the path backwards, so reverse it.</li><li>Get both root paths.</li><li>Count how many first letters they share.</li><li>Answer = "U" repeated (start path length − shared) + the rest of the dest path.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public String getDirections(TreeNode root,
+            int startValue, int destValue) {
+        StringBuilder s = new StringBuilder();
+        StringBuilder d = new StringBuilder();
+        find(root, startValue, s);    // root -&gt; start
+        find(root, destValue, d);     // root -&gt; dest
+        // find() writes the path bottom-up; flip it
+        s.reverse();
+        d.reverse();
+        int i = 0;                    // skip shared prefix
+        while (i &lt; s.length() &amp;&amp; i &lt; d.length()
+                &amp;&amp; s.charAt(i) == d.charAt(i)) {
+            i++;
+        }
+        // climb from start to the split, then walk down
+        return "U".repeat(s.length() - i) + d.substring(i);
+    }
+
+    // true if val is under n; appends moves on the way back
+    private boolean find(TreeNode n, int val,
+                         StringBuilder path) {
+        if (n == null) return false;
+        if (n.val == val) return true;
+        if (find(n.left, val, path)) {
+            path.append('L');
+            return true;
+        }
+        if (find(n.right, val, path)) {
+            path.append('R');
+            return true;
+        }
+        return false;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — two searches over the tree and paths up to n long.</p>
+<h4>Dry run</h4>
+<p>[5,1,2,3,null,6,4], start 3, dest 6: root → 3 is "LL", root → 6 is "RL". Shared prefix 0. Answer "UU" + "RL" = "UURL".</p>
+<h4>Watch out</h4>
+<p>Build paths with a StringBuilder, not string concatenation inside recursion. On a 100,000-node chain the recursion is very deep; an iterative search avoids stack overflow if it appears.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/all-nodes-distance-k-in-binary-tree/">863. All Nodes Distance K in Binary Tree</a> — add parent links, then BFS from the target.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>List every node exactly k edges away from target. Distances can go up through parents, but tree nodes only point down. So first record each node's parent in a map; then the tree is just a graph, and a <b>BFS</b> from target, ring by ring, finds the nodes at distance k.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>DFS once to fill <code>parent</code> for every node.</li><li>Start a BFS from target with a <code>seen</code> set.</li><li>Repeat k times: expand the current ring to left child, right child and parent, skipping null and seen nodes.</li><li>What is left in the queue is the ring at distance k; return its values.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private Map&lt;TreeNode, TreeNode&gt; parent = new HashMap&lt;&gt;();
+
+    public List&lt;Integer&gt; distanceK(TreeNode root,
+            TreeNode target, int k) {
+        link(root, null);        // 1. remember every parent
+        // 2. BFS outward from target: left, right and up
+        Queue&lt;TreeNode&gt; q = new ArrayDeque&lt;&gt;();
+        Set&lt;TreeNode&gt; seen = new HashSet&lt;&gt;();
+        q.offer(target);
+        seen.add(target);
+        for (int dist = 0; dist &lt; k &amp;&amp; !q.isEmpty(); dist++) {
+            int size = q.size();
+            for (int i = 0; i &lt; size; i++) {
+                TreeNode n = q.poll();
+                for (TreeNode nb : new TreeNode[]{
+                        n.left, n.right, parent.get(n)}) {
+                    if (nb != null &amp;&amp; seen.add(nb)) {
+                        q.offer(nb);
+                    }
+                }
+            }
+        }
+        List&lt;Integer&gt; out = new ArrayList&lt;&gt;(); // ring k
+        for (TreeNode n : q) out.add(n.val);
+        return out;
+    }
+
+    private void link(TreeNode n, TreeNode p) {
+        if (n == null) return;
+        parent.put(n, p);
+        link(n.left, n);
+        link(n.right, n);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — the parent map, the seen set and the queue each hold up to n nodes.</p>
+<h4>Dry run</h4>
+<p>Target 5, k = 2. Ring 1: 6, 2, 3. Ring 2: from 6 nothing; from 2 → 7, 4; from 3 → 1. Answer [7,4,1].</p>
+<h4>Watch out</h4>
+<p>Without the <code>seen</code> set the BFS walks back down to where it came from and counts nodes twice. k = 0 must return just the target.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

@@ -170,11 +170,187 @@ PriorityQueue&lt;Integer&gt; high = <span class="k">new</span> PriorityQueue&lt;
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/find-median-from-data-stream/">295. Find Median from Data Stream</a> — exactly the animations.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/kth-largest-element-in-an-array/">215. Kth Largest Element in an Array</a> — warm up with one heap first.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/sliding-window-median/">480. Sliding Window Median</a> — two heaps plus lazy deletion.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/ipo/">502. IPO</a> — a min-heap by capital feeds a max-heap by profit.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-right-interval/">436. Find Right Interval</a> — two heaps sorted by start and by end.</li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/find-median-from-data-stream/">295. Find Median from Data Stream</a> — exactly the animations.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>We get numbers one at a time and must answer "what is the middle value right now?" at any moment. For 1, 2, 3 the median is 2; for 1, 2 it is 1.5. The trick (<b>two heaps</b>): keep the smaller half in a <b>max-heap</b> (a heap whose top is its biggest value) and the larger half in a <b>min-heap</b> (top is its smallest). The median is then sitting right at the two tops.</p>
+<h4>Brute force first</h4>
+<p>Keep every number in a list, sort it on every <code>findMedian</code> call and read the middle. That costs O(n log n) per question, far too slow for many calls.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>low</code> is a max-heap for the smaller half, <code>high</code> is a min-heap for the larger half.</li><li>To add a number, push it into <code>low</code>, then move <code>low</code>'s biggest into <code>high</code>. This keeps every value in <code>low</code> ≤ every value in <code>high</code>.</li><li>If <code>high</code> now has more items than <code>low</code>, move <code>high</code>'s smallest back to <code>low</code>. So <code>low</code> always has the same count or one more.</li><li>Median: if <code>low</code> is bigger, it is <code>low</code>'s top; otherwise it is the average of both tops.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class MedianFinder {
+    // low: a max-heap holding the smaller half
+    private PriorityQueue&lt;Integer&gt; low =
+        new PriorityQueue&lt;&gt;(Collections.reverseOrder());
+    // high: a min-heap holding the larger half
+    private PriorityQueue&lt;Integer&gt; high =
+        new PriorityQueue&lt;&gt;();
+
+    public MedianFinder() {}
+
+    public void addNum(int num) {
+        low.offer(num);            // always enter low first
+        high.offer(low.poll());    // low's biggest moves up
+        if (high.size() &gt; low.size()) {
+            low.offer(high.poll()); // keep low the same or +1
+        }
+    }
+
+    public double findMedian() {
+        if (low.size() &gt; high.size()) return low.peek();
+        return (low.peek() + (long) high.peek()) / 2.0;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(log n) per add, O(1) per median · <b>Space</b> O(n) — each add does a few heap pushes and pops; we store every number once.</p>
+<h4>Dry run</h4>
+<p>add 1 → low [1], high []. add 2 → low [2,1], move 2 up → low [1], high [2]; sizes equal, median (1+2)/2 = 1.5. add 3 → low [3,1], move 3 up → high [2,3], high is bigger so move 2 back → low [2,1], high [3]; median = low top = 2.</p>
+<h4>Watch out</h4>
+<p>Adding two big ints like 2,147,483,647 + 2,147,483,647 overflows. Cast one to <code>long</code> (or divide as doubles) before adding. Also divide by <code>2.0</code>, not <code>2</code>, or you lose the .5.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/kth-largest-element-in-an-array/">215. Kth Largest Element in an Array</a> — warm up with one heap first.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the value that would be in position k if the array were sorted from biggest down. In [3,2,1,5,6,4] with k = 2 the answer is 5. Key insight (<b>top-k with a heap</b>): keep a min-heap of only the k largest numbers seen; its top is the smallest of those k, which is exactly the k-th largest.</p>
+<h4>Brute force first</h4>
+<p>Sort the array and return <code>nums[n - k]</code>. O(n log n) — fine, but interviewers want the heap (or quickselect).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make an empty min-heap.</li><li>For every number, push it in.</li><li>If the heap now holds more than k numbers, pop the smallest; it cannot be in the top k.</li><li>At the end the heap holds the k largest, and its top is the answer.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findKthLargest(int[] nums, int k) {
+        // min-heap that keeps only the k largest seen
+        PriorityQueue&lt;Integer&gt; heap = new PriorityQueue&lt;&gt;();
+        for (int x : nums) {
+            heap.offer(x);
+            if (heap.size() &gt; k) heap.poll(); // drop smallest
+        }
+        return heap.peek(); // smallest of the k largest
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log k) · <b>Space</b> O(k) — each of n numbers does one push/pop on a heap of size k. (Quickselect, a partition step like quicksort that only recurses into one side, averages O(n) but has an O(n²) worst case.)</p>
+<h4>Dry run</h4>
+<p>[3,2,1,5,6,4], k = 2: push 3 → [3]; push 2 → [2,3]; push 1 → [1,2,3] too big, pop 1; push 5 → pop 2 → [3,5]; push 6 → pop 3 → [5,6]; push 4 → pop 4 → [5,6]. Top = 5.</p>
+<h4>Watch out</h4>
+<p>Java's <code>PriorityQueue</code> is a <b>min</b>-heap by default, which is what we want here. Using a max-heap of all n numbers also works but costs O(n) space.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/sliding-window-median/">480. Sliding Window Median</a> — two heaps plus lazy deletion.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Slide a window of size k across the array and report the median of each window. For [1,3,-1,-3,5,3,6,7], k = 3 the first window [1,3,-1] has median 1. It is problem 295 plus one twist: numbers also <b>leave</b> the window, and a normal heap cannot remove an item from the middle quickly. A <code>TreeSet</code> (a sorted set with O(log n) add, remove, first and last) can, so we use two TreeSets as our "two heaps".</p>
+<h4>Brute force first</h4>
+<p>For each window, copy it, sort it and take the middle. O(n · k log k).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Store <b>indices</b>, not values, so equal values stay distinct; order them by value, then by index.</li><li><code>low</code> holds the smaller half, <code>high</code> the larger half, with <code>low</code> having the same size or one more.</li><li>At index i, first remove index i − k (it just left the window) from whichever set has it.</li><li>Add i to <code>low</code>, move <code>low</code>'s largest to <code>high</code>, and if <code>high</code> got bigger move its smallest back (same dance as 295).</li><li>Once the window is full, the median is <code>low</code>'s last, or the average of <code>low</code>'s last and <code>high</code>'s first when sizes are equal.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public double[] medianSlidingWindow(int[] nums, int k) {
+        // order indices by value, then by index (no ties)
+        Comparator&lt;Integer&gt; cmp = (a, b) -&gt;
+            nums[a] != nums[b]
+                ? Integer.compare(nums[a], nums[b])
+                : Integer.compare(a, b);
+        TreeSet&lt;Integer&gt; low = new TreeSet&lt;&gt;(cmp);  // small
+        TreeSet&lt;Integer&gt; high = new TreeSet&lt;&gt;(cmp); // big
+        double[] ans = new double[nums.length - k + 1];
+        for (int i = 0; i &lt; nums.length; i++) {
+            if (i &gt;= k) { // i-k left the window
+                if (!low.remove(i - k)) high.remove(i - k);
+            }
+            low.add(i);
+            high.add(low.pollLast()); // low's max moves up
+            if (high.size() &gt; low.size()) {
+                low.add(high.pollFirst()); // rebalance
+            }
+            if (i &gt;= k - 1) {            // window is full
+                double mid = nums[low.last()];
+                if (low.size() == high.size()) {
+                    mid = (mid + nums[high.first()]) / 2.0;
+                }
+                ans[i - k + 1] = mid;
+            }
+        }
+        return ans;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log k) · <b>Space</b> O(k) — every step is a few TreeSet operations on at most k items. (The classic two-PriorityQueue version uses "lazy deletion": remember items to delete in a map and only throw them away when they reach a heap's top.)</p>
+<h4>Dry run</h4>
+<p>[1,3,-1], k = 3: low gets {-1,1}, high {3} → median = low's last = 1. Next window drops 1 and adds -3: low {-3,-1}, high {3} → median -1.</p>
+<h4>Watch out</h4>
+<p>Comparing with <code>nums[a] - nums[b]</code> overflows for values near ±2³¹; use <code>Integer.compare</code>. Average two values as doubles for the same reason. Without the index tie-break, a TreeSet would treat two equal values as one item and drop it.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/ipo/">502. IPO</a> — a min-heap by capital feeds a max-heap by profit.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>You start with money w and may do at most k projects; each needs <code>capital[i]</code> in hand and adds <code>profits[i]</code> (you keep the capital). Greedy insight: at every step, among the projects you can afford right now, do the one with the biggest profit. Two heaps make this fast: a <b>min-heap by capital</b> holds locked projects, a <b>max-heap by profit</b> holds the affordable ones.</p>
+<h4>Brute force first</h4>
+<p>For each of the k rounds, scan every project to find the best affordable one. O(k · n).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Put every project into the min-heap <code>locked</code>, ordered by capital needed.</li><li>Each round, pop from <code>locked</code> every project whose capital is ≤ w and push its profit into the max-heap <code>ready</code>.</li><li>If <code>ready</code> is empty, nothing is affordable: stop early.</li><li>Otherwise pop the biggest profit and add it to w. Repeat up to k times.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findMaximizedCapital(int k, int w,
+            int[] profits, int[] capital) {
+        int n = profits.length;
+        // min-heap by capital: cheapest project on top
+        PriorityQueue&lt;int[]&gt; locked = new PriorityQueue&lt;&gt;(
+            (a, b) -&gt; Integer.compare(a[0], b[0]));
+        for (int i = 0; i &lt; n; i++) {
+            locked.offer(new int[]{capital[i], profits[i]});
+        }
+        // max-heap of profits we can afford right now
+        PriorityQueue&lt;Integer&gt; ready =
+            new PriorityQueue&lt;&gt;(Collections.reverseOrder());
+        while (k-- &gt; 0) {
+            // unlock every project our money now covers
+            while (!locked.isEmpty()
+                    &amp;&amp; locked.peek()[0] &lt;= w) {
+                ready.offer(locked.poll()[1]);
+            }
+            if (ready.isEmpty()) break; // nothing affordable
+            w += ready.poll();          // take the best one
+        }
+        return w;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O((n + k) log n) · <b>Space</b> O(n) — each project enters and leaves each heap at most once.</p>
+<h4>Dry run</h4>
+<p>k = 2, w = 0, profits [1,2,3], capital [0,1,1]. Round 1: unlock project 0 → ready {1}, take 1, w = 1. Round 2: unlock projects 1 and 2 → ready {2,3}, take 3, w = 4. Answer 4.</p>
+<h4>Watch out</h4>
+<p>Do not forget the early stop when nothing is affordable; looping on an empty heap throws. Money only grows, so a project unlocked once stays unlocked; never put it back into <code>locked</code>.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-right-interval/">436. Find Right Interval</a> — two heaps sorted by start and by end.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>For each interval, find the interval whose start is the smallest value that is still ≥ this interval's end, and return its index (or −1). For [[3,4],[2,3],[1,2]] the answer is [-1,0,1]: [2,3] ends at 3 and [3,4] starts at 3. Insight: this is a "smallest key ≥ x" lookup, which a sorted map answers in O(log n).</p>
+<h4>Brute force first</h4>
+<p>For every interval, scan all others for the smallest valid start. O(n²).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Put every start into a <code>TreeMap</code> (a sorted map), mapping start → its index. Starts are unique.</li><li>For each interval, ask <code>ceilingEntry(end)</code>: the entry with the smallest key ≥ end.</li><li>If there is one, store its index; otherwise store −1.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] findRightInterval(int[][] intervals) {
+        // start value -&gt; index (all starts are unique)
+        TreeMap&lt;Integer, Integer&gt; starts = new TreeMap&lt;&gt;();
+        for (int i = 0; i &lt; intervals.length; i++) {
+            starts.put(intervals[i][0], i);
+        }
+        int[] ans = new int[intervals.length];
+        for (int i = 0; i &lt; intervals.length; i++) {
+            // smallest start that is &gt;= my end
+            Map.Entry&lt;Integer, Integer&gt; e =
+                starts.ceilingEntry(intervals[i][1]);
+            ans[i] = e == null ? -1 : e.getValue();
+        }
+        return ans;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log n) · <b>Space</b> O(n) — n inserts and n lookups in a sorted map. (The two-heap way: pop intervals by largest end, and pop a max-heap of starts while its top start ≥ that end, keeping the last one popped as the answer.)</p>
+<h4>Dry run</h4>
+<p>[[3,4],[2,3],[1,2]]: map {1→2, 2→1, 3→0}. End 4: no key ≥ 4 → -1. End 3: key 3 → index 0. End 2: key 2 → index 1. Result [-1,0,1].</p>
+<h4>Watch out</h4>
+<p>An interval can be its own right interval when start == end (like [1,1]); <code>ceilingEntry</code> handles that because "≥" includes equal. Use ≥, not &gt;.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

@@ -174,12 +174,234 @@ tail.next = (a != <span class="k">null</span>) ? a : b;
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/merge-two-sorted-lists/">21. Merge Two Sorted Lists</a> — first animation.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/merge-sorted-array/">88. Merge Sorted Array</a> — same idea on arrays, fill from the back.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-list/">148. Sort List</a> — split at the middle, sort halves, merge two lists.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/kth-smallest-element-in-a-sorted-matrix/">378. Kth Smallest Element in a Sorted Matrix</a> — heap of row fronts, poll k times.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/merge-k-sorted-lists/">23. Merge K Sorted Lists</a> — second animation.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/smallest-range-covering-elements-from-k-lists/">632. Smallest Range Covering Elements from K Lists</a> — heap of fronts plus a running max.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/merge-two-sorted-lists/">21. Merge Two Sorted Lists</a> — first animation.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Join two sorted lists into one sorted list: <code>1→2→4</code> and <code>1→3→4</code> give <code>1→1→2→3→4→4</code>. Compare the two fronts, take the smaller, move that list forward. A <b>dummy head</b> means you never special-case the first node. Pattern: <b>two-pointer merge</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Create <code>dummy</code> and a <code>tail</code> pointer at it.</li><li>While both lists have nodes: attach the smaller front to <code>tail.next</code>, advance that list and <code>tail</code>.</li><li>One list is empty now: attach whatever is left of the other.</li><li>Return <code>dummy.next</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public ListNode mergeTwoLists(ListNode a, ListNode b) {
+        ListNode dummy = new ListNode(), tail = dummy;
+        while (a != null &amp;&amp; b != null) {
+            if (a.val &lt;= b.val) {      // take from a
+                tail.next = a;
+                a = a.next;
+            } else {                   // take from b
+                tail.next = b;
+                b = b.next;
+            }
+            tail = tail.next;
+        }
+        tail.next = (a != null) ? a : b; // leftovers
+        return dummy.next;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n + m) · <b>Space</b> O(1) — each node is attached once; nodes are reused, not copied.</p>
+<h4>Dry run</h4>
+<pre class="code">a=1-2-4  b=1-3-4
+take a1   take b1   take a2   take b3   take a4   take b4
+result: 1 1 2 3 4 4</pre>
+<h4>Watch out</h4>
+<p>Do not forget the leftover tail after the loop. Using <code>&lt;=</code> takes from <code>a</code> on ties, which keeps the merge stable.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/merge-sorted-array/">88. Merge Sorted Array</a> — same idea on arrays, fill from the back.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p><code>nums1</code> has m real numbers followed by n empty slots; merge <code>nums2</code> into it, sorted. Filling from the front would overwrite numbers you still need, so fill from the <b>back</b>: compare the largest remaining of each array and write it into the last free slot. Pattern: <b>two pointers from the end</b>.</p>
+<h4>Brute force first</h4>
+<p>Copy nums2 into the empty slots and call <code>Arrays.sort</code>. O((m+n) log(m+n)).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>i = m-1</code> (end of nums1's numbers), <code>j = n-1</code> (end of nums2), <code>k = m+n-1</code> (last slot).</li><li>While <code>j &gt;= 0</code>: if <code>i &gt;= 0</code> and <code>nums1[i] &gt; nums2[j]</code>, write nums1[i] and move i; else write nums2[j] and move j.</li><li>Move k down each time.</li><li>When j runs out, nums1's remaining numbers are already in place.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public void merge(int[] nums1, int m,
+                      int[] nums2, int n) {
+        int i = m - 1, j = n - 1, k = m + n - 1;
+        while (j &gt;= 0) {         // nums2 left to place
+            if (i &gt;= 0 &amp;&amp; nums1[i] &gt; nums2[j]) {
+                nums1[k--] = nums1[i--];
+            } else {
+                nums1[k--] = nums2[j--];
+            }
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(m + n) · <b>Space</b> O(1) — each slot is written once, in place.</p>
+<h4>Dry run</h4>
+<pre class="code">[1,2,3,_,_,_]  nums2=[2,5,6]
+6 &gt; 3 -&gt; slot5=6    5 &gt; 3 -&gt; slot4=5
+2 &lt; 3 -&gt; slot3=3    2 = 2 -&gt; slot2=2 (from nums2)
+done: [1,2,2,3,5,6]</pre>
+<h4>Watch out</h4>
+<p>Loop on <code>j &gt;= 0</code>, not on i: leftover nums2 values must still be copied, while leftover nums1 values are already where they belong. Guard <code>i &gt;= 0</code> when m = 0.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sort-list/">148. Sort List</a> — split at the middle, sort halves, merge two lists.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Sort a linked list in O(n log n). Arrays use quicksort, but lists are best with <b>merge sort</b>: split at the middle (fast/slow pointers), sort each half recursively, then merge the two sorted halves (problem 21). Merging lists needs no extra array.</p>
+<h4>Brute force first</h4>
+<p>Copy values into an array, sort, write back. O(n log n) time but O(n) space.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Base case: 0 or 1 node is already sorted.</li><li>Find the end of the first half with slow/fast (start fast at <code>head.next</code> so slow stops before the middle).</li><li>Cut: <code>right = slow.next</code>, <code>slow.next = null</code>.</li><li>Sort both halves recursively and return <code>merge(left, right)</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public ListNode sortList(ListNode head) {
+        if (head == null || head.next == null) return head;
+        // slow stops at the end of the left half
+        ListNode slow = head, fast = head.next;
+        while (fast != null &amp;&amp; fast.next != null) {
+            slow = slow.next;
+            fast = fast.next.next;
+        }
+        ListNode right = slow.next;
+        slow.next = null;                    // cut
+        return merge(sortList(head), sortList(right));
+    }
+
+    private ListNode merge(ListNode a, ListNode b) {
+        ListNode dummy = new ListNode(), t = dummy;
+        while (a != null &amp;&amp; b != null) {
+            if (a.val &lt;= b.val) { t.next = a; a = a.next; }
+            else { t.next = b; b = b.next; }
+            t = t.next;
+        }
+        t.next = (a != null) ? a : b;
+        return dummy.next;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log n) · <b>Space</b> O(log n) — log n levels of splitting, O(n) merge work per level; the recursion stack is log n deep.</p>
+<h4>Dry run</h4>
+<pre class="code">4-2-1-3
+split   4-2 | 1-3
+split   4 | 2    1 | 3
+merge   2-4      1-3
+merge   1-2-3-4</pre>
+<h4>Watch out</h4>
+<p>If fast starts at <code>head</code> instead of <code>head.next</code>, a 2-node list never splits and recursion runs forever. Always cut with <code>slow.next = null</code>.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/kth-smallest-element-in-a-sorted-matrix/">378. Kth Smallest Element in a Sorted Matrix</a> — heap of row fronts, poll k times.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Each row and each column of an n×n matrix is sorted; find the k-th smallest value. Each row is a sorted list, so this is "merge n sorted lists, but stop after k items". Keep a <b>min-heap</b> (a structure that always gives back its smallest item fast) holding the front of each row; poll the smallest k times, and each time push the next number from that row.</p>
+<h4>Brute force first</h4>
+<p>Put all n² numbers in an array, sort, take index k-1. O(n² log n).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Push <code>(value, row, col=0)</code> for each row into a min-heap ordered by value.</li><li>Repeat k-1 times: poll the smallest; if its row has a next column, push that cell.</li><li>The heap's top is now the k-th smallest; return it.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int kthSmallest(int[][] matrix, int k) {
+        int n = matrix.length;
+        // each entry: {value, row, col}
+        PriorityQueue&lt;int[]&gt; heap =
+            new PriorityQueue&lt;&gt;((x, y) -&gt; x[0] - y[0]);
+        for (int r = 0; r &lt; n; r++) {
+            heap.offer(new int[]{matrix[r][0], r, 0});
+        }
+        for (int i = 0; i &lt; k - 1; i++) {
+            int[] top = heap.poll();
+            int r = top[1], c = top[2];
+            if (c + 1 &lt; n) {                // next in row
+                heap.offer(new int[]{
+                    matrix[r][c + 1], r, c + 1});
+            }
+        }
+        return heap.peek()[0];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(k log n) · <b>Space</b> O(n) — k heap operations on a heap of at most n entries.</p>
+<h4>Dry run</h4>
+<pre class="code">rows: [1,5,9] [10,11,13] [12,13,15], k=8
+heap {1,10,12}
+poll 1 push 5 | poll 5 push 9 | poll 9
+poll 10 push 11 | poll 11 push 13 | poll 12 push 13
+poll one 13      (7 polls)  -&gt; top = 13</pre>
+<h4>Watch out</h4>
+<p>Comparator <code>x[0] - y[0]</code> is fine here because values fit in a narrow range; for any ints use <code>Integer.compare</code>. The other well-known approach is binary search on the value with a staircase count, O(n log(max−min)).</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/merge-k-sorted-lists/">23. Merge K Sorted Lists</a> — second animation.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Merge k sorted lists into one. At every moment the next output node is the smallest among the k current fronts. A <b>min-heap</b> of those fronts gives the smallest in O(log k): poll it, attach it, push its <code>next</code>. Pattern: <b>k-way merge with a heap</b>.</p>
+<h4>Brute force first</h4>
+<p>Merge the lists one after another into a growing result: O(k·N) where N is the total node count. Or collect all values and sort: O(N log N).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Push every non-null head into a min-heap ordered by <code>val</code>.</li><li><code>dummy</code> and <code>tail</code> as in problem 21.</li><li>While the heap is not empty: poll the smallest node, attach it to <code>tail</code>, and push its <code>next</code> if not null.</li><li>Return <code>dummy.next</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public ListNode mergeKLists(ListNode[] lists) {
+        PriorityQueue&lt;ListNode&gt; heap = new PriorityQueue&lt;&gt;(
+            (a, b) -&gt; Integer.compare(a.val, b.val));
+        for (ListNode head : lists) {
+            if (head != null) heap.offer(head);
+        }
+        ListNode dummy = new ListNode(), tail = dummy;
+        while (!heap.isEmpty()) {
+            ListNode node = heap.poll();   // smallest front
+            tail.next = node;
+            tail = node;
+            if (node.next != null) heap.offer(node.next);
+        }
+        return dummy.next;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(N log k) · <b>Space</b> O(k) — every one of the N nodes goes through a heap of at most k nodes.</p>
+<h4>Dry run</h4>
+<pre class="code">heap {1a,1b,2}
+poll 1a push 4a  -&gt; 1
+poll 1b push 3b  -&gt; 1 1
+poll 2  push 6   -&gt; 1 1 2
+poll 3b push 4b  -&gt; ... 3   and so on: 1 1 2 3 4 4 5 6</pre>
+<h4>Watch out</h4>
+<p>Skip null lists when building the heap, or the comparator throws. Divide and conquer (merge pairs of lists, then pairs of results) also gives O(N log k) with O(1) extra space besides recursion.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/smallest-range-covering-elements-from-k-lists/">632. Smallest Range Covering Elements from K Lists</a> — heap of fronts plus a running max.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Pick one number from each of k sorted lists so that max − min is as small as possible; return <code>[min, max]</code>. Keep exactly one pointer per list. The current range is [smallest front, largest front]. To shrink it, the only useful move is to advance the list holding the minimum. So use a <b>min-heap of fronts</b> plus a running <b>max</b>, and stop when some list runs out.</p>
+<h4>Brute force first</h4>
+<p>Try every combination of one number per list: exponential. Or put all numbers (tagged with their list) in one sorted array and use a sliding window that covers all k lists: O(N log N), also valid.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Push the first element of each list into a min-heap as <code>(value, list, index)</code>; track <code>max</code> of them.</li><li>Poll the min. If <code>max - min</code> beats the best range, save <code>[min, max]</code>.</li><li>If that list has no next element, stop (you can no longer cover every list).</li><li>Otherwise push its next element and update <code>max</code>; repeat.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] smallestRange(List&lt;List&lt;Integer&gt;&gt; nums) {
+        // entry: {value, listIndex, positionInList}
+        PriorityQueue&lt;int[]&gt; heap = new PriorityQueue&lt;&gt;(
+            (a, b) -&gt; Integer.compare(a[0], b[0]));
+        int max = Integer.MIN_VALUE;
+        for (int i = 0; i &lt; nums.size(); i++) {
+            int v = nums.get(i).get(0);
+            heap.offer(new int[]{v, i, 0});
+            max = Math.max(max, v);
+        }
+        int[] best = {-100000, 100000};
+        while (true) {
+            int[] top = heap.poll();
+            int min = top[0], li = top[1], pos = top[2];
+            if (max - min &lt; best[1] - best[0]) {
+                best = new int[]{min, max};
+            }
+            List&lt;Integer&gt; list = nums.get(li);
+            if (pos + 1 == list.size()) break; // list done
+            int next = list.get(pos + 1);
+            heap.offer(new int[]{next, li, pos + 1});
+            max = Math.max(max, next);
+        }
+        return best;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(N log k) · <b>Space</b> O(k) — each of the N numbers is pushed and polled once in a heap of size k.</p>
+<h4>Dry run</h4>
+<pre class="code">fronts 4,0,5  max 5   range [0,5]
+pop 0 push 9  max 9   [4,9]
+pop 4 push 10 max 10  [5,10]
+... later fronts 20,24,22 -&gt; [20,24] (size 4, best)
+pop 20: list 2 is done -&gt; stop</pre>
+<h4>Watch out</h4>
+<p>Use strictly smaller (<code>&lt;</code>) when comparing sizes so ties keep the earlier range, which has the smaller start. Stop as soon as the list you just polled is exhausted; continuing would leave that list uncovered.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

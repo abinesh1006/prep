@@ -186,12 +186,193 @@
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/middle-of-the-linked-list/">876. Middle of the Linked List</a> — first animation.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/linked-list-cycle/">141. Linked List Cycle</a> — meet or reach null.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/happy-number/">202. Happy Number</a> — "next" is the digit-square sum; detect the loop.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/linked-list-cycle-ii/">142. Linked List Cycle II</a> — second animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/remove-nth-node-from-end-of-list/">19. Remove Nth Node From End</a> — third animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-the-duplicate-number/">287. Find the Duplicate Number</a> — treat i → nums[i] as a list; the duplicate is the cycle start.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/middle-of-the-linked-list/">876. Middle of the Linked List</a> — first animation.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Return the middle node; with an even count return the second middle (<code>1→2→3→4</code> gives 3). Send a <b>slow</b> pointer one step and a <b>fast</b> pointer two steps at a time. When fast falls off the end, slow has gone exactly half as far. Pattern: <b>fast and slow pointers</b>.</p>
+<h4>Brute force first</h4>
+<p>Count the nodes in one pass, then walk <code>count / 2</code> steps in a second pass. Also O(n), but two passes.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Start <code>slow</code> and <code>fast</code> at head.</li><li>While <code>fast</code> and <code>fast.next</code> are not null: slow one step, fast two steps.</li><li>Return <code>slow</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public ListNode middleNode(ListNode head) {
+        ListNode slow = head, fast = head;
+        while (fast != null &amp;&amp; fast.next != null) {
+            slow = slow.next;       // 1 step
+            fast = fast.next.next;  // 2 steps
+        }
+        return slow;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — fast covers the list once; two pointers only.</p>
+<h4>Dry run</h4>
+<pre class="code">1-2-3-4-5     slow  fast
+start         1     1
+step 1        2     3
+step 2        3     5   (fast.next is null) -&gt; 3</pre>
+<h4>Watch out</h4>
+<p>The loop condition decides which middle you get: <code>fast != null &amp;&amp; fast.next != null</code> gives the second middle. Check <code>fast</code> before <code>fast.next</code> or you get a NullPointerException.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/linked-list-cycle/">141. Linked List Cycle</a> — meet or reach null.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Does the list loop back on itself? If there is a cycle, a fast runner (2 steps) laps a slow runner (1 step) and they meet; if there is no cycle, fast reaches null. This is <b>Floyd's cycle detection</b> (tortoise and hare).</p>
+<h4>Brute force first</h4>
+<p>Store every visited node in a <code>HashSet</code>; seeing a node twice means a cycle. O(n) time, O(n) space.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>slow = fast = head</code>.</li><li>While <code>fast</code> and <code>fast.next</code> exist: move slow 1, fast 2.</li><li>If they point to the same node, return true.</li><li>Loop ended → fast hit null → return false.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean hasCycle(ListNode head) {
+        ListNode slow = head, fast = head;
+        while (fast != null &amp;&amp; fast.next != null) {
+            slow = slow.next;
+            fast = fast.next.next;
+            if (slow == fast) return true; // lapped
+        }
+        return false; // fast fell off the end
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — inside the cycle the gap shrinks by one each step, so they meet within one lap.</p>
+<h4>Dry run</h4>
+<p><code>3→2→0→-4→(back to 2)</code>: slow 2, fast 0; slow 0, fast 2; slow -4, fast -4 → meet → true.</p>
+<h4>Watch out</h4>
+<p>Compare node references (<code>slow == fast</code>), not values; two different nodes can hold the same value. Check after moving, not before, since both start at head.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/happy-number/">202. Happy Number</a> — "next" is the digit-square sum; detect the loop.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Replace n by the sum of the squares of its digits, again and again. Happy if it reaches 1 (19 → 82 → 68 → 100 → 1). Otherwise the numbers repeat in a loop forever. Treat "next number" as a <code>next</code> pointer and run <b>Floyd's cycle detection</b> on it: slow applies the step once, fast twice.</p>
+<h4>Brute force first</h4>
+<p>Keep a <code>HashSet</code> of numbers seen; stop at 1 (happy) or a repeat (not happy). O(log n) space per step, also accepted.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Write <code>next(n)</code>: sum of squares of the digits.</li><li><code>slow = n</code>, <code>fast = next(n)</code>.</li><li>While <code>fast != 1</code> and <code>slow != fast</code>: slow = next(slow), fast = next(next(fast)).</li><li>Return <code>fast == 1</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private int next(int n) {
+        int sum = 0;
+        while (n &gt; 0) {
+            int d = n % 10;   // last digit
+            sum += d * d;
+            n /= 10;
+        }
+        return sum;
+    }
+
+    public boolean isHappy(int n) {
+        int slow = n, fast = next(n);
+        while (fast != 1 &amp;&amp; slow != fast) {
+            slow = next(slow);
+            fast = next(next(fast));
+        }
+        return fast == 1;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(log n) · <b>Space</b> O(1) — each step shrinks the number to at most 243 quickly, and the loop it falls into is short.</p>
+<h4>Dry run</h4>
+<p>n = 2: values go 2, 4, 16, 37, 58, 89, 145, 42, 20, 4, … (a loop). Slow and fast meet inside it at a number that is not 1 → false.</p>
+<h4>Watch out</h4>
+<p>Start <code>fast</code> one step ahead (or check after moving), otherwise <code>slow == fast</code> is true immediately. Also 1 is a fixed point (next(1) = 1), so stopping on <code>fast == 1</code> is safe.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/linked-list-cycle-ii/">142. Linked List Cycle II</a> — second animation.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Return the node where the cycle begins (or null). First detect the cycle with slow/fast. Then the key fact: the distance from head to the cycle start equals the distance from the meeting point to the cycle start (going round). So restart one pointer at head and move both one step at a time; they meet at the start. Pattern: <b>Floyd, phase 2</b>.</p>
+<h4>Brute force first</h4>
+<p>Walk the list adding nodes to a <code>HashSet</code>; the first node already in the set is the start. O(n) space.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Run slow (1 step) and fast (2 steps) until they meet; if fast hits null, return null.</li><li>Put a new pointer <code>p</code> at head; keep <code>slow</code> at the meeting point.</li><li>Move <code>p</code> and <code>slow</code> one step each until they are the same node.</li><li>Return that node.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public ListNode detectCycle(ListNode head) {
+        ListNode slow = head, fast = head;
+        while (fast != null &amp;&amp; fast.next != null) {
+            slow = slow.next;
+            fast = fast.next.next;
+            if (slow == fast) {          // phase 1 done
+                ListNode p = head;
+                while (p != slow) {      // phase 2
+                    p = p.next;
+                    slow = slow.next;
+                }
+                return p;                // cycle start
+            }
+        }
+        return null;                     // no cycle
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — each phase is at most a couple of passes over the list.</p>
+<h4>Dry run</h4>
+<p>Why it works: let a = steps from head to start, b = start to meeting point, c = cycle length. Fast walked twice as far: <code>2(a+b) = a+b+k·c</code>, so <code>a = k·c − b</code>. Walking a steps from the meeting point lands exactly on the start. Example <code>3→2→0→-4→2…</code>: meet at -4; p from 3 and slow from -4 both reach 2 after one step.</p>
+<h4>Watch out</h4>
+<p>Phase 2 must move both pointers one step at a time. Return null (not head) when there is no cycle.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/remove-nth-node-from-end-of-list/">19. Remove Nth Node From End</a> — third animation.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Remove the n-th node counting from the end: <code>1→2→3→4→5</code>, n=2 removes 4. Put a <b>lead pointer</b> n steps ahead of a trailing one; when the lead reaches the last node, the trailing one is just before the node to delete. One pass. A <b>dummy node</b> handles deleting the head.</p>
+<h4>Brute force first</h4>
+<p>Count the length L, then walk to node L−n and unlink the next one. Two passes, still O(n).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>dummy → head</code>; <code>fast = slow = dummy</code>.</li><li>Move <code>fast</code> forward n steps.</li><li>Move both until <code>fast.next</code> is null.</li><li><code>slow.next = slow.next.next</code> removes the target. Return <code>dummy.next</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public ListNode removeNthFromEnd(ListNode head, int n) {
+        ListNode dummy = new ListNode(0, head);
+        ListNode fast = dummy, slow = dummy;
+        // open a gap of n nodes
+        for (int i = 0; i &lt; n; i++) fast = fast.next;
+        while (fast.next != null) {
+            fast = fast.next;
+            slow = slow.next;
+        }
+        slow.next = slow.next.next; // skip the target
+        return dummy.next;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — one pass with a fixed gap.</p>
+<h4>Dry run</h4>
+<pre class="code">d-1-2-3-4-5, n=2
+fast moves 2: fast=2, slow=d
+move both:    fast=5, slow=3   (fast.next null)
+3.next = 5  -&gt; 1-2-3-5</pre>
+<h4>Watch out</h4>
+<p>Without the dummy, removing the head (n = length) breaks. Stop at <code>fast.next == null</code> so slow sits <i>before</i> the target.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-the-duplicate-number/">287. Find the Duplicate Number</a> — treat i → nums[i] as a list; the duplicate is the cycle start.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p><code>nums</code> has n+1 numbers, each in 1..n, so one value repeats; find it without changing the array and with O(1) extra space. Think of each index i as a node whose next is <code>nums[i]</code>. Two indices point at the duplicate value, so the path from index 0 runs into a cycle, and the cycle's entrance is the duplicate. Use <b>Floyd's cycle start</b> (same as 142).</p>
+<h4>Brute force first</h4>
+<p>Sort a copy and look for equal neighbours (O(n log n)), or use a <code>HashSet</code> (O(n) space). Both break a rule of the problem.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>slow = nums[0]</code>, <code>fast = nums[nums[0]]</code>.</li><li>Move slow one hop (<code>slow = nums[slow]</code>) and fast two hops until they are equal.</li><li>Reset <code>slow = 0</code>; move both one hop at a time until equal.</li><li>That value is the duplicate.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findDuplicate(int[] nums) {
+        int slow = nums[0], fast = nums[nums[0]];
+        while (slow != fast) {     // phase 1: meet
+            slow = nums[slow];
+            fast = nums[nums[fast]];
+        }
+        slow = 0;
+        while (slow != fast) {     // phase 2: entrance
+            slow = nums[slow];
+            fast = nums[fast];
+        }
+        return slow;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — two Floyd phases, just two integers.</p>
+<h4>Dry run</h4>
+<pre class="code">nums = [1,3,4,2,2]   hops: 0 -&gt; 1 -&gt; 3 -&gt; 2 -&gt; 4 -&gt; 2 -&gt; 4 ...
+phase 1  slow: 1, 3, 2, 4    fast: 3, 4, 4, 4   meet at 4
+phase 2  slow: 0, 1, 3, 2    fast: 4, 2, 4, 2   equal at 2</pre>
+<p>The loop is 2 → 4 → 2, entered at 2, which is the duplicate.</p>
+<h4>Watch out</h4>
+<p>Phase 2 restarts at index <code>0</code> (the list's head), not at <code>nums[0]</code>, because phase 1 began with one hop already done from 0. Binary search on the value range (count numbers ≤ mid) is the other O(1)-space answer, at O(n log n).</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

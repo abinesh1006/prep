@@ -184,12 +184,239 @@ while (curr != null) {         // until we fall off
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/reverse-linked-list/">206. Reverse Linked List</a> — the second animation; then write the recursive version.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/palindrome-linked-list/">234. Palindrome Linked List</a> — find middle, reverse the second half, compare.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/reverse-linked-list-ii/">92. Reverse Linked List II</a> — the third animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/swap-nodes-in-pairs/">24. Swap Nodes in Pairs</a> — reversal in groups of 2.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/reorder-list/">143. Reorder List</a> — middle + reverse + weave.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/reverse-nodes-in-k-group/">25. Reverse Nodes in k-Group</a> — count k ahead, reverse that block, link, repeat.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/reverse-linked-list/">206. Reverse Linked List</a> — the second animation; then write the recursive version.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Turn <code>1→2→3→null</code> into <code>3→2→1→null</code>. A node only knows its <code>next</code>, so walk the list once and flip each arrow to point backwards. Keep three pointers: <code>prev</code> (the already-reversed part), <code>curr</code> (the node being flipped) and <code>next</code> (saved so the rest of the list is not lost). Pattern: <b>in-place linked list reversal</b>.</p>
+<h4>Brute force first</h4>
+<p>Copy every value into an array, then write them back in reverse order. It works but uses O(n) extra space; interviewers want the pointer flip.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Start with <code>prev = null</code> and <code>curr = head</code>.</li><li>Save <code>next = curr.next</code> before you break the link.</li><li>Flip: <code>curr.next = prev</code>.</li><li>Move both one step: <code>prev = curr</code>, <code>curr = next</code>.</li><li>When <code>curr</code> is null, <code>prev</code> is the new head.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public ListNode reverseList(ListNode head) {
+        ListNode prev = null, curr = head;
+        while (curr != null) {
+            ListNode next = curr.next; // save the rest
+            curr.next = prev;          // flip the arrow
+            prev = curr;               // step forward
+            curr = next;
+        }
+        return prev;                   // new head
+    }
+
+    // Recursive version: reverse the rest, then hook
+    // this node onto the end of it.
+    public ListNode reverseRec(ListNode head) {
+        if (head == null || head.next == null) return head;
+        ListNode newHead = reverseRec(head.next);
+        head.next.next = head; // node after me points back
+        head.next = null;      // I become the tail
+        return newHead;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — one pass, three pointers (the recursive version uses O(n) call stack).</p>
+<h4>Dry run</h4>
+<pre class="code">list 1-2-3      prev   curr  after flip
+step 1          null   1     1-null
+step 2          1      2     2-1-null
+step 3          2      3     3-2-1-null
+curr = null  -&gt; return prev = 3</pre>
+<h4>Watch out</h4>
+<p>Save <code>next</code> before flipping, otherwise you lose the rest of the list. Return <code>prev</code>, not <code>curr</code> (which is null at the end). Empty list and single node must return as they are.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/palindrome-linked-list/">234. Palindrome Linked List</a> — find middle, reverse the second half, compare.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Is <code>1→2→2→1</code> the same forwards and backwards? A singly linked list cannot walk backwards, so find the middle with fast/slow pointers, reverse the second half, then walk both halves together comparing values. Patterns: <b>fast/slow pointers + reversal</b>.</p>
+<h4>Brute force first</h4>
+<p>Copy values into an array and check it with two pointers from both ends. O(n) time but O(n) extra space.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Move <code>slow</code> one step and <code>fast</code> two steps until fast reaches the end; slow is now at the middle.</li><li>Reverse the list starting at <code>slow</code>.</li><li>Walk <code>a</code> from head and <code>b</code> from the reversed half; if any values differ, return false.</li><li>Stop when <code>b</code> runs out; return true.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean isPalindrome(ListNode head) {
+        // 1. find the middle
+        ListNode slow = head, fast = head;
+        while (fast != null &amp;&amp; fast.next != null) {
+            slow = slow.next;
+            fast = fast.next.next;
+        }
+        // 2. reverse the second half
+        ListNode prev = null;
+        while (slow != null) {
+            ListNode next = slow.next;
+            slow.next = prev;
+            prev = slow;
+            slow = next;
+        }
+        // 3. compare the two halves
+        ListNode a = head, b = prev;
+        while (b != null) {
+            if (a.val != b.val) return false;
+            a = a.next;
+            b = b.next;
+        }
+        return true;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — three linear walks, only pointers kept.</p>
+<h4>Dry run</h4>
+<p><code>1→2→2→1</code>: slow stops at the second 2. Reverse that half: <code>1→2</code>. Compare 1=1, 2=2, b runs out → true.</p>
+<h4>Watch out</h4>
+<p>Loop the comparison on the reversed half (<code>b</code>), which is never longer than the first half; for odd lengths the middle node is shared and compares with itself. This changes the input list; reverse the half back if the interviewer asks you to leave it intact.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/reverse-linked-list-ii/">92. Reverse Linked List II</a> — the third animation.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Reverse only positions <code>left..right</code> (1-based): <code>1→2→3→4→5</code>, left=2, right=4 gives <code>1→4→3→2→5</code>. Walk to the node just before <code>left</code>, then repeatedly take the node after the current one and move it to the front of the section. A <b>dummy node</b> handles <code>left = 1</code> without a special case.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make <code>dummy → head</code> and move <code>before</code> forward <code>left - 1</code> steps.</li><li><code>curr = before.next</code>; this node will end up as the section's tail.</li><li>Repeat <code>right - left</code> times: cut <code>move = curr.next</code> out and insert it right after <code>before</code>.</li><li>Return <code>dummy.next</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public ListNode reverseBetween(ListNode head,
+                                   int left, int right) {
+        ListNode dummy = new ListNode(0, head);
+        ListNode before = dummy;
+        for (int i = 1; i &lt; left; i++) before = before.next;
+
+        ListNode curr = before.next; // becomes the tail
+        for (int i = 0; i &lt; right - left; i++) {
+            ListNode move = curr.next;   // node to move
+            curr.next = move.next;       // cut it out
+            move.next = before.next;     // put it in front
+            before.next = move;
+        }
+        return dummy.next;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — one walk to the start, one pass over the section.</p>
+<h4>Dry run</h4>
+<pre class="code">before=1, curr=2      1-2-3-4-5
+move 3 to front       1-3-2-4-5
+move 4 to front       1-4-3-2-5   done (right-left = 2 moves)</pre>
+<h4>Watch out</h4>
+<p>Without the dummy node, <code>left = 1</code> needs its own branch because the head changes. Do exactly <code>right - left</code> moves, not <code>right - left + 1</code>.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/swap-nodes-in-pairs/">24. Swap Nodes in Pairs</a> — reversal in groups of 2.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Swap every two adjacent nodes: <code>1→2→3→4</code> becomes <code>2→1→4→3</code>, by relinking nodes, not swapping values. It is reversal in groups of 2. Use a <b>dummy node</b> and a <code>prev</code> pointer that sits just before each pair.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>dummy → head</code>, <code>prev = dummy</code>.</li><li>While two nodes <code>a = prev.next</code> and <code>b = a.next</code> exist:</li><li>Relink: <code>a.next = b.next</code>, <code>b.next = a</code>, <code>prev.next = b</code>.</li><li>Move <code>prev = a</code> (a is now second in the pair).</li><li>Return <code>dummy.next</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public ListNode swapPairs(ListNode head) {
+        ListNode dummy = new ListNode(0, head);
+        ListNode prev = dummy;
+        while (prev.next != null
+                &amp;&amp; prev.next.next != null) {
+            ListNode a = prev.next, b = a.next;
+            a.next = b.next;   // a points past the pair
+            b.next = a;        // b points back to a
+            prev.next = b;     // previous part points to b
+            prev = a;          // a is now the pair's tail
+        }
+        return dummy.next;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — each node is relinked once.</p>
+<h4>Dry run</h4>
+<pre class="code">prev=d  a=1 b=2   d-2-1-3-4   prev=1
+prev=1  a=3 b=4   d-2-1-4-3   prev=3
+no pair left -&gt; return 2-1-4-3</pre>
+<h4>Watch out</h4>
+<p>Do the three assignments in that order; setting <code>b.next = a</code> first loses <code>b.next</code>. An odd last node stays where it is.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/reorder-list/">143. Reorder List</a> — middle + reverse + weave.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Reorder <code>L0→L1→…→Ln</code> into <code>L0→Ln→L1→Ln-1→…</code>, e.g. <code>1→2→3→4</code> becomes <code>1→4→2→3</code>. That is the first half woven with the reversed second half. Three known pieces: <b>find middle, reverse, merge alternately</b>.</p>
+<h4>Brute force first</h4>
+<p>Put all nodes in an array and relink with two indices from both ends. O(n) space.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Find the middle with slow/fast (slow ends at the end of the first half).</li><li>Cut: <code>second = slow.next</code>, <code>slow.next = null</code>.</li><li>Reverse <code>second</code>.</li><li>Weave: take one from the first half, one from the reversed half, until the second runs out.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public void reorderList(ListNode head) {
+        if (head == null || head.next == null) return;
+        // 1. middle: slow ends at the end of half one
+        ListNode slow = head, fast = head;
+        while (fast.next != null
+                &amp;&amp; fast.next.next != null) {
+            slow = slow.next;
+            fast = fast.next.next;
+        }
+        // 2. cut and reverse the second half
+        ListNode prev = null, curr = slow.next;
+        slow.next = null;
+        while (curr != null) {
+            ListNode next = curr.next;
+            curr.next = prev;
+            prev = curr;
+            curr = next;
+        }
+        // 3. weave the two halves
+        ListNode a = head, b = prev;
+        while (b != null) {
+            ListNode an = a.next, bn = b.next;
+            a.next = b;
+            b.next = an;
+            a = an;
+            b = bn;
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — three linear passes, done in place.</p>
+<h4>Dry run</h4>
+<p><code>1→2→3→4→5</code>: slow stops at 3, halves <code>1→2→3</code> and <code>4→5</code>. Reverse → <code>5→4</code>. Weave: 1,5,2,4,3.</p>
+<h4>Watch out</h4>
+<p>Forgetting <code>slow.next = null</code> leaves a cycle. Save both <code>a.next</code> and <code>b.next</code> before relinking.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/reverse-nodes-in-k-group/">25. Reverse Nodes in k-Group</a> — count k ahead, reverse that block, link, repeat.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Reverse the list k nodes at a time; a final group shorter than k stays as is. <code>1→2→3→4→5</code>, k=2 gives <code>2→1→4→3→5</code>. For each group: check that k nodes exist, reverse those k with the normal three-pointer flip, and connect the group to what came before and after. A <b>dummy node</b> plus a <code>groupPrev</code> pointer keeps the joins simple.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>dummy → head</code>, <code>groupPrev = dummy</code>.</li><li>Walk k steps from <code>groupPrev</code> to find the group's last node <code>kth</code>; if you hit null, stop.</li><li>Remember <code>groupNext = kth.next</code>. Reverse the group, starting with <code>prev = groupNext</code> so the new tail already points onward.</li><li>The old first node is now the tail: set <code>groupPrev.next = kth</code>, then <code>groupPrev = oldFirst</code>.</li><li>Repeat; return <code>dummy.next</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public ListNode reverseKGroup(ListNode head, int k) {
+        ListNode dummy = new ListNode(0, head);
+        ListNode groupPrev = dummy;
+        while (true) {
+            // find the k-th node of this group
+            ListNode kth = groupPrev;
+            for (int i = 0; i &lt; k &amp;&amp; kth != null; i++) {
+                kth = kth.next;
+            }
+            if (kth == null) break; // fewer than k left
+
+            ListNode groupNext = kth.next;
+            ListNode first = groupPrev.next;
+            // reverse the group; tail points to groupNext
+            ListNode prev = groupNext, curr = first;
+            while (curr != groupNext) {
+                ListNode next = curr.next;
+                curr.next = prev;
+                prev = curr;
+                curr = next;
+            }
+            groupPrev.next = kth;  // kth is the new front
+            groupPrev = first;     // first is the new tail
+        }
+        return dummy.next;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(1) — each node is counted once and flipped once.</p>
+<h4>Dry run</h4>
+<pre class="code">k=3   d-1-2-3-4-5
+group 1-2-3: kth=3, groupNext=4
+reverse -&gt;   d-3-2-1-4-5, groupPrev=1
+from 1, walk 3: 4,5,null -&gt; stop</pre>
+<h4>Watch out</h4>
+<p>Check that a full group exists <i>before</i> reversing, or the short tail gets flipped. Starting <code>prev</code> at <code>groupNext</code> (not null) is what keeps the group attached to the rest.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

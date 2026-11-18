@@ -169,14 +169,328 @@ Deque&lt;Integer&gt; st = <span class="k">new</span> ArrayDeque&lt;&gt;();
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/next-greater-element-i/">496. Next Greater Element I</a> — run the stack on nums2, store answers in a map.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/daily-temperatures/">739. Daily Temperatures</a> — the first animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/next-greater-element-ii/">503. Next Greater Element II</a> — circular: go around twice.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/online-stock-span/">901. Online Stock Span</a> — previous greater; store (price, span) pairs.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/remove-k-digits/">402. Remove K Digits</a> — increasing stack, pop bigger digits while k &gt; 0.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sum-of-subarray-minimums/">907. Sum of Subarray Minimums</a> — each element is the min for (left span × right span) subarrays.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/largest-rectangle-in-histogram/">84. Largest Rectangle in Histogram</a> — the second animation.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/maximal-rectangle/">85. Maximal Rectangle</a> — build a histogram per row and reuse 84.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/next-greater-element-i/">496. Next Greater Element I</a> — run the stack on nums2, store answers in a map.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>For each number in <code>nums1</code> (all of which appear in <code>nums2</code>), find the first bigger number to its right in <code>nums2</code>, or -1. Compute the "next greater" for every value of nums2 in one pass with a <b>monotonic stack</b> (a stack kept in decreasing order): a new number pops every smaller number waiting on the stack, and it is their answer. Store answers in a map, then look up nums1.</p>
+<h4>Brute force first</h4>
+<p>For each nums1 value, find it in nums2 and scan right: O(n·m).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Walk nums2. While the stack top is smaller than <code>x</code>, pop it and record <code>next[top] = x</code>.</li><li>Push <code>x</code>.</li><li>Numbers still on the stack have no bigger number to the right (answer -1).</li><li>Build the result with <code>next.getOrDefault(v, -1)</code> for each v in nums1.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] nextGreaterElement(int[] nums1,
+                                    int[] nums2) {
+        Map&lt;Integer, Integer&gt; next = new HashMap&lt;&gt;();
+        // stack values stay decreasing
+        Deque&lt;Integer&gt; st = new ArrayDeque&lt;&gt;();
+        for (int x : nums2) {
+            while (!st.isEmpty() &amp;&amp; st.peek() &lt; x) {
+                next.put(st.pop(), x); // their answer
+            }
+            st.push(x);
+        }
+        int[] res = new int[nums1.length];
+        for (int i = 0; i &lt; nums1.length; i++) {
+            res[i] = next.getOrDefault(nums1[i], -1);
+        }
+        return res;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n + m) · <b>Space</b> O(m) — each nums2 value is pushed and popped once.</p>
+<h4>Dry run</h4>
+<pre class="code">nums2 = [1,3,4,2]
+1   push            [1]
+3   pop 1 (next 3)  [3]
+4   pop 3 (next 4)  [4]
+2   push            [4,2]    4 and 2 -&gt; -1
+nums1 [4,1,2] -&gt; [-1, 3, -1]</pre>
+<h4>Watch out</h4>
+<p>Values are unique here, which is why a value-keyed map works. Pop with <code>&lt;</code> (strictly smaller): an equal number is not "greater".</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/daily-temperatures/">739. Daily Temperatures</a> — the first animation.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>For each day, how many days until a warmer temperature? <code>[73,74,75,71,69,72,76,73]</code> → <code>[1,1,4,2,1,1,0,0]</code>. Keep a stack of <b>indices</b> of days still waiting for a warmer day, with temperatures decreasing from bottom to top. Today's temperature pops every colder waiting day, and the answer for each is <code>today − thatDay</code>. Pattern: <b>monotonic stack, next greater</b>.</p>
+<h4>Brute force first</h4>
+<p>For each day scan forward to the first warmer day: O(n²).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>ans</code> filled with 0; empty stack of indices.</li><li>For each day i: while the top day is colder than <code>t[i]</code>, pop it as <code>j</code> and set <code>ans[j] = i - j</code>.</li><li>Push i.</li><li>Days left on the stack keep 0.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] dailyTemperatures(int[] t) {
+        int n = t.length;
+        int[] ans = new int[n];
+        Deque&lt;Integer&gt; st = new ArrayDeque&lt;&gt;(); // indices
+        for (int i = 0; i &lt; n; i++) {
+            while (!st.isEmpty() &amp;&amp; t[st.peek()] &lt; t[i]) {
+                int j = st.pop();
+                ans[j] = i - j;    // day i is warmer than j
+            }
+            st.push(i);
+        }
+        return ans;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — each index is pushed and popped once.</p>
+<h4>Dry run</h4>
+<pre class="code">i  t    action                 stack (temps)
+2  75   pops 74                [75]
+3  71   push                   [75,71]
+4  69   push                   [75,71,69]
+5  72   pop 69 (1), 71 (2)     [75,72]
+6  76   pop 72 (1), 75 (4)     [76]</pre>
+<h4>Watch out</h4>
+<p>Store indices, not temperatures, because the answer is a distance. Equal temperature is not warmer, so pop only on strictly smaller.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/next-greater-element-ii/">503. Next Greater Element II</a> — circular: go around twice.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Next greater element, but the array is <b>circular</b>: after the last element you continue from the first. <code>[1,2,1]</code> → <code>[2,-1,2]</code>. Simulate going around twice: loop <code>i</code> from 0 to 2n−1 and use <code>i % n</code>. Same <b>monotonic stack</b> as 739, but only push indices during the first lap.</p>
+<h4>Brute force first</h4>
+<p>For each element, scan the next n−1 positions with wrap-around: O(n²).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>ans</code> filled with -1.</li><li>For <code>i</code> in 0..2n−1, let <code>x = nums[i % n]</code>.</li><li>While the stack top's value is smaller than x, pop it and set its answer to x.</li><li>Push <code>i</code> only if <code>i &lt; n</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] nextGreaterElements(int[] nums) {
+        int n = nums.length;
+        int[] ans = new int[n];
+        Arrays.fill(ans, -1);
+        Deque&lt;Integer&gt; st = new ArrayDeque&lt;&gt;(); // indices
+        for (int i = 0; i &lt; 2 * n; i++) {        // two laps
+            int x = nums[i % n];
+            while (!st.isEmpty() &amp;&amp; nums[st.peek()] &lt; x) {
+                ans[st.pop()] = x;
+            }
+            if (i &lt; n) st.push(i);
+        }
+        return ans;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — two laps, each index pushed once and popped at most once.</p>
+<h4>Dry run</h4>
+<pre class="code">[1,2,1]
+i0 x1 push 0          i1 x2 pop 0 (ans 2), push 1
+i2 x1 push 2          i3 x1 (wrap) nothing
+i4 x2 pop 2 (ans 2)   index 1 stays -1</pre>
+<h4>Watch out</h4>
+<p>Without the second lap, the last element's answer (which lies at the start) is missed. Pushing during the second lap is harmless but wasteful; the <code>i &lt; n</code> check avoids it.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/online-stock-span/">901. Online Stock Span</a> — previous greater; store (price, span) pairs.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p><code>next(price)</code> returns how many consecutive days up to today had price ≤ today's. Prices 100, 80, 60, 70, 60, 75, 85 give spans 1, 1, 1, 2, 1, 4, 6. Keep a stack of <code>(price, span)</code> in decreasing price order. A new price swallows every smaller-or-equal entry on top and adds their spans, because those days are covered now. Pattern: <b>monotonic stack, previous greater</b>.</p>
+<h4>Brute force first</h4>
+<p>Store all prices and walk back from today until a bigger price: O(n) per call, O(n²) total.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>span = 1</code> (today).</li><li>While the top price ≤ today's price: pop it and add its span.</li><li>Push <code>(price, span)</code> and return span.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class StockSpanner {
+    // each entry: {price, span}; prices decrease
+    private final Deque&lt;int[]&gt; st = new ArrayDeque&lt;&gt;();
+
+    public int next(int price) {
+        int span = 1;
+        while (!st.isEmpty() &amp;&amp; st.peek()[0] &lt;= price) {
+            span += st.pop()[1];  // absorb smaller days
+        }
+        st.push(new int[]{price, span});
+        return span;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(1) amortized per call · <b>Space</b> O(n) — each price is pushed once and popped at most once.</p>
+<h4>Dry run</h4>
+<pre class="code">100 -&gt; [(100,1)]                   1
+80  -&gt; [(100,1)(80,1)]             1
+60  -&gt; [.. (60,1)]                 1
+70  pops 60 -&gt; (70,2)              2
+60  -&gt; (60,1)                      1
+75  pops 60,70 -&gt; (75,1+1+2=4)     4
+85  pops 75,80 -&gt; (85,1+4+1=6)     6</pre>
+<h4>Watch out</h4>
+<p>Use <code>&lt;=</code>: equal prices count towards the span. Store the span with the price so popped days are not lost.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/remove-k-digits/">402. Remove K Digits</a> — increasing stack, pop bigger digits while k &gt; 0.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Remove k digits from a number string to make it as small as possible: <code>"1432219"</code>, k=3 → <code>"1219"</code>. Leftmost digits matter most, so whenever a digit is bigger than the one after it, deleting it helps. Build the answer as an <b>increasing stack</b>: before pushing a digit, pop bigger digits while you still have deletions left.</p>
+<h4>Brute force first</h4>
+<p>Try every set of k positions to delete: combinatorial, far too slow.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>For each digit d: while <code>k &gt; 0</code> and the top is greater than d, pop and <code>k--</code>. Push d.</li><li>If k is still positive, remove the last k digits (the stack is increasing, so the biggest are at the end).</li><li>Strip leading zeros; if nothing is left return <code>"0"</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public String removeKdigits(String num, int k) {
+        StringBuilder st = new StringBuilder(); // the stack
+        for (char d : num.toCharArray()) {
+            while (k &gt; 0 &amp;&amp; st.length() &gt; 0
+                    &amp;&amp; st.charAt(st.length() - 1) &gt; d) {
+                // pop the bigger digit
+                st.deleteCharAt(st.length() - 1);
+                k--;
+            }
+            st.append(d);
+        }
+        st.setLength(st.length() - k);  // still owe k cuts
+        int i = 0;
+        while (i &lt; st.length() &amp;&amp; st.charAt(i) == '0') i++;
+        String res = st.substring(i);   // no leading zeros
+        return res.isEmpty() ? "0" : res;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — each digit is appended once and removed at most once.</p>
+<h4>Dry run</h4>
+<pre class="code">"1432219", k=3
+1 -&gt; 1      4 -&gt; 14     3: pop 4 (k=2) -&gt; 13
+2: pop 3 (k=1) -&gt; 12    2 -&gt; 122
+1: pop 2 (k=0) -&gt; 121   9 -&gt; 1219</pre>
+<h4>Watch out</h4>
+<p>Three edge cases: digits already increasing (<code>"12345"</code>, cut from the end), leading zeros (<code>"10200"</code> → <code>"200"</code>), and removing everything (<code>"0"</code>).</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/sum-of-subarray-minimums/">907. Sum of Subarray Minimums</a> — each element is the min for (left span × right span) subarrays.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Add up the minimum of every contiguous subarray (mod 10<sup>9</sup>+7). <code>[3,1,2,4]</code>: the 10 subarrays have minimums summing to 17. Flip the view: for each element, count the subarrays where it is the minimum. If it can extend <code>left</code> positions to the left and <code>right</code> to the right before meeting something smaller, it is the minimum of <code>left × right</code> subarrays. A <b>monotonic stack</b> finds the previous and next smaller element for everyone.</p>
+<h4>Brute force first</h4>
+<p>For every start, extend the end and keep a running minimum: O(n²), too slow for n = 30 000.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>left[i]</code> = distance to the previous element that is <b>strictly smaller</b> (or to the start).</li><li><code>right[i]</code> = distance to the next element that is <b>smaller or equal</b> (or to the end). The mixed rule counts subarrays with equal minimums exactly once.</li><li>Get both with increasing stacks of indices, one pass from each side.</li><li>Answer = Σ <code>arr[i] × left[i] × right[i]</code>, using <code>long</code> and mod.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int sumSubarrayMins(int[] arr) {
+        final int MOD = 1_000_000_007;
+        int n = arr.length;
+        int[] left = new int[n], right = new int[n];
+        Deque&lt;Integer&gt; st = new ArrayDeque&lt;&gt;();
+        for (int i = 0; i &lt; n; i++) {
+            // previous strictly smaller
+            while (!st.isEmpty()
+                    &amp;&amp; arr[st.peek()] &gt;= arr[i]) {
+                st.pop();
+            }
+            left[i] = st.isEmpty() ? i + 1 : i - st.peek();
+            st.push(i);
+        }
+        st.clear();
+        for (int i = n - 1; i &gt;= 0; i--) {
+            // next smaller or equal
+            while (!st.isEmpty()
+                    &amp;&amp; arr[st.peek()] &gt; arr[i]) {
+                st.pop();
+            }
+            right[i] = st.isEmpty() ? n - i : st.peek() - i;
+            st.push(i);
+        }
+        long sum = 0;
+        for (int i = 0; i &lt; n; i++) {
+            sum = (sum + (long) arr[i] * left[i] % MOD
+                         * right[i]) % MOD;
+        }
+        return (int) sum;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — two stack passes and one sum.</p>
+<h4>Dry run</h4>
+<pre class="code">arr   3  1  2  4
+left  1  2  1  1
+right 1  3  2  1
+sum = 3*1*1 + 1*2*3 + 2*1*2 + 4*1*1 = 3+6+4+4 = 17</pre>
+<h4>Watch out</h4>
+<p>If both sides use the same comparison, subarrays with repeated minimums like <code>[2,2]</code> are counted twice or not at all. Multiply in <code>long</code> and take the mod, or it overflows.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/largest-rectangle-in-histogram/">84. Largest Rectangle in Histogram</a> — the second animation.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Bars of width 1 with given heights; find the largest rectangle inside the histogram. <code>[2,1,5,6,2,3]</code> → 10 (heights 5 and 6, width 2). For each bar, the widest rectangle of its height stretches until a shorter bar on each side. Keep an <b>increasing stack</b> of indices; when a shorter bar arrives, each popped bar has just found its right edge, and the new stack top is its left edge.</p>
+<h4>Brute force first</h4>
+<p>For every bar, expand left and right while bars are at least as tall: O(n²).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Loop <code>i</code> from 0 to n, treating <code>i == n</code> as height 0 so everything gets popped at the end.</li><li>While the top bar is taller than the current height: pop it as <code>h</code>.</li><li>Its width is <code>i</code> if the stack is now empty, else <code>i - st.peek() - 1</code>. Update <code>best</code> with <code>h × width</code>.</li><li>Push i.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int largestRectangleArea(int[] heights) {
+        int n = heights.length, best = 0;
+        // stack of indices, heights increasing
+        Deque&lt;Integer&gt; st = new ArrayDeque&lt;&gt;();
+        for (int i = 0; i &lt;= n; i++) {
+            // height 0 at i == n flushes the stack
+            int cur = (i == n) ? 0 : heights[i];
+            while (!st.isEmpty()
+                    &amp;&amp; heights[st.peek()] &gt; cur) {
+                int h = heights[st.pop()];
+                // left edge = new top, right edge = i
+                int width = st.isEmpty()
+                    ? i : i - st.peek() - 1;
+                best = Math.max(best, h * width);
+            }
+            st.push(i);
+        }
+        return best;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — each index is pushed and popped once.</p>
+<h4>Dry run</h4>
+<pre class="code">[2,1,5,6,2,3]
+i1 h1: pop 2  width 1         area 2
+i4 h2: pop 6  width 4-2-1=1   area 6
+       pop 5  width 4-1-1=2   area 10
+i6 h0: pop 3 (3), pop 2 (2*4=8), pop 1 (1*6=6)
+best 10</pre>
+<h4>Watch out</h4>
+<p>Without the extra height-0 step at <code>i == n</code>, bars still on the stack at the end are never measured. With an empty stack after popping, the bar reaches all the way to index 0, so width is <code>i</code>.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/maximal-rectangle/">85. Maximal Rectangle</a> — build a histogram per row and reuse 84.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Largest rectangle of <code>'1'</code>s in a binary matrix. Look at each row as the floor of a histogram: <code>height[c]</code> is how many consecutive 1s stand on top of each other ending at this row in column c (reset to 0 at a <code>'0'</code>). Every rectangle sits on some floor row, so run problem 84 on each row's histogram and keep the best. Pattern: <b>reduce to a known problem</b>.</p>
+<h4>Brute force first</h4>
+<p>Try every pair of corners and check if the rectangle is all 1s: O((rows·cols)³).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>heights</code> = int array of length cols, all 0.</li><li>For each row: <code>heights[c] = matrix[r][c] == '1' ? heights[c] + 1 : 0</code>.</li><li>Compute the largest rectangle in this histogram (stack method from 84) and update the best.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maximalRectangle(char[][] matrix) {
+        int cols = matrix[0].length, best = 0;
+        int[] heights = new int[cols];
+        for (char[] row : matrix) {
+            for (int c = 0; c &lt; cols; c++) {
+                // stack of 1s ending at this row
+                heights[c] = row[c] == '1'
+                    ? heights[c] + 1 : 0;
+            }
+            best = Math.max(best, largest(heights));
+        }
+        return best;
+    }
+
+    // problem 84
+    private int largest(int[] h) {
+        int n = h.length, best = 0;
+        Deque&lt;Integer&gt; st = new ArrayDeque&lt;&gt;();
+        for (int i = 0; i &lt;= n; i++) {
+            int cur = (i == n) ? 0 : h[i];
+            while (!st.isEmpty() &amp;&amp; h[st.peek()] &gt; cur) {
+                int height = h[st.pop()];
+                int w = st.isEmpty()
+                    ? i : i - st.peek() - 1;
+                best = Math.max(best, height * w);
+            }
+            st.push(i);
+        }
+        return best;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(rows × cols) · <b>Space</b> O(cols) — one O(cols) histogram pass per row.</p>
+<h4>Dry run</h4>
+<pre class="code">rows        heights after the row
+1 0 1 0 0   1 0 1 0 0
+1 0 1 1 1   2 0 2 1 1
+1 1 1 1 1   3 1 3 2 2   -&gt; largest 6 (height 2, cols 2..4)
+1 0 0 1 0   4 0 0 3 0</pre>
+<h4>Watch out</h4>
+<p>A <code>'0'</code> resets the column height to 0; it does not just leave it unchanged. The matrix holds chars, so compare with <code>'1'</code>, not 1.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

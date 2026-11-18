@@ -200,13 +200,373 @@ Node find(String s) {
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/longest-common-prefix/">14. Longest Common Prefix</a> — walk while the node has one child and is not an end.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/implement-trie-prefix-tree/">208. Implement Trie (Prefix Tree)</a> — exactly the animations.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/design-add-and-search-words-data-structure/">211. Design Add and Search Words</a> — on <code>.</code> recurse into every child.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/replace-words/">648. Replace Words</a> — stop at the first end node on the path.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/search-suggestions-system/">1268. Search Suggestions System</a> — walk the prefix, then DFS for 3 words.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-xor-of-two-numbers-in-an-array/">421. Maximum XOR of Two Numbers</a> — a trie of bits, go the opposite bit when you can.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/word-search-ii/">212. Word Search II</a> — DFS the grid while walking the trie.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/longest-common-prefix/">14. Longest Common Prefix</a> — walk while the node has one child and is not an end.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the longest start that every word shares: ["flower","flow","flight"] → "fl". With a <b>trie</b> (a tree where each edge is a letter and each path from the top spells a prefix), the shared prefix is the path from the root while each node has exactly one child and no word has ended yet.</p>
+<h4>Brute force first</h4>
+<p>Compare characters column by column across all words until one differs or a word runs out (vertical scanning). Also O(total letters) and no extra memory, so it is a fine answer too.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Insert every word into a trie; count each node's children and mark where words end.</li><li>Start at the root with an empty answer.</li><li>While the node has exactly one child and is not the end of a word, append that child's letter and move into it.</li><li>Stop as soon as there is a fork (2+ children) or a word ends; the letters collected are the answer.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public String longestCommonPrefix(String[] strs) {
+        TrieNode root = new TrieNode();
+        for (String s : strs) { // 1. build the trie
+            TrieNode cur = root;
+            for (char c : s.toCharArray()) {
+                int i = c - 'a';
+                if (cur.next[i] == null) {
+                    cur.next[i] = new TrieNode();
+                    cur.kids++;          // one more branch
+                }
+                cur = cur.next[i];
+            }
+            cur.end = true;
+        }
+        // 2. walk while there is one road and no word ends
+        StringBuilder sb = new StringBuilder();
+        TrieNode cur = root;
+        while (cur.kids == 1 &amp;&amp; !cur.end) {
+            for (int i = 0; i &lt; 26; i++) {
+                if (cur.next[i] != null) {
+                    sb.append((char) ('a' + i));
+                    cur = cur.next[i];
+                    break;
+                }
+            }
+        }
+        return sb.toString();
+    }
+}
+
+class TrieNode {
+    TrieNode[] next = new TrieNode[26];
+    int kids;        // how many children exist
+    boolean end;     // a word ends at this node
+}</code></pre>
+<p class="cx"><b>Time</b> O(S) · <b>Space</b> O(S) — S is the total number of letters; each is inserted once.</p>
+<h4>Dry run</h4>
+<p>flower, flow, flight: root has one child f → "f"; f has one child l → "fl"; l has two children (o, i) → stop. Answer "fl".</p>
+<h4>Watch out</h4>
+<p>If one word is a prefix of another ("ab","abc"), the walk must stop where "ab" ends; that is why we also check <code>end</code>. An empty string in the list makes the answer "".</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/implement-trie-prefix-tree/">208. Implement Trie (Prefix Tree)</a> — exactly the animations.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Build the trie itself: <code>insert</code> a word, <code>search</code> for a whole word, and <code>startsWith</code> to check any word has this prefix. Each node has 26 child slots (one per letter a–z) and a flag "a word ends here". After inserting "apple", "app" is a prefix but not a word until it is inserted too.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>A node = an array of 26 children plus a boolean <code>end</code>.</li><li><code>insert</code>: walk letter by letter from the root, creating missing children; mark the last node <code>end = true</code>.</li><li>A helper <code>walk</code> follows the letters and returns the last node, or null if a letter is missing.</li><li><code>search</code> = walk is not null <b>and</b> that node is an end. <code>startsWith</code> = walk is not null.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Trie {
+    private static class Node {
+        Node[] next = new Node[26]; // one slot per letter
+        boolean end;                // a word ends here
+    }
+    private final Node root = new Node();
+
+    public Trie() {}
+
+    public void insert(String word) {
+        Node cur = root;
+        for (char c : word.toCharArray()) {
+            int i = c - 'a';
+            if (cur.next[i] == null) cur.next[i] = new Node();
+            cur = cur.next[i];
+        }
+        cur.end = true;            // mark the last letter
+    }
+
+    public boolean search(String word) {
+        Node n = walk(word);
+        return n != null &amp;&amp; n.end; // must end exactly here
+    }
+
+    public boolean startsWith(String prefix) {
+        return walk(prefix) != null; // any path is enough
+    }
+
+    // follow the letters; null if the path breaks
+    private Node walk(String s) {
+        Node cur = root;
+        for (char c : s.toCharArray()) {
+            cur = cur.next[c - 'a'];
+            if (cur == null) return null;
+        }
+        return cur;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(L) per call · <b>Space</b> O(total letters inserted) — L is the word length; each letter is one array step.</p>
+<h4>Dry run</h4>
+<p>insert "apple" makes a→p→p→l→e, end on e. search "apple" → reaches e, end true → true. search "app" → reaches second p, end false → false. startsWith "app" → true. insert "app" marks that p as end → search "app" now true.</p>
+<h4>Watch out</h4>
+<p>The classic bug is <code>search</code> returning true just because the path exists; it must also check the end flag. <code>c - 'a'</code> only works for lowercase letters.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/design-add-and-search-words-data-structure/">211. Design Add and Search Words</a> — on <code>.</code> recurse into every child.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Like 208, but a search word may contain <code>.</code>, which matches any one letter. "b.." should find "bad". On a normal letter we follow one child; on a dot we must try every child, which is a small <b>DFS</b> (depth-first search: go deep down one branch, back up, try the next).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>addWord</code> is exactly trie insert.</li><li><code>dfs(word, i, node)</code> answers: can <code>word[i..]</code> be matched starting at this node?</li><li>If i reached the end, the answer is whether this node ends a word.</li><li>If the letter is <code>.</code>, try every non-null child with i + 1 and return true if any works.</li><li>Otherwise follow the one matching child (false if it is missing).</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class WordDictionary {
+    private static class Node {
+        Node[] next = new Node[26];
+        boolean end;
+    }
+    private final Node root = new Node();
+
+    public WordDictionary() {}
+
+    public void addWord(String word) {
+        Node cur = root;
+        for (char c : word.toCharArray()) {
+            int i = c - 'a';
+            if (cur.next[i] == null) cur.next[i] = new Node();
+            cur = cur.next[i];
+        }
+        cur.end = true;
+    }
+
+    public boolean search(String word) {
+        return dfs(word, 0, root);
+    }
+
+    // can word[i..] be matched starting from node n?
+    private boolean dfs(String w, int i, Node n) {
+        if (i == w.length()) return n.end;
+        char c = w.charAt(i);
+        if (c == '.') {                   // try every child
+            for (Node kid : n.next) {
+                if (kid != null &amp;&amp; dfs(w, i + 1, kid)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        Node kid = n.next[c - 'a'];       // normal letter
+        return kid != null &amp;&amp; dfs(w, i + 1, kid);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(L) for plain words, up to O(26^d · L) with d dots in the worst case · <b>Space</b> O(L) recursion — each dot can branch to every child.</p>
+<h4>Dry run</h4>
+<p>Words bad, dad, mad. search ".ad": dot → try b, d, m. Under b: 'a' exists, 'd' exists, end → true. Search "pad": no 'p' child → false.</p>
+<h4>Watch out</h4>
+<p>"b." must be false even though "ba" is a path: at the end check <code>n.end</code>, not just that the node exists. Words longer than any stored word fall off the trie and must return false, not crash.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/replace-words/">648. Replace Words</a> — stop at the first end node on the path.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Replace each word in the sentence by its shortest dictionary root that is a prefix of it: with roots cat, bat, rat, "cattle" becomes "cat". Put the roots in a trie; while walking a word down the trie, the <b>first</b> node marked as an end is the shortest root.</p>
+<h4>Brute force first</h4>
+<p>For every word, try every root with <code>startsWith</code> and keep the shortest. O(words × roots × length).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Insert every root into a trie, marking end nodes.</li><li>Split the sentence on spaces.</li><li>For each word, walk the trie letter by letter. If a letter is missing, keep the word as it is.</li><li>If you reach an end node, replace the word with the letters walked so far and stop.</li><li>Join the results with single spaces.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public String replaceWords(List&lt;String&gt; dictionary,
+                               String sentence) {
+        TrieNode root = new TrieNode();
+        for (String r : dictionary) {      // trie of roots
+            TrieNode cur = root;
+            for (char c : r.toCharArray()) {
+                int i = c - 'a';
+                if (cur.next[i] == null) {
+                    cur.next[i] = new TrieNode();
+                }
+                cur = cur.next[i];
+            }
+            cur.end = true;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (String word : sentence.split(" ")) {
+            if (sb.length() &gt; 0) sb.append(' ');
+            sb.append(shortestRoot(root, word));
+        }
+        return sb.toString();
+    }
+
+    // first end node on the word's path, else the word
+    private String shortestRoot(TrieNode root, String w) {
+        TrieNode cur = root;
+        for (int j = 0; j &lt; w.length(); j++) {
+            cur = cur.next[w.charAt(j) - 'a'];
+            if (cur == null) return w;     // no root fits
+            if (cur.end) return w.substring(0, j + 1);
+        }
+        return w;
+    }
+}
+
+class TrieNode {
+    TrieNode[] next = new TrieNode[26];
+    boolean end;
+}</code></pre>
+<p class="cx"><b>Time</b> O(D + S) · <b>Space</b> O(D) — D letters in the dictionary, S letters in the sentence, each touched once.</p>
+<h4>Dry run</h4>
+<p>"cattle": c → a → t is an end (cat) → "cat". "the": no 't' at the root → "the". "battery": b → a → t end → "bat".</p>
+<h4>Watch out</h4>
+<p>Stop at the <b>first</b> end node, not the last, so roots "a" and "aa" turn "aaa" into "a". A word can end before any root does (word "ca" with root "cat"): return the word unchanged.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/search-suggestions-system/">1268. Search Suggestions System</a> — walk the prefix, then DFS for 3 words.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>After each letter typed of <code>searchWord</code>, list up to 3 products (alphabetically smallest) that start with what has been typed so far. Sort the products first; then insert them into a trie and let each node remember the first 3 words that pass through it. Because words arrive sorted, those first 3 are the 3 smallest.</p>
+<h4>Brute force first</h4>
+<p>For each prefix, scan the sorted product list and take the first 3 that start with it. O(L × n × m). A trie with a DFS for 3 words per prefix also works; storing the 3 words in each node skips that DFS.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Sort <code>products</code> alphabetically.</li><li>Insert each product into a trie; at every node on its path, add the product to that node's <code>top</code> list if it holds fewer than 3.</li><li>Walk <code>searchWord</code> letter by letter from the root.</li><li>After each letter, add the node's <code>top</code> list, or an empty list once the path has broken.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;List&lt;String&gt;&gt; suggestedProducts(
+            String[] products, String searchWord) {
+        Arrays.sort(products); // words now arrive in order
+        TrieNode root = new TrieNode();
+        for (String p : products) {
+            TrieNode cur = root;
+            for (char c : p.toCharArray()) {
+                int i = c - 'a';
+                if (cur.next[i] == null) {
+                    cur.next[i] = new TrieNode();
+                }
+                cur = cur.next[i];
+                // keep the first 3 (smallest) words seen here
+                if (cur.top.size() &lt; 3) cur.top.add(p);
+            }
+        }
+        List&lt;List&lt;String&gt;&gt; ans = new ArrayList&lt;&gt;();
+        TrieNode cur = root;
+        for (char c : searchWord.toCharArray()) {
+            if (cur != null) cur = cur.next[c - 'a'];
+            ans.add(cur == null
+                    ? new ArrayList&lt;&gt;() : cur.top);
+        }
+        return ans;
+    }
+}
+
+class TrieNode {
+    TrieNode[] next = new TrieNode[26];
+    List&lt;String&gt; top = new ArrayList&lt;&gt;(); // up to 3 words
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log n · m + S) · <b>Space</b> O(S) — sorting dominates; S is the total letters, each node keeps at most 3 words.</p>
+<h4>Dry run</h4>
+<p>Products sorted: mobile, moneypot, monitor, mouse, mousepad. Node "m" keeps the first three: mobile, moneypot, monitor; so does "mo". Node "mou" only sees mouse, mousepad.</p>
+<h4>Watch out</h4>
+<p>Once a letter has no child, every later prefix also has none; keep the node null and keep adding empty lists (do not stop early, the answer needs one list per letter).</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/maximum-xor-of-two-numbers-in-an-array/">421. Maximum XOR of Two Numbers</a> — a trie of bits, go the opposite bit when you can.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Pick two numbers whose XOR is as big as possible (XOR sets a bit to 1 where the two numbers differ). For [3,10,5,25,2,8] the best is 5 XOR 25 = 28. Build a trie of the numbers' bits from the highest bit down; for each number, walk down choosing the <b>opposite</b> bit whenever it exists, because a 1 in a high bit beats everything below it.</p>
+<h4>Brute force first</h4>
+<p>Try every pair: O(n²), too slow for n up to 200,000.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Each trie node has two children: bit 0 and bit 1.</li><li>For each number x, insert its bits from bit 30 down to bit 0 (the numbers are non-negative, so 31 bits are enough).</li><li>Then walk again from the root: at each bit, if the child with the opposite bit exists go there and set that bit in the result; otherwise follow the same bit.</li><li>Keep the biggest result over all x.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findMaximumXOR(int[] nums) {
+        TrieNode root = new TrieNode();
+        int best = 0;
+        for (int x : nums) {
+            TrieNode cur = root; // insert x's bits
+            for (int b = 30; b &gt;= 0; b--) {
+                int bit = (x &gt;&gt; b) &amp; 1;
+                if (cur.kid[bit] == null) {
+                    cur.kid[bit] = new TrieNode();
+                }
+                cur = cur.kid[bit];
+            }
+            cur = root; // best partner for x
+            int xor = 0;
+            for (int b = 30; b &gt;= 0; b--) {
+                int bit = (x &gt;&gt; b) &amp; 1;
+                if (cur.kid[1 - bit] != null) {
+                    xor |= 1 &lt;&lt; b; // opposite bit: a 1
+                    cur = cur.kid[1 - bit];
+                } else {
+                    cur = cur.kid[bit]; // forced to match
+                }
+            }
+            best = Math.max(best, xor);
+        }
+        return best;
+    }
+}
+
+class TrieNode {
+    TrieNode[] kid = new TrieNode[2]; // kid[0], kid[1]
+}</code></pre>
+<p class="cx"><b>Time</b> O(31 · n) · <b>Space</b> O(31 · n) — each number adds and walks 31 levels.</p>
+<h4>Dry run</h4>
+<p>x = 5 (00101) when 25 (11001) is already in: bit 4: 5 has 0, a 1-child exists (25) → take it, result 10000. Bit 3: 5 has 0, 1 exists → 11000. Bit 2: 5 has 1, need 0 → 25 has 0 → 11100. Bits 1, 0 continue to give 11100 = 28.</p>
+<h4>Watch out</h4>
+<p>Inserting x before querying is fine (x XOR x = 0) and avoids a null root on the first number. Walk the bits in the same order you inserted them, top bit first.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/word-search-ii/">212. Word Search II</a> — DFS the grid while walking the trie.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find every word from a list that can be spelled on the grid by moving up/down/left/right without reusing a cell. Searching each word separately repeats work. Put all words in a trie and run one <b>DFS</b> from each cell while walking down the trie at the same time; when a path is not a prefix of any word, stop immediately.</p>
+<h4>Brute force first</h4>
+<p>Run the Word Search DFS (problem 79) once per word: O(words × cells × 4^L). Far too slow with many words.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Insert every word into a trie and store the full word at its end node.</li><li>From every cell, start a DFS with the trie root as the parent node.</li><li>In the DFS, if the cell is off the grid, already used (<code>#</code>), or has no trie child for its letter, return.</li><li>If the child node holds a word, record it and clear it so it is not reported twice.</li><li>Mark the cell <code>#</code>, recurse in 4 directions with the child node, then restore the letter (backtracking).</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;String&gt; findWords(char[][] board,
+                                  String[] words) {
+        TrieNode root = new TrieNode();
+        for (String w : words) { // trie of all words
+            TrieNode cur = root;
+            for (char c : w.toCharArray()) {
+                int i = c - 'a';
+                if (cur.next[i] == null) {
+                    cur.next[i] = new TrieNode();
+                }
+                cur = cur.next[i];
+            }
+            cur.word = w;                 // store the word
+        }
+        List&lt;String&gt; found = new ArrayList&lt;&gt;();
+        for (int r = 0; r &lt; board.length; r++) {
+            for (int c = 0; c &lt; board[0].length; c++) {
+                dfs(board, r, c, root, found);
+            }
+        }
+        return found;
+    }
+
+    private void dfs(char[][] b, int r, int c,
+                     TrieNode parent, List&lt;String&gt; found) {
+        if (r &lt; 0 || c &lt; 0 || r &gt;= b.length
+                || c &gt;= b[0].length) return;
+        char ch = b[r][c];
+        if (ch == '#') return;            // already on path
+        TrieNode node = parent.next[ch - 'a'];
+        if (node == null) return; // no word this way
+        if (node.word != null) {
+            found.add(node.word);
+            node.word = null;             // report it once
+        }
+        b[r][c] = '#';                    // mark visited
+        dfs(b, r + 1, c, node, found);
+        dfs(b, r - 1, c, node, found);
+        dfs(b, r, c + 1, node, found);
+        dfs(b, r, c - 1, node, found);
+        b[r][c] = ch;                     // undo the mark
+    }
+}
+
+class TrieNode {
+    TrieNode[] next = new TrieNode[26];
+    String word;     // the full word if one ends here
+}</code></pre>
+<p class="cx"><b>Time</b> O(cells · 4 · 3^(L−1)) worst case · <b>Space</b> O(total letters in words) — each path branches at most 3 ways after the first step and stops early on non-prefixes; L is the longest word.</p>
+<h4>Dry run</h4>
+<p>Words oath, eat. From the 'o' at (0,0): o → a → t → h follows the trie and reaches the node holding "oath" → found. From 'e' at (1,3): e → a → t → "eat" found. "pea" never starts since no cell has 'p'.</p>
+<h4>Watch out</h4>
+<p>Always restore the cell after the recursion, or later searches see '#'. Clear <code>node.word</code> after finding it, or the same word can be added twice from two different paths.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

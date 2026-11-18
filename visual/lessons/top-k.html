@@ -162,13 +162,267 @@ PriorityQueue&lt;T&gt; heap = <span class="k">new</span> PriorityQueue&lt;&gt;(b
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/kth-largest-element-in-a-stream/">703. Kth Largest Element in a Stream</a> — the first animation, kept as a class.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/kth-largest-element-in-an-array/">215. Kth Largest Element in an Array</a> — size-k min-heap (or quickselect).</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/top-k-frequent-elements/">347. Top K Frequent Elements</a> — the second animation.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/k-closest-points-to-origin/">973. K Closest Points to Origin</a> — k smallest distances → max-heap of size k.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/top-k-frequent-words/">692. Top K Frequent Words</a> — tie-break alphabetically in the comparator.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-k-closest-elements/">658. Find K Closest Elements</a> — heap works; binary search on the window is faster.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/sliding-window-maximum/">239. Sliding Window Maximum</a> — heap with lazy removal, or a monotonic deque.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/kth-largest-element-in-a-stream/">703. Kth Largest Element in a Stream</a> — the first animation, kept as a class.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>After every <code>add</code>, return the k-th largest number seen so far. The top-k pattern: keep a <b>min-heap of size k</b> holding the k largest. Its top is the smallest of the winners, which is the k-th largest. Any number smaller than the top can never matter again, so it is dropped. This is the first animation written as a class.</p>
+<h4>Brute force first</h4>
+<p>Keep every number in a sorted list and insert in order: O(n) per add.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Fields: <code>k</code> and a <code>PriorityQueue&lt;Integer&gt;</code> (min-heap by default).</li><li>Constructor: feed every starting number through <code>add</code>.</li><li><code>add(val)</code>: offer; if size &gt; k, poll the smallest; return <code>peek()</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class KthLargest {
+    private final int k;
+    // min-heap of the k largest seen; top = k-th largest
+    private final PriorityQueue&lt;Integer&gt; heap =
+        new PriorityQueue&lt;&gt;();
+
+    public KthLargest(int k, int[] nums) {
+        this.k = k;
+        for (int x : nums) add(x);
+    }
+
+    public int add(int val) {
+        heap.offer(val);
+        if (heap.size() &gt; k) heap.poll(); // drop smallest
+        return heap.peek();
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(log k) per add · <b>Space</b> O(k) — the heap never holds more than k+1 numbers.</p>
+<h4>Dry run</h4>
+<pre class="code">k=3, nums 4 5 8 2   heap {4,5,8}  (2 was dropped)
+add 3   {3,4,5,8} -&gt; drop 3   top 4
+add 5   {4,5,5,8} -&gt; drop 4   top 5
+add 10  drop 5 -&gt; {5,8,10}    top 5
+add 9   drop 5 -&gt; {8,9,10}    top 8</pre>
+<h4>Watch out</h4>
+<p>The heap is a <i>min</i>-heap even though we want the <i>largest</i> numbers: the top must be the weakest winner so it can be kicked out. The starting array may have fewer than k numbers.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/kth-largest-element-in-an-array/">215. Kth Largest Element in an Array</a> — size-k min-heap (or quickselect).
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the k-th largest element of an unsorted array (duplicates count: <code>[3,2,3,1,2,4,5,5,6]</code>, k=4 → 4). Same <b>size-k min-heap</b>: push each number, pop when the heap holds more than k. At the end the top is the answer. Quickselect is the O(n)-average alternative.</p>
+<h4>Brute force first</h4>
+<p>Sort and return <code>nums[n - k]</code>: O(n log n). Fine as a first answer; interviewers then ask for better.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Empty min-heap.</li><li>For each number: offer it; if size &gt; k, poll.</li><li>Return <code>peek()</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int findKthLargest(int[] nums, int k) {
+        PriorityQueue&lt;Integer&gt; heap = new PriorityQueue&lt;&gt;();
+        for (int x : nums) {
+            heap.offer(x);
+            if (heap.size() &gt; k) {
+                heap.poll();     // keep only the k biggest
+            }
+        }
+        return heap.peek();   // smallest of the k biggest
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log k) · <b>Space</b> O(k) — n heap operations, heap never above k+1.</p>
+<h4>Dry run</h4>
+<pre class="code">[3,2,1,5,6,4], k=2
+3 {3}   2 {2,3}   1 {1,2,3}-&gt;drop 1   5 -&gt; drop 2 {3,5}
+6 -&gt; drop 3 {5,6}   4 -&gt; drop 4 {5,6}    top 5</pre>
+<h4>Watch out</h4>
+<p>k-th largest means index <code>n - k</code> in ascending order, not <code>k - 1</code>. Quickselect (partition like quicksort, recurse into one side) averages O(n) but is O(n²) on bad pivots unless you pick them randomly.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/top-k-frequent-elements/">347. Top K Frequent Elements</a> — the second animation.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Return the k values that appear most often: <code>[1,1,1,2,2,3]</code>, k=2 → <code>[1,2]</code>. Two steps: count with a <code>HashMap</code>, then pick the top k by count with a <b>min-heap of size k ordered by count</b>; the least frequent of the kept ones sits on top and is pushed out when something more frequent arrives.</p>
+<h4>Brute force first</h4>
+<p>Sort the distinct values by count: O(m log m) for m distinct values. Bucket sort by count (index = frequency) is the O(n) alternative.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Count every number in a map.</li><li>For each <code>(value, count)</code> entry: offer the value into a min-heap that compares by count; if size &gt; k, poll.</li><li>Pour the heap into the result array.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] topKFrequent(int[] nums, int k) {
+        Map&lt;Integer, Integer&gt; count = new HashMap&lt;&gt;();
+        for (int x : nums) count.merge(x, 1, Integer::sum);
+
+        // min-heap by count: least frequent kept on top
+        PriorityQueue&lt;Integer&gt; heap = new PriorityQueue&lt;&gt;(
+            (a, b) -&gt; Integer.compare(count.get(a),
+                                      count.get(b)));
+        for (int v : count.keySet()) {
+            heap.offer(v);
+            if (heap.size() &gt; k) heap.poll();
+        }
+        int[] res = new int[k];
+        for (int i = 0; i &lt; k; i++) res[i] = heap.poll();
+        return res;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log k) · <b>Space</b> O(n) — counting is O(n); m ≤ n heap operations on a heap of size k.</p>
+<h4>Dry run</h4>
+<pre class="code">counts {1:3, 2:2, 3:1}, k=2
+offer 1 {1}   offer 2 {2,1}   offer 3 {3,2,1} -&gt; drop 3
+result [2,1] (any order)</pre>
+<h4>Watch out</h4>
+<p>The heap must compare counts, not the numbers themselves. The answer may be in any order; it is unique by the problem's guarantee.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/k-closest-points-to-origin/">973. K Closest Points to Origin</a> — k smallest distances → max-heap of size k.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>The k closest points to the origin are the k <b>smallest</b> distances, so flip the top-k trick: keep a <b>max-heap of size k</b>. Its top is the farthest of the kept points; when the heap grows past k, that one goes. Compare <code>x² + y²</code> (no square root needed).</p>
+<h4>Brute force first</h4>
+<p>Sort all points by distance and return the first k: O(n log n).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Max-heap whose comparator puts the larger squared distance first.</li><li>Offer each point; if size &gt; k, poll.</li><li>Return the heap's contents.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[][] kClosest(int[][] points, int k) {
+        // max-heap by distance: top = farthest kept
+        PriorityQueue&lt;int[]&gt; heap = new PriorityQueue&lt;&gt;(
+            (a, b) -&gt; Integer.compare(dist(b), dist(a)));
+        for (int[] p : points) {
+            heap.offer(p);
+            if (heap.size() &gt; k) {
+                heap.poll();           // drop farthest
+            }
+        }
+        return heap.toArray(new int[0][]);
+    }
+
+    private int dist(int[] p) {
+        // squared distance; sqrt keeps the same order
+        return p[0] * p[0] + p[1] * p[1];
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log k) · <b>Space</b> O(k) — each point costs one heap operation on a heap of size k.</p>
+<h4>Dry run</h4>
+<pre class="code">[[3,3],[5,-1],[-2,4]], k=2    dist 18, 26, 20
+add 18        {18}
+add 26        {26,18}
+add 20        {26,20,18} -&gt; drop 26
+answer [3,3] and [-2,4]</pre>
+<h4>Watch out</h4>
+<p>"k smallest → max-heap, k largest → min-heap" is the rule to remember; mixing them up keeps the wrong end. <code>x*x + y*y</code> fits in int for coordinates up to 10<sup>4</sup>.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/top-k-frequent-words/">692. Top K Frequent Words</a> — tie-break alphabetically in the comparator.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Return the k most frequent words, sorted by frequency (high first), and alphabetically when counts tie. <code>["i","love","leetcode","i","love","coding"]</code>, k=2 → <code>["i","love"]</code>. Count, keep a <b>size-k min-heap</b> whose "weakest" word is on top: lower count is weaker, and for equal counts the alphabetically <i>later</i> word is weaker. Pop the heap and reverse at the end.</p>
+<h4>Brute force first</h4>
+<p>Sort all distinct words with the comparator (count desc, then word asc) and take k: O(m log m).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Count words in a map.</li><li>Heap comparator: if counts differ, smaller count first; else <code>b.compareTo(a)</code> (later word first).</li><li>Offer each word; if size &gt; k, poll.</li><li>Poll everything into a list (weakest first), then reverse it.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;String&gt; topKFrequent(String[] words,
+                                     int k) {
+        Map&lt;String, Integer&gt; count = new HashMap&lt;&gt;();
+        for (String w : words) {
+            count.merge(w, 1, Integer::sum);
+        }
+
+        // top of heap = weakest: lower count, or later word
+        PriorityQueue&lt;String&gt; heap = new PriorityQueue&lt;&gt;(
+            (a, b) -&gt; {
+                int ca = count.get(a), cb = count.get(b);
+                if (ca != cb) {
+                    return Integer.compare(ca, cb);
+                }
+                return b.compareTo(a);
+            });
+        for (String w : count.keySet()) {
+            heap.offer(w);
+            if (heap.size() &gt; k) heap.poll();
+        }
+        List&lt;String&gt; res = new ArrayList&lt;&gt;();
+        while (!heap.isEmpty()) res.add(heap.poll());
+        Collections.reverse(res);        // strongest first
+        return res;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n log k) · <b>Space</b> O(n) — counting plus one heap operation per distinct word.</p>
+<h4>Dry run</h4>
+<pre class="code">counts i:2 love:2 leetcode:1 coding:1, k=2
+heap keeps i and love; ties among count 1 drop
+pop order: love, i   reverse -&gt; [i, love]</pre>
+<h4>Watch out</h4>
+<p>The tie-break is reversed inside the heap (<code>b.compareTo(a)</code>) because the heap's top is the one to throw away. Forgetting the final reverse returns the answer back to front.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/find-k-closest-elements/">658. Find K Closest Elements</a> — heap works; binary search on the window is faster.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>In a sorted array, return the k numbers closest to <code>x</code>, in ascending order (ties go to the smaller number). The answer is always a <b>contiguous window</b> of length k. Binary search for its left edge <code>lo</code> in <code>[0, n-k]</code>: compare <code>x - arr[mid]</code> with <code>arr[mid+k] - x</code>; if the left end is farther, the window should start later.</p>
+<h4>Brute force first</h4>
+<p>A max-heap of size k by distance (ties by value) works in O(n log k), or sort by distance in O(n log n).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>lo = 0</code>, <code>hi = n - k</code>.</li><li>While <code>lo &lt; hi</code>: <code>mid = (lo+hi)/2</code>.</li><li>If <code>x - arr[mid] &gt; arr[mid+k] - x</code>, the left end loses: <code>lo = mid + 1</code>. Else <code>hi = mid</code>.</li><li>Return <code>arr[lo .. lo+k-1]</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public List&lt;Integer&gt; findClosestElements(int[] arr,
+                                             int k, int x) {
+        int lo = 0, hi = arr.length - k;  // window start
+        while (lo &lt; hi) {
+            int mid = (lo + hi) / 2;
+            // window [mid, mid+k): drop left end or right?
+            if (x - arr[mid] &gt; arr[mid + k] - x) {
+                lo = mid + 1;       // left end is worse
+            } else {
+                hi = mid;           // right end is worse
+            }
+        }
+        List&lt;Integer&gt; res = new ArrayList&lt;&gt;();
+        for (int i = lo; i &lt; lo + k; i++) res.add(arr[i]);
+        return res;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(log(n − k) + k) · <b>Space</b> O(1) extra — binary search for the start, then copy k items.</p>
+<h4>Dry run</h4>
+<pre class="code">[1,2,3,4,5], k=4, x=3      lo 0, hi 1
+mid 0: x-arr[0]=2, arr[4]-x=2 -&gt; not greater, hi=0
+lo = 0 -&gt; [1,2,3,4]</pre>
+<h4>Watch out</h4>
+<p>Compare signed differences, not <code>Math.abs</code>: with <code>[1,1,2,2,2,2,2,3,3]</code>, k = 3, x = 3, absolute values stop at <code>[2,2,2]</code> instead of <code>[2,3,3]</code>. Using <code>&gt;</code> (not <code>&gt;=</code>) keeps the smaller numbers on ties.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/sliding-window-maximum/">239. Sliding Window Maximum</a> — heap with lazy removal, or a monotonic deque.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>For every window of size k sliding across the array, report its maximum: <code>[1,3,-1,-3,5,3,6,7]</code>, k=3 → <code>[3,3,5,5,6,7]</code>. Keep a <b>monotonic deque</b> (double-ended queue) of indices whose values decrease from front to back. The front is the window's max. A new value removes smaller values from the back (they can never be a max again), and the front leaves once it slides out of the window.</p>
+<h4>Brute force first</h4>
+<p>Scan each window for its max: O(n·k). A max-heap of <code>(value, index)</code> with lazy removal (pop the top while its index is outside the window) gives O(n log n).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>For each index i: if the front index is <code>i - k</code> (just left the window), remove it from the front.</li><li>While the back value is ≤ <code>nums[i]</code>, remove it from the back.</li><li>Add i at the back.</li><li>Once <code>i &gt;= k - 1</code>, the front index holds this window's max; record it.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] maxSlidingWindow(int[] nums, int k) {
+        int n = nums.length;
+        int[] res = new int[n - k + 1];
+        Deque&lt;Integer&gt; dq = new ArrayDeque&lt;&gt;(); // indices
+        for (int i = 0; i &lt; n; i++) {
+            if (!dq.isEmpty() &amp;&amp; dq.peekFirst() == i - k) {
+                dq.pollFirst();            // slid out
+            }
+            while (!dq.isEmpty()
+                    &amp;&amp; nums[dq.peekLast()] &lt;= nums[i]) {
+                dq.pollLast();         // never a max now
+            }
+            dq.offerLast(i);
+            if (i &gt;= k - 1) {               // full window
+                res[i - k + 1] = nums[dq.peekFirst()];
+            }
+        }
+        return res;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(k) — each index enters and leaves the deque once.</p>
+<h4>Dry run</h4>
+<pre class="code">i  val  deque (values)   max
+0  1    [1]
+1  3    [3]
+2  -1   [3,-1]           3
+3  -3   [3,-1,-3]        3
+4  5    [5]   (3 slid out, rest smaller)  5
+5  3    [5,3]            5
+6  6    [6]              6
+7  7    [7]              7</pre>
+<h4>Watch out</h4>
+<p>Store indices, not values, so you can tell when the front has left the window. Remove the expired front before reading the max.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

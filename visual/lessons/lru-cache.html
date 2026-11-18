@@ -185,12 +185,419 @@ put: exists → remove; full → evict tail.prev (and map key); add new at front
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/design-hashmap/">706. Design HashMap</a> — warm-up: buckets of linked lists.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/design-linked-list/">707. Design Linked List</a> — practise sentinels and pointer updates.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/lru-cache/">146. LRU Cache</a> — the animations above.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/design-browser-history/">1472. Design Browser History</a> — doubly linked list of pages.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/all-oone-data-structure/">432. All O`one Data Structure</a> — map + doubly linked list of count buckets.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/lfu-cache/">460. LFU Cache</a> — one LRU list per frequency, plus a min-frequency pointer.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/design-hashmap/">706. Design HashMap</a> — warm-up: buckets of linked lists.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Build <code>put</code>, <code>get</code> and <code>remove</code> for int keys without Java's HashMap. A hash map is an array of <b>buckets</b>: the hash function (<code>key % size</code>) picks a bucket, and keys that land in the same bucket (a <b>collision</b>) are kept in a small linked list there. Pattern: <b>separate chaining</b>.</p>
+<h4>Brute force first</h4>
+<p>Keys are at most 10<sup>6</sup>, so an <code>int[1000001]</code> filled with -1 works in O(1) per call, but it wastes memory and is not what the question is testing.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Make an array of, say, 1009 buckets (a prime spreads keys better). Each bucket is a linked list of <code>(key, value)</code> nodes.</li><li><code>put</code>: walk the bucket; if the key exists, overwrite the value, else add a new node at the front.</li><li><code>get</code>: walk the bucket; return the value or -1.</li><li><code>remove</code>: walk the bucket keeping the previous node, and unlink the match.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class MyHashMap {
+    private static class Node {
+        int key, val;
+        Node next;
+        Node(int k, int v, Node n) {
+            key = k; val = v; next = n;
+        }
+    }
+    private static final int SIZE = 1009;  // prime
+    private final Node[] buckets = new Node[SIZE];
+
+    private int idx(int key) { return key % SIZE; }
+
+    public void put(int key, int value) {
+        int i = idx(key);
+        for (Node n = buckets[i]; n != null; n = n.next) {
+            if (n.key == key) { n.val = value; return; }
+        }
+        buckets[i] = new Node(key, value, buckets[i]);
+    }
+
+    public int get(int key) {
+        for (Node n = buckets[idx(key)]; n != null;
+                n = n.next) {
+            if (n.key == key) return n.val;
+        }
+        return -1;
+    }
+
+    public void remove(int key) {
+        int i = idx(key);
+        Node dummy = new Node(0, 0, buckets[i]), p = dummy;
+        while (p.next != null) {
+            if (p.next.key == key) {
+                p.next = p.next.next;   // unlink
+                break;
+            }
+            p = p.next;
+        }
+        buckets[i] = dummy.next;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n / buckets) average per call · <b>Space</b> O(n + buckets) — buckets stay short when keys spread evenly.</p>
+<h4>Dry run</h4>
+<pre class="code">put(1,1)   bucket1: (1,1)
+put(2,2)   bucket2: (2,2)
+put(2,1)   bucket2: (2,1)   overwrite, no new node
+remove(2)  bucket2: empty  -&gt; get(2) = -1</pre>
+<h4>Watch out</h4>
+<p><code>put</code> on an existing key must overwrite, not add a second node. In <code>remove</code>, deleting the bucket's first node is the special case; the dummy node avoids it.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/design-linked-list/">707. Design Linked List</a> — practise sentinels and pointer updates.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Build a linked list with <code>get(index)</code>, <code>addAtHead</code>, <code>addAtTail</code>, <code>addAtIndex</code> and <code>deleteAtIndex</code>. Two <b>sentinels</b> (fake nodes that are always there) at the front and back of a doubly linked list mean every insert and delete looks the same: there is always a real node before and after. Keep a <code>size</code> to check indexes.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>head</code> and <code>tail</code> sentinels linked to each other; <code>size = 0</code>.</li><li><code>node(i)</code>: walk from <code>head.next</code> i steps (walk from the tail side when i is in the back half to halve the work).</li><li><code>addAtIndex(i, v)</code>: if <code>i &gt; size</code> do nothing; else insert before <code>node(i)</code> (when i = size that is the tail sentinel).</li><li>Head and tail adds are <code>addAtIndex(0, v)</code> and <code>addAtIndex(size, v)</code>.</li><li><code>deleteAtIndex(i)</code>: if valid, link its neighbours to each other.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class MyLinkedList {
+    private static class Node {
+        int val;
+        Node prev, next;
+        Node(int v) { val = v; }
+    }
+    private final Node head = new Node(0); // sentinel
+    private final Node tail = new Node(0); // sentinel
+    private int size = 0;
+
+    public MyLinkedList() {
+        head.next = tail;
+        tail.prev = head;
+    }
+
+    // node at index i, 0 &lt;= i &lt;= size (size = tail)
+    private Node node(int i) {
+        if (i &lt; size / 2) {
+            Node n = head.next;
+            while (i-- &gt; 0) n = n.next;
+            return n;
+        }
+        Node n = tail;
+        for (int k = size; k &gt; i; k--) n = n.prev;
+        return n;
+    }
+
+    public int get(int index) {
+        if (index &lt; 0 || index &gt;= size) return -1;
+        return node(index).val;
+    }
+
+    public void addAtHead(int val) { addAtIndex(0, val); }
+
+    public void addAtTail(int val) {
+        addAtIndex(size, val);
+    }
+
+    public void addAtIndex(int index, int val) {
+        if (index &lt; 0 || index &gt; size) return;
+        Node after = node(index), before = after.prev;
+        Node n = new Node(val);
+        n.prev = before;
+        n.next = after;
+        before.next = n;
+        after.prev = n;
+        size++;
+    }
+
+    public void deleteAtIndex(int index) {
+        if (index &lt; 0 || index &gt;= size) return;
+        Node n = node(index);
+        n.prev.next = n.next;   // skip over n
+        n.next.prev = n.prev;
+        size--;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) for index operations, O(1) at head/tail · <b>Space</b> O(n) — reaching an index means walking to it.</p>
+<h4>Dry run</h4>
+<pre class="code">addAtHead(1)     H-1-T
+addAtTail(3)     H-1-3-T
+addAtIndex(1,2)  H-1-2-3-T   get(1)=2
+deleteAtIndex(1) H-1-3-T     get(1)=3</pre>
+<h4>Watch out</h4>
+<p><code>addAtIndex</code> with <code>index == size</code> is allowed (append), but <code>index &gt; size</code> is ignored. <code>get</code> and <code>delete</code> need <code>index &lt; size</code>. Remember to update <code>size</code>.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/lru-cache/">146. LRU Cache</a> — the animations above.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>A cache of fixed <code>capacity</code>: <code>get</code> and <code>put</code> in O(1), and when full, throw out the <b>least recently used</b> key. A <code>HashMap</code> finds a key's node in O(1); a <b>doubly linked list</b> keeps nodes in use order (most recent at the front) and can unlink any node in O(1). Together they give O(1) for everything.</p>
+<h4>Brute force first</h4>
+<p>Store a timestamp with each key and scan for the oldest when evicting: O(capacity) per eviction.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Map <code>key → node</code>; list with <code>head</code>/<code>tail</code> sentinels, front = most recent.</li><li><code>get</code>: if missing, -1. Else move the node to the front and return its value.</li><li><code>put</code> on an existing key: update the value and move to the front.</li><li><code>put</code> on a new key: add a node at the front and to the map; if size exceeds capacity, remove <code>tail.prev</code> from both list and map.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class LRUCache {
+    private static class Node {
+        int key, val;
+        Node prev, next;
+        Node(int k, int v) { key = k; val = v; }
+    }
+    private final int cap;
+    private final Map&lt;Integer, Node&gt; map = new HashMap&lt;&gt;();
+    private final Node head = new Node(0, 0); // newest side
+    private final Node tail = new Node(0, 0); // oldest side
+
+    public LRUCache(int capacity) {
+        cap = capacity;
+        head.next = tail;
+        tail.prev = head;
+    }
+
+    private void unlink(Node n) {
+        n.prev.next = n.next;
+        n.next.prev = n.prev;
+    }
+
+    private void addFront(Node n) {
+        n.next = head.next;
+        n.prev = head;
+        head.next.prev = n;
+        head.next = n;
+    }
+
+    public int get(int key) {
+        Node n = map.get(key);
+        if (n == null) return -1;
+        unlink(n);            // mark as just used
+        addFront(n);
+        return n.val;
+    }
+
+    public void put(int key, int value) {
+        Node n = map.get(key);
+        if (n != null) {
+            n.val = value;
+            unlink(n);
+            addFront(n);
+            return;
+        }
+        n = new Node(key, value);
+        map.put(key, n);
+        addFront(n);
+        if (map.size() &gt; cap) {
+            Node old = tail.prev;   // least recently used
+            unlink(old);
+            map.remove(old.key);
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(1) per call · <b>Space</b> O(capacity) — map lookup plus a fixed number of pointer changes.</p>
+<h4>Dry run</h4>
+<pre class="code">cap 2      list (newest first)
+put 1      1
+put 2      2 1
+get 1      1 2
+put 3      3 1      (2 evicted)
+put 4      4 3      (1 evicted)</pre>
+<h4>Watch out</h4>
+<p>Store the <b>key</b> inside the node: on eviction you only have the node and must remove it from the map too. Updating an existing key must not evict anything.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/design-browser-history/">1472. Design Browser History</a> — doubly linked list of pages.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Browser history: <code>visit(url)</code> clears all forward pages, <code>back(steps)</code> and <code>forward(steps)</code> move but stop at the ends. A <b>doubly linked list</b> of pages with a <code>curr</code> pointer models it directly: visiting attaches a new node after curr, which cuts off the old forward chain.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Start with one node for the homepage; <code>curr</code> points to it.</li><li><code>visit</code>: new node, <code>curr.next = node</code>, <code>node.prev = curr</code>, move curr to it (the old forward part is dropped).</li><li><code>back(k)</code>: step to <code>prev</code> while k &gt; 0 and prev exists; return curr's url.</li><li><code>forward(k)</code>: same with <code>next</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class BrowserHistory {
+    private static class Page {
+        String url;
+        Page prev, next;
+        Page(String u) { url = u; }
+    }
+    private Page curr;
+
+    public BrowserHistory(String homepage) {
+        curr = new Page(homepage);
+    }
+
+    public void visit(String url) {
+        Page p = new Page(url);
+        curr.next = p;        // forward history is gone
+        p.prev = curr;
+        curr = p;
+    }
+
+    public String back(int steps) {
+        while (steps-- &gt; 0 &amp;&amp; curr.prev != null) {
+            curr = curr.prev;
+        }
+        return curr.url;
+    }
+
+    public String forward(int steps) {
+        while (steps-- &gt; 0 &amp;&amp; curr.next != null) {
+            curr = curr.next;
+        }
+        return curr.url;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(steps) for back/forward, O(1) for visit · <b>Space</b> O(pages visited) — one node per visit.</p>
+<h4>Dry run</h4>
+<pre class="code">leet - google - facebook - youtube*     back(1) -&gt; facebook
+back(1) -&gt; google*      forward(1) -&gt; facebook*
+visit linkedin: leet - google - facebook - linkedin*  (youtube gone)
+forward(2) stays linkedin;  back(2) -&gt; google;  back(7) -&gt; leet</pre>
+<h4>Watch out</h4>
+<p>Stop at the ends instead of walking off into null. An array list plus a <code>curr</code> index and a <code>last</code> index is the other common answer and makes back/forward O(1) with a single <code>Math.max</code>/<code>Math.min</code>.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/all-oone-data-structure/">432. All O`one Data Structure</a> — map + doubly linked list of count buckets.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Keep string counts with <code>inc</code>, <code>dec</code>, <code>getMaxKey</code> and <code>getMinKey</code>, all O(1). Group keys into <b>count buckets</b> (one node per count, holding the set of keys with that count) in a doubly linked list sorted by count. A key's count only moves by one, so it moves to the neighbouring bucket, which is O(1). The minimum is the first bucket, the maximum the last. A map <code>key → bucket</code> finds a key's bucket.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>List of buckets between <code>head</code> and <code>tail</code> sentinels, increasing count; map <code>key → bucket</code>.</li><li><code>inc</code>: current bucket <code>b</code> (head if new). If <code>b.next</code> does not have count+1, insert a new bucket after b. Move the key there; if b becomes empty (and is not head), unlink it.</li><li><code>dec</code>: bucket b. If count is 1, just drop the key from the map. Else make sure <code>b.prev</code> has count−1 (insert one before b if not) and move the key there. Remove b if empty.</li><li><code>getMaxKey</code>: any key of <code>tail.prev</code>; <code>getMinKey</code>: any key of <code>head.next</code>; "" if empty.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class AllOne {
+    private static class Bucket {
+        int count;
+        Set&lt;String&gt; keys = new HashSet&lt;&gt;();
+        Bucket prev, next;
+        Bucket(int c) { count = c; }
+    }
+    private final Bucket head = new Bucket(0);
+    private final Bucket tail = new Bucket(0);
+    private final Map&lt;String, Bucket&gt; where =
+        new HashMap&lt;&gt;();
+
+    public AllOne() {
+        head.next = tail;
+        tail.prev = head;
+    }
+
+    private Bucket insertAfter(Bucket b, int count) {
+        Bucket n = new Bucket(count);
+        n.prev = b;
+        n.next = b.next;
+        b.next.prev = n;
+        b.next = n;
+        return n;
+    }
+
+    private void removeIfEmpty(Bucket b) {
+        if (b != head &amp;&amp; b.keys.isEmpty()) {
+            b.prev.next = b.next;
+            b.next.prev = b.prev;
+        }
+    }
+
+    public void inc(String key) {
+        Bucket b = where.getOrDefault(key, head);
+        Bucket up = b.next;
+        if (up == tail || up.count != b.count + 1) {
+            up = insertAfter(b, b.count + 1);
+        }
+        up.keys.add(key);
+        where.put(key, up);
+        b.keys.remove(key);
+        removeIfEmpty(b);
+    }
+
+    public void dec(String key) {
+        Bucket b = where.get(key);
+        if (b == null) return;
+        if (b.count == 1) {
+            where.remove(key);
+        } else {
+            Bucket down = b.prev;
+            if (down == head || down.count != b.count - 1) {
+                down = insertAfter(b.prev, b.count - 1);
+            }
+            down.keys.add(key);
+            where.put(key, down);
+        }
+        b.keys.remove(key);
+        removeIfEmpty(b);
+    }
+
+    public String getMaxKey() {
+        return tail.prev == head ? ""
+            : tail.prev.keys.iterator().next();
+    }
+
+    public String getMinKey() {
+        return head.next == tail ? ""
+            : head.next.keys.iterator().next();
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(1) per call · <b>Space</b> O(number of keys) — each call touches the key’s bucket and one neighbour only.</p>
+<h4>Dry run</h4>
+<pre class="code">inc hello   [1:{hello}]
+inc hello   [2:{hello}]          (bucket 1 empty, removed)
+inc leet    [1:{leet}] [2:{hello}]
+max = last bucket = hello, min = first bucket = leet</pre>
+<h4>Watch out</h4>
+<p>Never unlink the <code>head</code> sentinel (a new key's "old bucket" is head). When the needed neighbour bucket does not exist, insert it right next to the current one so the list stays sorted.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/lfu-cache/">460. LFU Cache</a> — one LRU list per frequency, plus a min-frequency pointer.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Like LRU, but evict the key used the <b>fewest</b> times; break ties by least recently used. Keep each key's count, and for every count an LRU-ordered list of its keys (<code>LinkedHashSet</code> keeps insertion order and removes in O(1)). Track <code>minFreq</code>, the smallest count in use: evict the oldest key in <code>lists[minFreq]</code>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Maps: <code>key → value</code>, <code>key → count</code>, <code>count → LinkedHashSet of keys</code>; integer <code>minFreq</code>.</li><li><code>touch(key)</code>: move the key from list <code>c</code> to list <code>c+1</code>; if list c was <code>minFreq</code> and is now empty, <code>minFreq++</code>.</li><li><code>get</code>: missing → -1; else touch and return the value.</li><li><code>put</code> existing: update value, touch. New key: if full, remove the first key of <code>lists[minFreq]</code> from everything; then add with count 1 and set <code>minFreq = 1</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class LFUCache {
+    private final int cap;
+    private final Map&lt;Integer, Integer&gt; vals =
+        new HashMap&lt;&gt;();
+    private final Map&lt;Integer, Integer&gt; freq =
+        new HashMap&lt;&gt;();
+    // count -&gt; keys with that count, oldest first
+    private final Map&lt;Integer, LinkedHashSet&lt;Integer&gt;&gt;
+        lists = new HashMap&lt;&gt;();
+    private int minFreq = 0;
+
+    public LFUCache(int capacity) { cap = capacity; }
+
+    private void touch(int key) {
+        int c = freq.get(key);
+        freq.put(key, c + 1);
+        lists.get(c).remove(key);
+        if (c == minFreq &amp;&amp; lists.get(c).isEmpty()) {
+            minFreq++;
+        }
+        lists.computeIfAbsent(c + 1,
+            x -&gt; new LinkedHashSet&lt;&gt;()).add(key);
+    }
+
+    public int get(int key) {
+        if (!vals.containsKey(key)) return -1;
+        touch(key);
+        return vals.get(key);
+    }
+
+    public void put(int key, int value) {
+        if (cap == 0) return;
+        if (vals.containsKey(key)) {
+            vals.put(key, value);
+            touch(key);
+            return;
+        }
+        if (vals.size() == cap) {
+            // oldest key among the least used
+            int old = lists.get(minFreq).iterator().next();
+            lists.get(minFreq).remove(old);
+            vals.remove(old);
+            freq.remove(old);
+        }
+        vals.put(key, value);
+        freq.put(key, 1);
+        lists.computeIfAbsent(1, x -&gt; new LinkedHashSet&lt;&gt;())
+             .add(key);
+        minFreq = 1;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(1) per call · <b>Space</b> O(capacity) — hash map and linked-hash-set operations only.</p>
+<h4>Dry run</h4>
+<pre class="code">put1 put2       f1:[1,2]          min 1
+get1            f1:[2] f2:[1]     min 1
+put3 (full)     evict 2 -&gt; f1:[3] f2:[1]
+get3            f2:[1,3]          min 2
+put4 (full)     evict 1 (oldest in f2) -&gt; f1:[4] f2:[3], min 1</pre>
+<h4>Watch out</h4>
+<p><code>minFreq</code> only grows inside <code>touch</code>, and resets to 1 whenever a new key goes in. Capacity 0 must store nothing. On eviction remove the key from all three maps.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

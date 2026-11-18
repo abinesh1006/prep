@@ -245,14 +245,307 @@ q.offer(start);
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/valid-parentheses/">20. Valid Parentheses</a> — the animation above.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/implement-queue-using-stacks/">232. Implement Queue using Stacks</a> — pour the in-stack into an out-stack only when out is empty.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/backspace-string-compare/">844. Backspace String Compare</a> — <code>#</code> pops the last letter.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/min-stack/">155. Min Stack</a> — a second stack of "min so far".</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/evaluate-reverse-polish-notation/">150. Evaluate Reverse Polish Notation</a> — numbers wait, operators eat two.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/decode-string/">394. Decode String</a> — push (count, text so far) on <code>[</code>, combine on <code>]</code>.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/asteroid-collision/">735. Asteroid Collision</a> — a left-mover fights the right-movers on top of the stack.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/basic-calculator/">224. Basic Calculator</a> — push (result, sign) when you enter a bracket.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/valid-parentheses/">20. Valid Parentheses</a> — the animation above.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>A string of brackets is valid when every opener is closed by the same type, in the right order: <code>"([])"</code> is valid, <code>"(]"</code> and <code>"([)]"</code> are not. The most recent unclosed opener must be closed first, which is exactly what a <b>stack</b> (last in, first out) gives you. Pattern: <b>matching with a stack</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Walk the string. For an opener, push the closer you now expect (<code>(</code> → push <code>)</code>).</li><li>For a closer, the stack must be non-empty and its top must equal this character; pop it. Otherwise return false.</li><li>At the end, valid only if the stack is empty.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean isValid(String s) {
+        Deque&lt;Character&gt; stack = new ArrayDeque&lt;&gt;();
+        for (char c : s.toCharArray()) {
+            if (c == '(') stack.push(')');      // expect )
+            else if (c == '[') stack.push(']');
+            else if (c == '{') stack.push('}');
+            else if (stack.isEmpty() || stack.pop() != c) {
+                return false;         // wrong closer
+            }
+        }
+        return stack.isEmpty();       // all closed
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — one pass; the stack can hold every character in the worst case.</p>
+<h4>Dry run</h4>
+<pre class="code">"([])"   char  stack (top right)
+         (     )
+         [     ) ]
+         ]     )      pop ] ok
+         )     empty  pop ) ok  -&gt; true</pre>
+<h4>Watch out</h4>
+<p>Two classic misses: a closer with an empty stack (<code>"]"</code>) and leftover openers at the end (<code>"("</code>). Use <code>ArrayDeque</code> rather than the old <code>Stack</code> class.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/implement-queue-using-stacks/">232. Implement Queue using Stacks</a> — pour the in-stack into an out-stack only when out is empty.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Make a queue (first in, first out) out of two stacks. Pouring one stack into another reverses the order, so the oldest item ends up on top. Keep an <b>in</b> stack for pushes and an <b>out</b> stack for pops, and only pour when out is empty. Each item is moved at most once, so every operation is O(1) <b>amortized</b> (averaged over many calls).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>push(x)</code>: push onto <code>in</code>.</li><li><code>pop()</code>/<code>peek()</code>: if <code>out</code> is empty, move everything from <code>in</code> to <code>out</code>; then pop/peek <code>out</code>.</li><li><code>empty()</code>: both stacks empty.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class MyQueue {
+    private final Deque&lt;Integer&gt; in = new ArrayDeque&lt;&gt;();
+    private final Deque&lt;Integer&gt; out = new ArrayDeque&lt;&gt;();
+
+    public void push(int x) { in.push(x); }
+
+    public int pop() {
+        peek();                 // make sure out is filled
+        return out.pop();
+    }
+
+    public int peek() {
+        if (out.isEmpty()) {    // pour only when empty
+            while (!in.isEmpty()) out.push(in.pop());
+        }
+        return out.peek();
+    }
+
+    public boolean empty() {
+        return in.isEmpty() &amp;&amp; out.isEmpty();
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(1) amortized per call · <b>Space</b> O(n) — each element is pushed and popped at most twice in total.</p>
+<h4>Dry run</h4>
+<pre class="code">push1 push2    in [1,2]  out []
+peek           in []     out [2,1]  top 1
+pop -&gt; 1       out [2]
+push3          in [3]    out [2]
+pop -&gt; 2 (out not empty, no pour); pop -&gt; pour 3 -&gt; 3</pre>
+<h4>Watch out</h4>
+<p>Pouring while <code>out</code> still has items breaks the order. Pour only when out is empty.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/backspace-string-compare/">844. Backspace String Compare</a> — <code>#</code> pops the last letter.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Type each string into an editor where <code>#</code> is backspace, then compare: <code>"ab#c"</code> and <code>"ad#c"</code> both become <code>"ac"</code>. Simulating with a <b>stack</b> (a <code>StringBuilder</code> works as one) is the clear answer: letters push, <code>#</code> pops if there is something to pop.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Write <code>build(s)</code>: for each char, if it is <code>#</code> delete the last char (if any), else append it.</li><li>Return <code>build(s).equals(build(t))</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean backspaceCompare(String s, String t) {
+        return build(s).equals(build(t));
+    }
+
+    private String build(String s) {
+        StringBuilder sb = new StringBuilder(); // the stack
+        for (char c : s.toCharArray()) {
+            if (c != '#') sb.append(c);          // push
+            else if (sb.length() &gt; 0) {
+                sb.deleteCharAt(sb.length() - 1); // pop
+            }
+        }
+        return sb.toString();
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n + m) · <b>Space</b> O(n + m) — each character is pushed or popped once.</p>
+<h4>Dry run</h4>
+<p><code>"ab##"</code>: a → "a", b → "ab", # → "a", # → "". <code>"c#d#"</code>: "c", "", "d", "". Equal → true.</p>
+<h4>Watch out</h4>
+<p>A <code>#</code> on an empty text does nothing; do not crash. The follow-up asks for O(1) space: walk both strings from the end with two pointers, counting pending backspaces to skip letters.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/min-stack/">155. Min Stack</a> — a second stack of "min so far".
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>A stack with <code>push</code>, <code>pop</code>, <code>top</code> and <code>getMin</code>, all O(1). The trick: store, next to every value, the <b>minimum of the stack at that moment</b>. When you pop, the minimum below is still recorded with the new top, so nothing needs recomputing.</p>
+<h4>Brute force first</h4>
+<p>Scan the whole stack in <code>getMin</code>: O(n) per call.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Each stack entry is a pair <code>{value, minSoFar}</code>.</li><li><code>push(x)</code>: <code>minSoFar = stack empty ? x : min(x, top's minSoFar)</code>.</li><li><code>pop</code> and <code>top</code> work on the pair's value; <code>getMin</code> returns the top's minSoFar.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class MinStack {
+    // each entry: {value, minimum at this depth}
+    private final Deque&lt;int[]&gt; stack = new ArrayDeque&lt;&gt;();
+
+    public void push(int val) {
+        int min = stack.isEmpty()
+            ? val : Math.min(val, stack.peek()[1]);
+        stack.push(new int[]{val, min});
+    }
+
+    public void pop() { stack.pop(); }
+
+    public int top() { return stack.peek()[0]; }
+
+    public int getMin() { return stack.peek()[1]; }
+}</code></pre>
+<p class="cx"><b>Time</b> O(1) per call · <b>Space</b> O(n) — one extra number stored per element.</p>
+<h4>Dry run</h4>
+<pre class="code">push -2   [(-2,-2)]
+push 0    [(-2,-2) (0,-2)]
+push -3   [(-2,-2) (0,-2) (-3,-3)]   getMin -3
+pop       [(-2,-2) (0,-2)]           top 0, getMin -2</pre>
+<h4>Watch out</h4>
+<p>The version with a separate min stack must push to it on <code>x &lt;= min</code> (not just <code>&lt;</code>), or duplicate minimums break after a pop. Storing pairs avoids that trap.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/evaluate-reverse-polish-notation/">150. Evaluate Reverse Polish Notation</a> — numbers wait, operators eat two.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Evaluate Reverse Polish Notation, where the operator comes after its two numbers: <code>["2","1","+","3","*"]</code> means (2+1)×3 = 9. Numbers wait on a <b>stack</b>; an operator pops the top two, applies itself, and pushes the result.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>For each token: if it is <code>+ - * /</code>, pop <code>b</code> (top) then <code>a</code>, push <code>a op b</code>.</li><li>Otherwise push <code>Integer.parseInt(token)</code>.</li><li>The single number left on the stack is the answer.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int evalRPN(String[] tokens) {
+        Deque&lt;Integer&gt; st = new ArrayDeque&lt;&gt;();
+        for (String t : tokens) {
+            switch (t) {
+                case "+" -&gt; st.push(st.pop() + st.pop());
+                case "*" -&gt; st.push(st.pop() * st.pop());
+                case "-" -&gt; {
+                    int b = st.pop(), a = st.pop();
+                    st.push(a - b);
+                }
+                case "/" -&gt; {
+                    int b = st.pop(), a = st.pop();
+                    st.push(a / b);   // truncates toward 0
+                }
+                default -&gt; st.push(Integer.parseInt(t));
+            }
+        }
+        return st.pop();
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — one push or pop per token.</p>
+<h4>Dry run</h4>
+<pre class="code">4 13 5 / +
+push 4, 13, 5       [4,13,5]
+/  13/5 = 2         [4,2]
++  4+2 = 6          [6]</pre>
+<h4>Watch out</h4>
+<p>Order matters for <code>-</code> and <code>/</code>: the first pop is the <i>right</i> operand. <code>"-11"</code> is a number, not an operator, so compare whole tokens, not the first character.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/decode-string/">394. Decode String</a> — push (count, text so far) on <code>[</code>, combine on <code>]</code>.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Expand <code>k[text]</code> into text repeated k times, with nesting: <code>"3[a2[c]]"</code> → <code>"accaccacc"</code>. When you hit <code>[</code>, you must pause the outer work, decode the inner part, then come back: that is a <b>stack</b>. Push the count and the text built so far on <code>[</code>; on <code>]</code>, pop them and attach the repeated inner text.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Keep <code>cur</code> (text being built) and <code>num</code> (digits being read; can be several digits).</li><li>Digit: <code>num = num*10 + d</code>. Letter: append to cur.</li><li><code>[</code>: push <code>num</code> and <code>cur</code>; reset both.</li><li><code>]</code>: pop <code>k</code> and <code>prev</code>; <code>cur = prev + cur repeated k times</code>.</li><li>Return cur.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public String decodeString(String s) {
+        Deque&lt;Integer&gt; counts = new ArrayDeque&lt;&gt;();
+        Deque&lt;StringBuilder&gt; texts = new ArrayDeque&lt;&gt;();
+        StringBuilder cur = new StringBuilder();
+        int num = 0;
+        for (char c : s.toCharArray()) {
+            if (Character.isDigit(c)) {
+                num = num * 10 + (c - '0');   // multi-digit
+            } else if (c == '[') {
+                counts.push(num);             // save state
+                texts.push(cur);
+                cur = new StringBuilder();
+                num = 0;
+            } else if (c == ']') {
+                int k = counts.pop();
+                StringBuilder prev = texts.pop();
+                prev.append(cur.toString().repeat(k));
+                cur = prev;           // back outside
+            } else {
+                cur.append(c);
+            }
+        }
+        return cur.toString();
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(output length) · <b>Space</b> O(output length) — every output character is written a bounded number of times.</p>
+<h4>Dry run</h4>
+<pre class="code">"3[a2[c]]"
+3 [   push (3,"")      cur=""
+a     cur="a"
+2 [   push (2,"a")     cur=""
+c     cur="c"
+]     pop (2,"a")      cur="a"+"cc"="acc"
+]     pop (3,"")       cur="accaccacc"</pre>
+<h4>Watch out</h4>
+<p>Counts can have several digits (<code>"10[a]"</code>), so build <code>num</code> digit by digit. Reset <code>num</code> to 0 after pushing it.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/asteroid-collision/">735. Asteroid Collision</a> — a left-mover fights the right-movers on top of the stack.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Positive asteroids move right, negative move left, same speed. When a right-mover meets a left-mover, the smaller explodes (both if equal). Only a left-mover arriving after right-movers can collide, and it hits the <b>most recent</b> right-mover first, so survivors go on a <b>stack</b>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>For each asteroid <code>a</code>: assume it survives.</li><li>While <code>a &lt; 0</code> and the stack top is positive: if top &lt; −a, pop it and keep going; if top == −a, pop it and <code>a</code> dies too; if top &gt; −a, <code>a</code> dies.</li><li>If <code>a</code> survived, push it.</li><li>The stack from bottom to top is the answer.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int[] asteroidCollision(int[] asteroids) {
+        Deque&lt;Integer&gt; st = new ArrayDeque&lt;&gt;();
+        for (int a : asteroids) {
+            boolean alive = true;
+            while (alive &amp;&amp; a &lt; 0
+                    &amp;&amp; !st.isEmpty() &amp;&amp; st.peek() &gt; 0) {
+                int top = st.peek();
+                if (top &lt; -a) {
+                    st.pop();           // top explodes
+                } else {
+                    if (top == -a) st.pop(); // both explode
+                    alive = false;      // a explodes
+                }
+            }
+            if (alive) st.push(a);
+        }
+        int[] res = new int[st.size()];
+        for (int i = res.length - 1; i &gt;= 0; i--) {
+            res[i] = st.pop();          // stack top = last
+        }
+        return res;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — each asteroid is pushed and popped at most once.</p>
+<h4>Dry run</h4>
+<pre class="code">[10, 2, -5]
+10 push       [10]
+2  push       [10,2]
+-5: 2 &lt; 5 pop [10];  10 &gt; 5 -&gt; -5 dies
+result [10]</pre>
+<h4>Watch out</h4>
+<p>A left-mover with nothing (or only left-movers) below it never collides: <code>[-2,-1,1,2]</code> stays as is. Equal sizes destroy both.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/basic-calculator/">224. Basic Calculator</a> — push (result, sign) when you enter a bracket.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Evaluate a string with <code>+</code>, <code>-</code>, brackets, spaces and unary minus, like <code>"(1+(4+5+2)-3)+(6+8)"</code> = 23. Without brackets you just keep a running <code>result</code> and the <code>sign</code> of the next number. A bracket starts a fresh sub-sum, so on <code>(</code> <b>push the current result and sign</b> on a stack, and on <code>)</code> combine: <code>outer + sign × inner</code>.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>result = 0</code>, <code>sign = 1</code>, read multi-digit numbers into <code>num</code>.</li><li>On <code>+</code> or <code>-</code>: add <code>sign*num</code> to result, reset num, set sign to +1 or −1.</li><li>On <code>(</code>: push result, push sign; reset result = 0, sign = 1.</li><li>On <code>)</code>: finish the inner number; then <code>result = popped result + popped sign * result</code>.</li><li>At the end add the last <code>sign*num</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int calculate(String s) {
+        Deque&lt;Integer&gt; st = new ArrayDeque&lt;&gt;();
+        int result = 0, sign = 1, num = 0;
+        for (char c : s.toCharArray()) {
+            if (Character.isDigit(c)) {
+                num = num * 10 + (c - '0');
+            } else if (c == '+' || c == '-') {
+                result += sign * num;        // close number
+                num = 0;
+                sign = (c == '+') ? 1 : -1;
+            } else if (c == '(') {
+                st.push(result);             // save outer
+                st.push(sign);
+                result = 0;
+                sign = 1;
+            } else if (c == ')') {
+                result += sign * num;
+                num = 0;
+                int outerSign = st.pop();
+                int outer = st.pop();
+                result = outer + outerSign * result;
+            }                                // spaces: skip
+        }
+        return result + sign * num;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(n) — one pass; the stack grows with bracket depth.</p>
+<h4>Dry run</h4>
+<pre class="code">"1-(2+3)"
+1        num=1
+-        result=1, sign=-1
+(        push 1, push -1; result=0, sign=1
+2 + 3    result=2, sign=1, num=3
+)        result=5 -&gt; 1 + (-1)*5 = -4</pre>
+<h4>Watch out</h4>
+<p>Unary minus (<code>"-(2+3)"</code>, <code>"(-2)"</code>) needs no special case here: it simply adds 0 and sets sign = −1. Do not forget the last number after the loop.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

@@ -214,13 +214,197 @@ int height(TreeNode node) {
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/maximum-depth-of-binary-tree/">104. Maximum Depth of Binary Tree</a> — animation 1.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/invert-binary-tree/">226. Invert Binary Tree</a> — swap children, trust both calls.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/path-sum/">112. Path Sum</a> — animation 3.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/balanced-binary-tree/">110. Balanced Binary Tree</a> — return height, or −1 for "already unbalanced".</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/diameter-of-binary-tree/">543. Diameter of Binary Tree</a> — animation 2.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/count-good-nodes-in-binary-tree/">1448. Count Good Nodes in Binary Tree</a> — pass the max so far down.</li>
-  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/binary-tree-maximum-path-sum/">124. Binary Tree Maximum Path Sum</a> — diameter's trick with sums; drop negative branches with max(0, ...).</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/maximum-depth-of-binary-tree/">104. Maximum Depth of Binary Tree</a> — animation 1.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Depth = number of nodes on the longest path from the root down to a leaf. [3,9,20,null,null,15,7] → 3. <b>Tree recursion</b>: an empty tree has depth 0; otherwise my depth is 1 plus the deeper of my two subtrees. Trust that the calls on the children return the right answer.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Null node: return 0.</li><li>Get the left subtree's depth and the right subtree's depth.</li><li>Return 1 + the bigger one.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int maxDepth(TreeNode root) {
+        if (root == null) return 0;      // empty: depth 0
+        int left = maxDepth(root.left);  // trust the call
+        int right = maxDepth(root.right);
+        return 1 + Math.max(left, right); // me + deeper side
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(h) — each node once; recursion as deep as the tree.</p>
+<h4>Dry run</h4>
+<p>depth(9) = 1, depth(15) = depth(7) = 1, depth(20) = 2, depth(3) = 1 + max(1, 2) = 3.</p>
+<h4>Watch out</h4>
+<p>A very deep, chain-like tree can overflow the call stack; the BFS version (count floors) avoids that.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/invert-binary-tree/">226. Invert Binary Tree</a> — swap children, trust both calls.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Mirror the tree: every node's left and right children swap. [4,2,7,1,3,6,9] → [4,7,2,9,6,3,1]. At each node, swap its two children, then invert each of them; recursion handles the rest.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Null node: return null.</li><li>Swap <code>root.left</code> and <code>root.right</code> using a temp variable.</li><li>Invert the (new) left and the (new) right subtree.</li><li>Return root.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public TreeNode invertTree(TreeNode root) {
+        if (root == null) return null;
+        TreeNode tmp = root.left;        // swap my children
+        root.left = root.right;
+        root.right = tmp;
+        invertTree(root.left); // then fix each side
+        invertTree(root.right);
+        return root;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(h) — one swap per node.</p>
+<h4>Dry run</h4>
+<p>At 4: swap 2 and 7 → children 7, 2. Recurse into 7: swap 6, 9 → 9, 6. Recurse into 2: swap 1, 3 → 3, 1. Result [4,7,2,9,6,3,1].</p>
+<h4>Watch out</h4>
+<p>Without a temp variable you write <code>root.left = root.right</code> first and lose the old left child.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/path-sum/">112. Path Sum</a> — animation 3.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Is there a root-to-<b>leaf</b> path whose values add up to <code>targetSum</code>? Subtract each node's value from the target on the way down; at a leaf, the path works if what is left is exactly 0.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Null node: false.</li><li><code>rest = targetSum − root.val</code>.</li><li>If root is a leaf, return <code>rest == 0</code>.</li><li>Otherwise return hasPathSum(left, rest) or hasPathSum(right, rest).</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean hasPathSum(TreeNode root, int targetSum) {
+        if (root == null) return false;   // no path here
+        int rest = targetSum - root.val;  // what is left
+        if (root.left == null &amp;&amp; root.right == null) {
+            return rest == 0; // leaf: exact hit?
+        }
+        return hasPathSum(root.left, rest)
+            || hasPathSum(root.right, rest);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(h) — each node visited at most once.</p>
+<h4>Dry run</h4>
+<p>Target 22: 5 → rest 17; 4 → 13; 11 → 2; 7 → −5 (leaf, no); 2 → 0 (leaf, yes) → true.</p>
+<h4>Watch out</h4>
+<p>The path must end at a leaf. For tree [1,2] and target 1, the root alone is not a leaf, so the answer is false; checking "rest == 0" at a null child would wrongly say true.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/balanced-binary-tree/">110. Balanced Binary Tree</a> — return height, or −1 for "already unbalanced".
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>A tree is balanced if, at every node, the left and right subtree heights differ by at most 1. Compute heights bottom-up and use −1 as a special signal meaning "already unbalanced somewhere below", so one pass is enough.</p>
+<h4>Brute force first</h4>
+<p>At every node compute both heights from scratch and recurse: O(n²) on a chain-shaped tree.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>height(null) = 0</code>.</li><li>Get the left height; if it is −1, return −1 straight away.</li><li>Same for the right height.</li><li>If they differ by more than 1, return −1.</li><li>Otherwise return 1 + max(left, right). Balanced means the root's result is not −1.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean isBalanced(TreeNode root) {
+        return height(root) != -1;
+    }
+
+    // height of the subtree, or -1 if it is unbalanced
+    private int height(TreeNode n) {
+        if (n == null) return 0;
+        int left = height(n.left);
+        if (left == -1) return -1;        // pass failure up
+        int right = height(n.right);
+        if (right == -1) return -1;
+        if (Math.abs(left - right) &gt; 1) return -1;
+        return 1 + Math.max(left, right);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(h) — each node is visited once.</p>
+<h4>Dry run</h4>
+<p>[1,2,2,3,3,null,null,4,4]: the 4s have height 1; the 3 above them 2; the other 3 is 1; so the left 2 has height 3 (2 vs 1 is fine). The right 2 is a leaf, height 1. At the root |3 − 1| = 2 → −1 → false.</p>
+<h4>Watch out</h4>
+<p>Checking only the root's two heights is not enough; every node must pass the test. Pass the −1 all the way up.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/diameter-of-binary-tree/">543. Diameter of Binary Tree</a> — animation 2.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>The diameter is the longest path (counted in edges) between any two nodes, and it may not pass through the root. Every path has a highest node where it bends; there its length is left height + right height. So compute heights and, at each node, update a global best with left + right.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Keep <code>best = 0</code> as a field.</li><li><code>height(null) = 0</code>.</li><li>At each node get left and right heights.</li><li>Update <code>best = max(best, left + right)</code>.</li><li>Return 1 + max(left, right) to the parent.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private int best = 0;   // longest path seen, in edges
+
+    public int diameterOfBinaryTree(TreeNode root) {
+        height(root);
+        return best;
+    }
+
+    // returns height (nodes on the longest way down)
+    private int height(TreeNode n) {
+        if (n == null) return 0;
+        int left = height(n.left);
+        int right = height(n.right);
+        // path that bends at n: left arm + right arm
+        best = Math.max(best, left + right);
+        return 1 + Math.max(left, right);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(h) — one visit per node.</p>
+<h4>Dry run</h4>
+<p>[1,2,3,4,5]: height(4) = height(5) = 1; at 2: best = 2, height 2; height(3) = 1; at 1: best = 2 + 1 = 3. Answer 3.</p>
+<h4>Watch out</h4>
+<p>What you <b>return</b> (one arm, the height) is different from what you <b>record</b> (both arms, the path). Mixing them up is the classic bug.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/count-good-nodes-in-binary-tree/">1448. Count Good Nodes in Binary Tree</a> — pass the max so far down.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>A node is "good" if no node on the path from the root to it has a bigger value. Carry the biggest value seen so far down the recursion; a node is good if its value is ≥ that maximum.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Start with <code>count(root, Integer.MIN_VALUE)</code>.</li><li>Null node: 0 good nodes.</li><li>This node is good if <code>val ≥ maxSoFar</code>.</li><li>New max = max(maxSoFar, val); add the counts from both children using it.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int goodNodes(TreeNode root) {
+        return count(root, Integer.MIN_VALUE);
+    }
+
+    // good nodes in n's subtree; maxSoFar = biggest above
+    private int count(TreeNode n, int maxSoFar) {
+        if (n == null) return 0;
+        int good = n.val &gt;= maxSoFar ? 1 : 0;
+        int newMax = Math.max(maxSoFar, n.val);
+        return good + count(n.left, newMax)
+                    + count(n.right, newMax);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(h) — one visit per node.</p>
+<h4>Dry run</h4>
+<p>[3,1,4,3,null,1,5]: 3 good (max 3). 1 no. Its child 3 good (3 ≥ 3). 4 good (max 4). 1 under 4 no. 5 good. Total 4.</p>
+<h4>Watch out</h4>
+<p>Use ≥, not &gt;: a node equal to the max so far still counts as good. Start with MIN_VALUE so the root is always good.</p>
+</div></details></li>
+  <li><span class="lvl h">Hard</span><a href="https://leetcode.com/problems/binary-tree-maximum-path-sum/">124. Binary Tree Maximum Path Sum</a> — diameter's trick with sums; drop negative branches with max(0, ...).
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the path with the largest sum; it can start and end anywhere. Like the diameter: at each node the best path that bends here is <code>val + left gain + right gain</code>, and what you hand the parent is <code>val + the better single arm</code>. A negative arm only hurts, so treat it as 0 (just do not take it).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Keep <code>best = Integer.MIN_VALUE</code>.</li><li><code>gain(null) = 0</code>.</li><li>left = max(0, gain(left child)); right = max(0, gain(right child)).</li><li>Update <code>best</code> with <code>val + left + right</code>.</li><li>Return <code>val + max(left, right)</code>.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    private int best = Integer.MIN_VALUE;
+
+    public int maxPathSum(TreeNode root) {
+        gain(root);
+        return best;
+    }
+
+    // best sum of a path that starts at n and goes down
+    private int gain(TreeNode n) {
+        if (n == null) return 0;
+        // a negative branch only hurts: take 0 instead
+        int left = Math.max(0, gain(n.left));
+        int right = Math.max(0, gain(n.right));
+        // path that bends at n uses both arms
+        best = Math.max(best, n.val + left + right);
+        // the parent can only use one arm of mine
+        return n.val + Math.max(left, right);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(h) — each node visited once.</p>
+<h4>Dry run</h4>
+<p>[-10,9,20,null,null,15,7]: gain(15) = 15, gain(7) = 7; at 20: best = 42, return 35. gain(9) = 9. At −10: path −10 + 9 + 35 = 34 &lt; 42. Answer 42.</p>
+<h4>Watch out</h4>
+<p>Start <code>best</code> at MIN_VALUE, not 0: if every value is negative the answer is the biggest single node (like −1), not 0.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>

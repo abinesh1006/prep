@@ -315,13 +315,215 @@ const sub = (T, id) => id == null ? [] : [id, ...sub(T, T[id].left), ...sub(T, T
 
 <h2>Practice in this order</h2>
 <ul class="practice">
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/search-in-a-binary-search-tree/">700. Search in a Binary Search Tree</a> — animation 1.</li>
-  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/convert-sorted-array-to-binary-search-tree/">108. Convert Sorted Array to BST</a> — the middle value is the root; recurse on both halves.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/insert-into-a-binary-search-tree/">701. Insert into a BST</a> — animation 2.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/validate-binary-search-tree/">98. Validate Binary Search Tree</a> — animation 3; or check that in-order is strictly increasing.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/kth-smallest-element-in-a-bst/">230. Kth Smallest Element in a BST</a> — animation 4.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/delete-node-in-a-bst/">450. Delete Node in a BST</a> — animation 5.</li>
-  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/binary-search-tree-iterator/">173. Binary Search Tree Iterator</a> — the iterative in-order, paused between calls.</li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/search-in-a-binary-search-tree/">700. Search in a Binary Search Tree</a> — animation 1.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Find the node holding <code>val</code> in a <b>BST</b> (binary search tree: everything in a node's left subtree is smaller, everything in its right subtree is bigger) and return it, or null. Like binary search: at each node, one comparison tells you which half to throw away.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Start at the root.</li><li>If the node is null or holds val, stop and return it.</li><li>If val is smaller, go left; otherwise go right.</li><li>Repeat.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public TreeNode searchBST(TreeNode root, int val) {
+        TreeNode cur = root;
+        while (cur != null &amp;&amp; cur.val != val) {
+            // smaller lives on the left, bigger on the right
+            cur = val &lt; cur.val ? cur.left : cur.right;
+        }
+        return cur;          // the node, or null if missing
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(h) · <b>Space</b> O(1) — one step down per level; h is about log n for a balanced tree, n for a chain.</p>
+<h4>Dry run</h4>
+<p>[4,2,7,1,3], val 2: at 4, 2 &lt; 4 → left; at 2, found → return subtree [2,1,3].</p>
+<h4>Watch out</h4>
+<p>Return the node itself (its whole subtree), not just true/false. When val is missing you fall off into null, which is the right answer.</p>
+</div></details></li>
+  <li><span class="lvl e">Easy</span><a href="https://leetcode.com/problems/convert-sorted-array-to-binary-search-tree/">108. Convert Sorted Array to BST</a> — the middle value is the root; recurse on both halves.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Turn a sorted array into a <b>height-balanced</b> BST (left and right heights differ by at most 1 everywhere). Pick the middle value as the root: everything left of it is smaller and goes into the left subtree, everything right of it goes right. Recurse on both halves (<b>divide and conquer</b>).</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>build(lo, hi)</code> works on <code>nums[lo..hi]</code>; empty range → null.</li><li>mid = lo + (hi − lo) / 2; make a node with nums[mid].</li><li>Its left child = build(lo, mid − 1); its right child = build(mid + 1, hi).</li><li>Return the node; the answer is build(0, n − 1).</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public TreeNode sortedArrayToBST(int[] nums) {
+        return build(nums, 0, nums.length - 1);
+    }
+
+    // balanced BST from nums[lo..hi]
+    private TreeNode build(int[] nums, int lo, int hi) {
+        if (lo &gt; hi) return null;
+        int mid = lo + (hi - lo) / 2; // middle is the root
+        TreeNode root = new TreeNode(nums[mid]);
+        root.left = build(nums, lo, mid - 1); // smaller half
+        root.right = build(nums, mid + 1, hi); // bigger half
+        return root;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(log n) — each value becomes one node; recursion depth is log n because ranges halve.</p>
+<h4>Dry run</h4>
+<p>[-10,-3,0,5,9]: mid 0 → root 0. Left [-10,-3]: mid -10, right child -3. Right [5,9]: mid 5, right child 9. Tree [0,-10,5,null,-3,null,9].</p>
+<h4>Watch out</h4>
+<p>Use <code>lo + (hi − lo) / 2</code> to avoid overflow on huge indices. Picking the left or right middle on even sizes are both accepted.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/insert-into-a-binary-search-tree/">701. Insert into a BST</a> — animation 2.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Insert a new value into a BST and keep it a valid BST. Walk down as in a search: go left if the value is smaller, right if bigger, until you reach an empty spot; put the new node there. No existing node moves.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If the current node is null, this is the gap: return a new node with val.</li><li>If val is smaller, set <code>root.left = insert(root.left, val)</code>.</li><li>Otherwise set <code>root.right = insert(root.right, val)</code>.</li><li>Return root, so each parent keeps its (same) child link.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public TreeNode insertIntoBST(TreeNode root, int val) {
+        if (root == null) return new TreeNode(val); // the gap
+        if (val &lt; root.val) {
+            root.left = insertIntoBST(root.left, val);
+        } else {
+            root.right = insertIntoBST(root.right, val);
+        }
+        return root;         // hand my (same) node back up
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(h) · <b>Space</b> O(h) — one path down; recursion stack of height h (a loop makes it O(1)).</p>
+<h4>Dry run</h4>
+<p>[4,2,7,1,3], insert 5: 5 &gt; 4 → right to 7; 5 &lt; 7 → left, null → new node 5 becomes 7's left.</p>
+<h4>Watch out</h4>
+<p>Forgetting <code>root.left = ...</code> (just calling insert) loses the new node. An empty tree must return the new node as the root.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/validate-binary-search-tree/">98. Validate Binary Search Tree</a> — animation 3; or check that in-order is strictly increasing.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Check the BST rule everywhere: not just "left child &lt; me &lt; right child", but every value in my left subtree is below me and every value in my right subtree is above me. Pass down an allowed range (lo, hi): going left lowers hi to my value, going right raises lo to my value.</p>
+<h4>Brute force first</h4>
+<p>Do an inorder traversal and check the list is strictly increasing; also O(n) and a fine alternative.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Start with range (−∞, +∞), using <code>long</code> limits.</li><li>Null node: valid.</li><li>If the value is ≤ lo or ≥ hi, invalid.</li><li>Check left with (lo, val) and right with (val, hi); both must be valid.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public boolean isValidBST(TreeNode root) {
+        return valid(root, Long.MIN_VALUE, Long.MAX_VALUE);
+    }
+
+    // every value in n's subtree must be in (lo, hi)
+    private boolean valid(TreeNode n, long lo, long hi) {
+        if (n == null) return true;
+        if (n.val &lt;= lo || n.val &gt;= hi) return false;
+        // left side: below me; right side: above me
+        return valid(n.left, lo, n.val)
+            &amp;&amp; valid(n.right, n.val, hi);
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(n) · <b>Space</b> O(h) — each node checked once.</p>
+<h4>Dry run</h4>
+<p>[5,4,6,null,null,3,7]: 6 is in (5, ∞) fine; its left child 3 must be in (5, 6) → 3 ≤ 5 → false, even though 3 &lt; 6 locally.</p>
+<h4>Watch out</h4>
+<p>Using <code>Integer.MIN_VALUE</code>/<code>MAX_VALUE</code> as limits fails for a node that holds exactly that value; use <code>long</code> limits (or null for "no limit"). Duplicates are not allowed, so use strict comparisons.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/kth-smallest-element-in-a-bst/">230. Kth Smallest Element in a BST</a> — animation 4.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>In a BST, an inorder traversal (left, me, right) visits values in sorted order. So the k-th value it visits is the k-th smallest. Do the iterative inorder with a stack and stop as soon as you have counted k nodes.</p>
+<h4>Brute force first</h4>
+<p>Collect the whole inorder list, then return element k − 1: O(n) time and space.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>Slide left from the current node, pushing every node on the way.</li><li>Pop: this is the next smallest value; decrease k.</li><li>If k reached 0, return this value.</li><li>Otherwise move to the popped node's right child and repeat.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public int kthSmallest(TreeNode root, int k) {
+        Deque&lt;TreeNode&gt; stack = new ArrayDeque&lt;&gt;();
+        TreeNode cur = root;
+        while (true) {
+            while (cur != null) {    // slide left
+                stack.push(cur);
+                cur = cur.left;
+            }
+            cur = stack.pop();       // next smallest value
+            if (--k == 0) return cur.val;
+            cur = cur.right;
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(h + k) · <b>Space</b> O(h) — we only walk down to the start and then k steps.</p>
+<h4>Dry run</h4>
+<p>[3,1,4,null,2], k = 1: push 3, push 1 → pop 1, k = 0 → return 1.</p>
+<h4>Watch out</h4>
+<p>k is 1-based: the smallest value is k = 1. Decrease k <b>before</b> comparing with 0 (or compare with 1).</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/delete-node-in-a-bst/">450. Delete Node in a BST</a> — animation 5.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Remove the node with value key and keep the BST valid. Find it like a search. A node with 0 or 1 child is easy: replace it by its child (or null). A node with 2 children: copy in its <b>successor</b> (the smallest value in its right subtree), then delete that successor from the right subtree; the successor has no left child, so that delete is the easy case.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li>If root is null, the key is not there: return null.</li><li>If key is smaller, delete in the left subtree; if bigger, in the right subtree.</li><li>Found it: if there is no left child return the right one; if no right child return the left one.</li><li>Two children: find the leftmost node of the right subtree, copy its value here, then delete that value from the right subtree.</li><li>Return root.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class Solution {
+    public TreeNode deleteNode(TreeNode root, int key) {
+        if (root == null) return null;         // not found
+        if (key &lt; root.val) {
+            root.left = deleteNode(root.left, key);
+        } else if (key &gt; root.val) {
+            root.right = deleteNode(root.right, key);
+        } else {
+            // found it. 0 or 1 child: lift the child up
+            if (root.left == null) return root.right;
+            if (root.right == null) return root.left;
+            // 2 children: copy in the successor (smallest
+            // on the right), then delete that successor
+            TreeNode s = root.right;
+            while (s.left != null) s = s.left;
+            root.val = s.val;
+            root.right = deleteNode(root.right, s.val);
+        }
+        return root;
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(h) · <b>Space</b> O(h) — one path down plus one walk to the successor.</p>
+<h4>Dry run</h4>
+<p>[5,3,6,2,4,null,7], delete 3: 3 has two children; successor = 4 (leftmost of [4]); copy 4 into the node, delete 4 from its right subtree. Tree [5,4,6,2,null,null,7].</p>
+<h4>Watch out</h4>
+<p>Always assign the result back (<code>root.left = deleteNode(...)</code>); that is how a removed child gets replaced. Deleting the root itself must also work.</p>
+</div></details></li>
+  <li><span class="lvl m">Medium</span><a href="https://leetcode.com/problems/binary-search-tree-iterator/">173. Binary Search Tree Iterator</a> — the iterative in-order, paused between calls.
+<details class="sol"><summary>Show solution</summary><div class="sol-body">
+<h4>The idea</h4>
+<p>Build an iterator over a BST that returns values in sorted order, one per <code>next()</code> call, using only O(h) memory. It is the iterative inorder traversal "paused": the stack holds the left spine still waiting to be printed.</p>
+<h4>Brute force first</h4>
+<p>Do a full inorder into a list in the constructor and walk through it: easy, but O(n) memory.</p>
+<h4>Step by step</h4>
+<ol class="steps"><li><code>pushLeft(n)</code>: push n and every node down its left edge.</li><li>Constructor: pushLeft(root).</li><li><code>next()</code>: pop the top (the smallest remaining), then pushLeft(its right child), then return its value.</li><li><code>hasNext()</code>: the stack is not empty.</li></ol>
+<h4>Java</h4>
+<pre class="code"><code>class BSTIterator {
+    // the "left spine" still waiting to be printed
+    private final Deque&lt;TreeNode&gt; stack = new ArrayDeque&lt;&gt;();
+
+    public BSTIterator(TreeNode root) {
+        pushLeft(root);
+    }
+
+    public int next() {
+        TreeNode n = stack.pop();  // smallest not yet given
+        pushLeft(n.right);         // its right side is next
+        return n.val;
+    }
+
+    public boolean hasNext() {
+        return !stack.isEmpty();
+    }
+
+    // push n and everything down its left edge
+    private void pushLeft(TreeNode n) {
+        while (n != null) {
+            stack.push(n);
+            n = n.left;
+        }
+    }
+}</code></pre>
+<p class="cx"><b>Time</b> O(1) on average per call · <b>Space</b> O(h) — every node is pushed and popped exactly once over all calls.</p>
+<h4>Dry run</h4>
+<p>[7,3,15,null,null,9,20]: stack [7,3]. next → 3. next → 7, push 15, 9 → stack [15,9]. next → 9. next → 15, push 20. next → 20. hasNext → false.</p>
+<h4>Watch out</h4>
+<p>Remember to pushLeft the popped node's right child; skipping it loses the whole right subtree.</p>
+</div></details></li>
 </ul>
 
 <h2>Test yourself</h2>
