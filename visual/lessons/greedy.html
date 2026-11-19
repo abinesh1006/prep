@@ -181,6 +181,22 @@
 }
 <span class="c">// with intervals: sort by end first, then the same loop</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-array-arraylist.html">sorted <code>int[]</code></a></td><td>455: sort greed and cookie sizes, then match with two pointers.</td><td>O(n log n)</td>
+<td>Trying every child&ndash;cookie match is exponential.</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[26] last</code></a></td><td>763: last index of each letter, so the current part knows how far it must reach.</td><td>O(1) per lookup</td>
+<td>A HashMap works; 26 slots are faster and simpler.</td></tr>
+<tr><td><a href="ds-treemap.html"><code>TreeMap&lt;Integer, Integer&gt;</code></a></td><td>846: card &rarr; count, and <code>firstKey()</code> gives the smallest card left.</td><td>O(log n) per operation</td>
+<td>A PriorityQueue cannot remove a value in the middle cheaply (O(n)); sorting the array plus a HashMap of counts also works.</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[] c</code> (filled with 1)</a></td><td>135: a left pass and a right pass of candies.</td><td>O(n)</td>
+<td>Re-relaxing until nothing changes is O(n²).</td></tr>
+<tr><td>a few ints</td><td>122, 55, 45, 134: profit, farthest reach, current end, tank.</td><td>O(1) extra</td>
+<td>A DP table for Jump Game is O(n) space and O(n²) time; greedy keeps only one running fact.</td></tr>
+</table>
+<p>Greedy keeps the least state of any pattern: usually a sort plus one running value. When it needs "the smallest left" with removals, it reaches for a TreeMap.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Greedy = one pass + one running number + a reason it never hurts.</b> No reason? Find a counter-example, then switch to DP.</p></div>
 

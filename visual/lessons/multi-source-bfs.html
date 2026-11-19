@@ -167,6 +167,17 @@
     level++;                                <span class="c">// one minute passed</span>
 }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-arraydeque.html">ArrayDeque</a><code>&lt;int[]&gt;</code> queue, seeded with ALL sources</td><td>every rotten orange / gate / 0 / land cell starts in the queue at distance 0, then rings grow outward together</td><td>O(1) offer/poll; O(mn) total</td><td>One BFS per source is O(k · mn); a <a href="ds-priorityqueue.html">PriorityQueue</a> is unneeded because every step costs exactly 1.</td></tr>
+<tr><td>The grid itself as state + visited (994, 286, 1162)</td><td>rot <code>1</code>→<code>2</code>, write the distance into <code>INF</code> rooms, overwrite water — the change also marks "visited"</td><td>O(1) per cell, no extra memory</td><td>A separate <code>boolean[][]</code> doubles the memory with no benefit when the input may change.</td></tr>
+<tr><td><code>int[][] dist</code> / <code>height</code> (542, 1765)</td><td>the answer grid: each cell's distance from the nearest source, set once when first reached</td><td>O(mn)</td><td>Filling it with <code>-1</code> first lets "not reached yet" and "visited" be the same check.</td></tr>
+<tr><td><code>int[][] dirs</code></td><td>the four neighbour moves</td><td>O(1)</td><td>Same reason as in grid BFS: one loop, no copied code.</td></tr>
+<tr><td>DFS paint + the same queue (934)</td><td>first paint one whole island into the queue, then BFS from all its cells toward the other island</td><td>O(mn)</td><td>Running a BFS from a single cell of the island measures the wrong distance.</td></tr>
+</table>
+<p>The one trick is in how the queue is filled: putting every source in before the loop starts makes the rings grow from all of them at once, so the first time a cell is reached is its distance to the nearest source.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Many starts, nearest wins → seed the queue with all of them.</b> Freeze <code>q.size()</code> to count minutes.</p></div>
 

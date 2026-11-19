@@ -255,6 +255,20 @@ map.get(k); a[i];        <span class="c">// hash lookup, index read   -> O(1)</s
 <span class="c">// loops one after another: add, keep the biggest  (n + n = O(n))</span>
 <span class="c">// loops one inside another: multiply             (n * n = O(n^2))</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[]</code></a></td><td>Read or write <code>a[i]</code> by index (Running Sum writes each sum back into the same array).</td><td>O(1) per index</td>
+<td>A linked list needs a walk to reach index i, so the same loop would quietly become O(n²).</td></tr>
+<tr><td><a href="ds-hashmap.html"><code>HashSet&lt;Integer&gt;</code></a></td><td>217: "have I seen this number before?"</td><td>O(1) average <code>add</code> / <code>contains</code></td>
+<td>Sorting then checking neighbours is O(n log n); comparing every pair is O(n²).</td></tr>
+<tr><td><a href="ds-hashmap.html"><code>HashMap&lt;Integer, Integer&gt;</code></a></td><td>Two Sum: value &rarr; index, so the partner is found in one lookup.</td><td>O(1) average <code>get</code> / <code>put</code></td>
+<td>The nested loop is O(n²); sorting loses the original indices the answer needs.</td></tr>
+<tr><td><a href="ds-array-arraylist.html">sorted <code>int[]</code></a></td><td>704: jump straight to the middle and throw away half.</td><td>O(log n) search</td>
+<td>A linear scan is O(n). A HashSet says "is it there" but cannot halve a range, and 69 (Sqrt) has no array at all, just the range 0..x.</td></tr>
+</table>
+<p>Big-O is mostly decided by what you store: the same question costs O(n²) with plain loops, O(n log n) with a sort, and O(n) with a hash set or map. The structure is the speed-up.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Next to each other → add. Inside each other → multiply. Halving → log.</b> 10<sup>5</sup> means "no n²"; 10<sup>9</sup> means "no n".</p></div>
 

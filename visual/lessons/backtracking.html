@@ -178,6 +178,18 @@ void backtrack(int[] c, int start, int remain,
     }
 }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-array-arraylist.html">ArrayList</a> <code>path</code>, used as a stack</td><td><code>add</code> = choose, <code>remove(path.size() - 1)</code> = un-choose</td><td>O(1) at the end</td><td>Building a new list on every call copies O(n) per step; <code>remove(Integer)</code> instead of the index removes the wrong element.</td></tr>
+<tr><td><code>new ArrayList&lt;&gt;(path)</code> when saving</td><td>a snapshot of the current path into <code>result</code></td><td>O(n) per saved answer</td><td>Adding <code>path</code> itself saves a reference: every saved answer would end up as the same (empty) list.</td></tr>
+<tr><td>Sorted <code>int[]</code> (39, 40, 90)</td><td>equal numbers sit side by side, so <code>i &gt; start &amp;&amp; nums[i] == nums[i-1]</code> skips duplicates and <code>break</code> prunes once the sum is too big</td><td>O(n log n) sort, once</td><td>A <code>HashSet&lt;List&lt;Integer&gt;&gt;</code> of results removes duplicates only after generating them all.</td></tr>
+<tr><td><a href="ds-string-stringbuilder.html">StringBuilder</a> (22)</td><td>append <code>(</code> or <code>)</code>, then <code>deleteCharAt(len - 1)</code> on the way back</td><td>O(1) amortised</td><td>String <code>+</code> creates a new string per call; fine for tiny n, wasteful in general.</td></tr>
+<tr><td>The board itself, marked <code>#</code> (79)</td><td>"this cell is on my current path" — restored to the saved letter on the way back</td><td>O(1), no extra memory</td><td>A <code>boolean[][] visited</code> works too but is a second structure to undo.</td></tr>
+<tr><td><code>String</code> + two-pointer <code>isPal</code> (131)</td><td>check each candidate piece before choosing it</td><td>O(length) per check</td><td>A precomputed <code>boolean[][]</code> palindrome table makes each check O(1) at O(n²) memory.</td></tr>
+</table>
+<p>Backtracking keeps one mutable path and undoes every change on the way back; the data structures only need O(1) push and pop at the end, and a copy when an answer is complete.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Choose → explore → un-choose.</b> Save a <b>copy</b> of the path. <code>i + 1</code> = use each item once, <code>i</code> = reuse allowed, <code>0</code> = order matters (permutations).</p></div>
 

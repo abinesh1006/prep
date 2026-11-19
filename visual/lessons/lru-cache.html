@@ -171,6 +171,22 @@ addFront(n): n.prev = head; n.next = head.next;
 get: miss → -1; hit → remove, addFront, return val
 put: exists → remove; full → evict tail.prev (and map key); add new at front</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-hashmap.html"><code>Node[] buckets</code> + chains</a></td><td>706: index = <code>key % 1009</code>; collisions chain on <code>next</code>.</td><td>O(1) average</td>
+<td>A plain <code>int[1000001]</code> works for this range but wastes memory; chaining is what interviewers want to see.</td></tr>
+<tr><td><a href="ds-linked-list.html">doubly linked list + two sentinels</a></td><td>707, 146, 1472: unlink or insert a node in O(1) given the node; sentinels remove null checks.</td><td>O(1) per move</td>
+<td>A singly linked list needs the previous node to unlink, an O(n) walk; an ArrayList shifts O(n) on removal.</td></tr>
+<tr><td><a href="ds-hashmap.html"><code>HashMap&lt;Integer, Node&gt;</code></a></td><td>146: key &rarr; its node in the list, so we jump straight to it.</td><td>O(1) average</td>
+<td>Without it, finding the key means walking the list, O(n).</td></tr>
+<tr><td><a href="ds-hashmap.html"><code>HashMap&lt;String, Bucket&gt;</code> + <code>HashSet</code></a></td><td>432: key &rarr; its count bucket; each bucket holds a set of keys, buckets are a doubly linked list by count.</td><td>O(1) for every operation</td>
+<td>A heap gives max or min in O(log n), but not both, and updates are slow.</td></tr>
+<tr><td><a href="ds-hashmap.html"><code>HashMap&lt;Integer, LinkedHashSet&lt;Integer&gt;&gt;</code></a></td><td>460: count &rarr; keys in LRU order, plus <code>vals</code> / <code>freq</code> maps and an int <code>minFreq</code>.</td><td>O(1) average</td>
+<td>A PriorityQueue by (freq, time) is O(log n) per call; the problem asks for O(1).</td></tr>
+</table>
+<p>The hash map answers "where is it?" and the doubly linked list answers "what is oldest?"; neither does both alone, which is why every design here pairs them. Java's <code>LinkedHashMap</code> is exactly this pair, built in.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Map for "where", list for "when".</b> Use → move to front. Full → drop tail.prev. Sentinels H and T, and store the <b>key</b> in the node so eviction can delete it from the map.</p></div>
 

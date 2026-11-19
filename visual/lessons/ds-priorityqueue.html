@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PriorityQueue Inside</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Data structures</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Data structure · Inside Java</div>
+<h1>PriorityQueue: a binary heap in an array</h1>
+<p class="lede">Java's <code>PriorityQueue</code> is a tree that is stored as a plain array, with one rule: every parent is smaller than (or equal to) its children. That rule puts the smallest element at index 0 and makes add and remove O(log n).</p>
+<p class="meta">Time to learn: about 1.5 hours · Prerequisites: <a href="ds-array-arraylist.html">Array &amp; ArrayList</a>, <a href="tree-recursion.html">Tree recursion</a>. The pattern lesson is <a href="heap.html">Heap / priority queue</a>.</p>
+
+<div class="box signal"><span class="tag">Use it when you need…</span>
+<ul>
+  <li>the <b>smallest</b> (or largest) element again and again while elements keep arriving: <code>peek</code> O(1), <code>poll</code> and <code>offer</code> O(log n);</li>
+  <li>the <b>top k</b> of a stream without sorting everything: a heap of size k, O(n log k);</li>
+  <li>"process the cheapest next": Dijkstra, Prim, merge k sorted lists, task scheduling, meeting rooms.</li>
+</ul></div>
+
+<h2>In plain words</h2>
+<p>A sorted list would give you the minimum instantly, but keeping it sorted costs O(n) per insert (shifting). A heap is lazier: it is <b>only partly sorted</b>. It does not care about the order of brothers and cousins; it only promises that each parent is not bigger than its two children. That weaker promise is cheap to repair after a change, because a repair only walks <b>one path</b> from the root to a leaf, and a complete binary tree with n nodes is only about log₂ n levels tall.</p>
+<p>The tree is never stored with pointers. The nodes are written level by level into an array, so the family links are just arithmetic:</p>
+<ul>
+  <li>parent of index <code>i</code> is <code>(i - 1) / 2</code>;</li>
+  <li>children of <code>i</code> are <code>2i + 1</code> and <code>2i + 2</code>.</li>
+</ul>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A company org chart where every boss is more senior than the people right under them. The most senior person is always at the top. When a new hire turns out to be very senior, they swap with their boss again and again until they sit below someone more senior: they climb one chain, not the whole company. When the top person leaves, the most junior person is moved to the top seat and keeps stepping down under the more senior of their two reports until the rule holds again.</p></div>
+
+<h2>What it looks like in memory</h2>
+<p>The same six numbers, as the tree you think about and the array Java really stores. Level 0 is index 0, level 1 is indexes 1–2, level 2 is indexes 3–6.</p>
+<div id="mem"></div>
+<script>
+window.lineOf = (code, s) => {
+  const i = code.split('\n').findIndex(l => l.includes(s));
+  if (i < 0) throw new Error('line not found: ' + s);
+  return i + 1;
+};
+// JS model of an array heap; elements are {id, key, label}
+window.HeapModel = function (cap, cmp) {
+  this.a = []; this.cap = cap; this.cmp = cmp || ((x, y) => x.key - y.key);
+};
+HeapModel.prototype.arr = function (marks = {}, label) {
+  const values = [], keys = [], m = {};
+  for (let i = 0; i < this.cap; i++) {
+    if (i < this.a.length) { values.push(this.a[i].label); keys.push(this.a[i].id); }
+    else { values.push(''); keys.push('free' + i); m[i] = 'dim'; }
+  }
+  for (const [k, v] of Object.entries(marks)) m[k] = v;
+  return { type: 'array', id: 'arr', label: label || `queue[] (capacity ${this.cap}, size ${this.a.length})`, values, keys, marks: m, cell: this.cap > 10 ? 44 : 58 };
+};
+HeapModel.prototype.tree = function (marks = {}, label = 'the tree it represents') {
+  const nodes = {}, m = {};
+  this.a.forEach((e, i) => {
+    const l = 2 * i + 1, r = 2 * i + 2;
+    nodes[e.id] = { val: e.label, left: l < this.a.length ? this.a[l].id : null, right: r < this.a.length ? this.a[r].id : null };
+  });
+  for (const [k, v] of Object.entries(marks)) if (this.a[k]) m[this.a[k].id] = v;
+  const badges = {}; this.a.forEach((e, i) => badges[e.id] = '[' + i + ']');
+  return { type: 'tree', id: 'tree', label, root: this.a.length ? this.a[0].id : null, nodes, marks: m, badges };
+};
+HeapModel.prototype.panels = function (marks, vars) {
+  const p = [this.arr(marks), this.tree(marks)];
+  if (vars) p.push({ type: 'vars', id: 'v', vars });
+  return p;
+};
+window.el = (key, label) => ({ id: 'e' + (label ?? key), key, label: label ?? key });
+(() => {
+  const h = new HeapModel(8);
+  h.a = [1, 2, 4, 5, 3, 9].map(k => el(k));
+  const r = Viz.recorder();
+  r.step(h.panels({}, { 'parent(i)': '(i-1)/2', 'kids(i)': '2i+1, 2i+2' }), [],
+    'The tree (bottom) is how you <b>think</b>; the array (top) is what Java <b>stores</b>. The small [i] under each node is its array index. Slots 6 and 7 are spare capacity.');
+  r.step(h.panels({ 1: 'active', 3: 'compare', 4: 'compare' }, { i: 1, 'kids': '2·1+1 = 3, 2·1+2 = 4' }), [],
+    'Node at index 1 (value 2): its children are at <b>3 and 4</b> (values 5 and 3). Both are ≥ 2, so the rule holds. 5 and 3 are not in order with each other, and that is allowed.');
+  r.step(h.panels({ 5: 'active', 2: 'compare' }, { i: 5, parent: '(5-1)/2 = 2' }), [],
+    'Going up: the parent of index 5 is (5 − 1) / 2 = <b>2</b> (value 4). No pointers needed, just integer division.');
+  r.step(h.panels({ 0: 'done', 1: 'visited', 2: 'visited', 3: 'visited', 4: 'visited', 5: 'visited' }, { 'for (x : pq)': '1 2 4 5 3 9' }), [],
+    'The array is <b>not sorted</b>: 5 comes before 3. Iterating with <code>for (int x : pq)</code> or printing the queue walks the array in this order. Only the <b>first</b> element is guaranteed to be the minimum.');
+  Viz.mount('#mem', { frames: r.frames, title: 'Heap as tree and array', code:
+`// what PriorityQueue keeps
+Object[] queue;     // the heap, level by level
+int size;           // how many slots are used
+Comparator cmp;     // null = natural order
+
+// family links are arithmetic
+int parent(int i) { return (i - 1) / 2; }
+int left(int i)   { return 2 * i + 1; }
+int right(int i)  { return 2 * i + 2; }` });
+})();
+</script>
+
+<h2>Watch the operations</h2>
+
+<h3>1. offer: add at the end, sift up (and grow when full)</h3>
+<p>Start with capacity 4 and offer <code>7, 4, 9, 2, 5, 1</code>. Each new number lands in the first free slot (the next leaf, left to right) and then swaps with its parent while it is smaller.</p>
+<div id="op1"></div>
+<script>
+(() => {
+  const code =
+`void offer(int x) {
+    if (size == a.length)
+        a = Arrays.copyOf(a, size * 2);   // grow
+    a[size] = x;            // put it at the end
+    siftUp(size++);         // then let it float up
+}
+
+private void siftUp(int i) {
+    while (i > 0) {
+        int p = (i - 1) / 2;
+        if (a[p] <= a[i]) break;   // in order
+        swap(i, p);
+        i = p;
+    }
+}`;
+  const L = s => lineOf(code, s);
+  const h = new HeapModel(4), r = Viz.recorder();
+  r.step(h.panels({}, { size: 0, capacity: 4 }), [], 'An empty heap with room for 4.');
+  for (const x of [7, 4, 9, 2, 5, 1]) {
+    if (h.a.length === h.cap) {
+      r.step(h.panels({}, { offer: x, size: h.a.length, capacity: h.cap }), [L('Arrays.copyOf')],
+        `offer(${x}): the array is <b>full</b> (size ${h.a.length} = capacity ${h.cap}).`);
+      h.cap *= 2;
+      r.step(h.panels({}, { offer: x, size: h.a.length, capacity: h.cap }), [L('Arrays.copyOf')],
+        `Copy into a new array of <b>${h.cap}</b> slots. The heap order is just copied as it is, nothing to re-sort. O(n) now, amortized O(1) per offer.`);
+    }
+    h.a.push(el(x));
+    let i = h.a.length - 1;
+    r.step(h.panels({ [i]: 'active' }, { offer: x, i }), [L('a[size] = x')],
+      i === 0 ? `offer(${x}): the heap is empty, so ${x} becomes the root. Nothing to compare.`
+        : `offer(${x}): write it in the <b>first free slot</b>, index ${i}. In the tree that is the next leaf, so the tree stays complete (no gaps).`);
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (h.a[p].key <= h.a[i].key) {
+        r.step(h.panels({ [i]: 'done', [p]: 'compare' }, { offer: x, i, p }), [L('int p = (i - 1) / 2'), L('if (a[p] <= a[i]) break')],
+          `Parent at index ${p} is ${h.a[p].key} ≤ ${h.a[i].key}: the rule holds, <b>stop</b>. We never look at the other branch.`);
+        break;
+      }
+      r.step(h.panels({ [i]: 'bad', [p]: 'bad' }, { offer: x, i, p }), [L('int p = (i - 1) / 2'), L('swap(i, p)')],
+        `Parent at index (${i} − 1) / 2 = ${p} is ${h.a[p].key} &gt; ${h.a[i].key}: the rule is broken, so <b>swap</b> them.`);
+      [h.a[i], h.a[p]] = [h.a[p], h.a[i]];
+      i = p;
+      r.step(h.panels({ [i]: 'active' }, { offer: x, i }), [L('i = p')],
+        i === 0 ? `${x} reached the root: it is the new minimum.` : `${x} moved up to index ${i}. Check its new parent.`);
+    }
+  }
+  r.step(h.panels({ 0: 'done' }, { size: h.a.length, capacity: h.cap }), [], `Six offers, each costing at most one swap per level (≤ log₂ n). The minimum <b>1</b> is at index 0, ready for <code>peek()</code> in O(1).`);
+  Viz.mount('#op1', { frames: r.frames, title: 'offer and sift up', code });
+})();
+</script>
+
+<h3>2. poll: take the root, move the last leaf up, sift down</h3>
+<p>Poll twice from the heap built above. The root is the answer; the hard part is refilling the hole without breaking the shape.</p>
+<div id="op2"></div>
+<script>
+(() => {
+  const code =
+`int poll() {
+    if (size == 0) throw new NoSuchElementException();
+    int min = a[0];
+    a[0] = a[--size];       // last element to the root
+    siftDown(0);            // then let it sink
+    return min;
+}
+
+private void siftDown(int i) {
+    while (2 * i + 1 < size) {     // has a left child
+        int c = 2 * i + 1;
+        if (c + 1 < size && a[c + 1] < a[c]) c++;
+        if (a[i] <= a[c]) break;   // smaller than both
+        swap(i, c);                // swap with smaller kid
+        i = c;
+    }
+}`;
+  const L = s => lineOf(code, s);
+  const h = new HeapModel(8), r = Viz.recorder();
+  h.a = [1, 4, 2, 7, 5, 9].map(k => el(k));
+  r.step(h.panels({}, { size: 6 }), [], 'The heap from the offer animation: <code>[1, 4, 2, 7, 5, 9]</code>.');
+  for (let round = 0; round < 2; round++) {
+    const min = h.a[0];
+    r.step(h.panels({ 0: 'done' }, { min: min.key }), [L('int min = a[0]')], `poll(): the answer is the root, <b>${min.key}</b>. Now the root is a hole.`);
+    const last = h.a.pop();
+    if (h.a.length) h.a[0] = last;
+    r.step(h.panels({ 0: 'active' }, { min: min.key, size: h.a.length }), [L('a[0] = a[--size]')],
+      `Move the <b>last</b> element (${last.key}) into the root. Removing the last slot keeps the tree complete; but ${last.key} is probably too big for the top.`);
+    let i = 0;
+    while (2 * i + 1 < h.a.length) {
+      let c = 2 * i + 1;
+      const two = c + 1 < h.a.length;
+      if (two && h.a[c + 1].key < h.a[c].key) c++;
+      const marks = { [i]: 'active', [2 * i + 1]: 'compare' }; if (two) marks[2 * i + 2] = 'compare';
+      r.step(h.panels(marks, { min: min.key, i, 'smaller kid': h.a[c].key }), [L('int c = 2 * i + 1'), L('a[c + 1] < a[c]')],
+        two ? `Children of index ${i}: ${h.a[2 * i + 1].key} and ${h.a[2 * i + 2].key}. Pick the <b>smaller</b> one (${h.a[c].key}); only it can sit above the other.`
+          : `Index ${i} has one child: ${h.a[c].key}.`);
+      if (h.a[i].key <= h.a[c].key) {
+        r.step(h.panels({ [i]: 'done', [c]: 'compare' }, { min: min.key }), [L('if (a[i] <= a[c]) break')], `${h.a[i].key} ≤ ${h.a[c].key}: the rule holds, stop.`);
+        break;
+      }
+      r.step(h.panels({ [i]: 'bad', [c]: 'bad' }, { min: min.key, i, c }), [L('swap(i, c)')], `${h.a[i].key} &gt; ${h.a[c].key}: swap down.`);
+      [h.a[i], h.a[c]] = [h.a[c], h.a[i]];
+      i = c;
+      r.step(h.panels({ [i]: 'active' }, { min: min.key, i }), [L('i = c')], `${h.a[i].key} is now at index ${i}.`);
+    }
+    r.step(h.panels({ 0: 'done' }, { returned: min.key, size: h.a.length }), [L('return min')],
+      `Return <b>${min.key}</b>. New minimum on top: <b>${h.a[0].key}</b>. At most one swap per level: O(log n).`);
+  }
+  Viz.mount('#op2', { frames: r.frames, title: 'poll and sift down', code });
+})();
+</script>
+
+<h3>3. The comparator, and the <code>a - b</code> overflow trap</h3>
+<p>A comparator returns a negative number if <code>a</code> should come first. <code>(a, b) -&gt; a - b</code> looks right, but subtraction of two <code>int</code>s can <b>overflow</b>. Offer <code>1</code>, then <code>Integer.MIN_VALUE</code> (shown as MIN), to a queue built with it.</p>
+<div id="op3"></div>
+<script>
+(() => {
+  const code =
+`// WRONG: a - b can overflow
+PriorityQueue<Integer> bad =
+    new PriorityQueue<>((a, b) -> a - b);
+
+// RIGHT: never overflows
+PriorityQueue<Integer> good =
+    new PriorityQueue<>((a, b) -> Integer.compare(a, b));
+PriorityQueue<Integer> also =
+    new PriorityQueue<>(Comparator.naturalOrder());
+
+// max-heap
+PriorityQueue<Integer> max =
+    new PriorityQueue<>(Comparator.reverseOrder());`;
+  const L = s => lineOf(code, s);
+  const MIN = -2147483648;
+  const h = new HeapModel(4), r = Viz.recorder();
+  h.a = [el(1, '1')];
+  r.step(h.panels({ 0: 'done' }, { comparator: '(a, b) -> a - b' }), [L('(a, b) -> a - b')], 'The queue already holds <b>1</b>. Now offer MIN = −2147483648, the smallest int. It should rise to the root.');
+  h.a.push({ id: 'eMIN', key: MIN, label: 'MIN' });
+  r.step(h.panels({ 1: 'active', 0: 'compare' }, { 'compare(MIN, 1)': 'MIN - 1' }), [L('(a, b) -> a - b')], 'siftUp asks the comparator: <code>compare(MIN, 1)</code> = MIN − 1.');
+  r.step(h.panels({ 1: 'bad', 0: 'bad' }, { 'MIN - 1': '+2147483647', means: 'MIN > 1 ?!' }, null), [L('(a, b) -> a - b')],
+    'True answer −2147483649 does not fit in an int. It <b>wraps around</b> to +2147483647, a big <b>positive</b> number, which means "MIN is bigger than 1". So no swap.');
+  r.step(h.panels({ 0: 'bad', 1: 'bad' }, { 'poll()': '1  (wrong!)' }), [L('(a, b) -> a - b')],
+    '<code>poll()</code> now returns 1 instead of MIN. With mixed big positive and negative values the whole heap order is quietly corrupt; no exception is thrown.');
+  h.a = [{ id: 'eMIN', key: MIN, label: 'MIN' }, el(1, '1')];
+  r.step(h.panels({ 0: 'done', 1: 'done' }, { 'Integer.compare(MIN, 1)': '-1' }), [L('Integer.compare(a, b)'), L('naturalOrder()')],
+    'Use <code>Integer.compare(a, b)</code> (it compares, it does not subtract) or <code>Comparator.naturalOrder()</code>. compare(MIN, 1) = −1, MIN rises to the root. Same for <code>long</code>: <code>Long.compare</code>.');
+  r.step(h.panels({}, { 'max-heap': 'reverseOrder()' }), [L('reverseOrder()')],
+    'For a max-heap use <code>Comparator.reverseOrder()</code> or <code>(a, b) -&gt; Integer.compare(b, a)</code>, not <code>b - a</code> (same overflow).');
+  Viz.mount('#op3', { frames: r.frames, title: 'Comparator overflow', code });
+})();
+</script>
+
+<h3>4. No decrease-key: lazy deletion</h3>
+<p>Dijkstra wants to lower a node's distance when it finds a shorter path. <code>PriorityQueue</code> cannot change a priority in place (it would not know to sift), and <code>remove(Object)</code> is O(n). The standard trick: <b>push a new entry</b> and skip the old one when it comes out.</p>
+<div id="op4"></div>
+<script>
+(() => {
+  const code =
+`PriorityQueue<int[]> pq = new PriorityQueue<>(
+    (x, y) -> Integer.compare(x[1], y[1]));
+pq.offer(new int[]{src, 0});
+while (!pq.isEmpty()) {
+    int[] cur = pq.poll();
+    int u = cur[0], d = cur[1];
+    if (d > dist[u]) continue;  // stale
+    for (int[] e : adj[u]) {       // e = {v, weight}
+        int v = e[0], nd = d + e[1];
+        if (nd < dist[v]) {
+            dist[v] = nd;
+            pq.offer(new int[]{v, nd}); // re-push
+        }
+    }
+}`;
+  const L = s => lineOf(code, s);
+  const h = new HeapModel(4), r = Viz.recorder();
+  const dist = { A: 0, B: Infinity, C: Infinity };
+  const dv = () => ({ type: 'vars', id: 'd', vars: { 'dist[A]': dist.A, 'dist[B]': dist.B === Infinity ? '∞' : dist.B, 'dist[C]': dist.C === Infinity ? '∞' : dist.C } });
+  const P = (marks, extra = {}) => [h.arr(marks, 'pq entries (node:dist)'), h.tree(marks, 'heap'), dv(), { type: 'vars', id: 'x', vars: extra }];
+  const graph = 'Edges: A→B 9, A→C 2, C→B 2';
+  const push = (n, d) => {
+    h.a.push({ id: `${n}${d}`, key: d, label: `${n}:${d}` });
+    let i = h.a.length - 1;
+    while (i > 0) { const p = (i - 1) >> 1; if (h.a[p].key <= h.a[i].key) break; [h.a[i], h.a[p]] = [h.a[p], h.a[i]]; i = p; }
+    return i;
+  };
+  const pop = () => {
+    const top = h.a[0], last = h.a.pop();
+    if (h.a.length) {
+      h.a[0] = last; let i = 0;
+      while (2 * i + 1 < h.a.length) { let c = 2 * i + 1; if (c + 1 < h.a.length && h.a[c + 1].key < h.a[c].key) c++; if (h.a[i].key <= h.a[c].key) break; [h.a[i], h.a[c]] = [h.a[c], h.a[i]]; i = c; }
+    }
+    return top;
+  };
+  push('A', 0);
+  r.step(P({ 0: 'active' }, { graph }), [L('pq.offer(new int[]{src, 0})')], `${graph}. Start: dist[A] = 0, push <b>A:0</b>.`);
+  pop();
+  r.step(P({}, { polled: 'A:0' }), [L('pq.poll()')], 'Poll A:0. Relax its edges.');
+  dist.B = 9; let i = push('B', 9);
+  r.step(P({ [i]: 'active' }, { polled: 'A:0' }), [L('dist[v] = nd'), L('re-push')], 'A→B costs 9 &lt; ∞: dist[B] = 9, push <b>B:9</b>.');
+  dist.C = 2; i = push('C', 2);
+  r.step(P({ [i]: 'active' }, { polled: 'A:0' }), [L('re-push')], 'A→C costs 2: dist[C] = 2, push <b>C:2</b>. It sifts up above B:9.');
+  pop();
+  r.step(P({}, { polled: 'C:2' }), [L('pq.poll()')], 'Poll the cheapest: <b>C:2</b>.');
+  dist.B = 4; i = push('B', 4);
+  r.step(P({ [i]: 'active', [h.a.findIndex(e => e.id === 'B9')]: 'dim' }, { polled: 'C:2' }), [L('dist[v] = nd'), L('re-push')],
+    'C→B gives 2 + 2 = 4 &lt; 9. We would like to lower B:9 to B:4, but finding it is O(n). Instead <b>push a second entry B:4</b> and leave B:9 in the heap. dist[B] = 4 is the truth.');
+  const t1 = pop();
+  r.step(P({}, { polled: t1.label }), [L('pq.poll()')], `Poll <b>${t1.label}</b>: it matches dist[B] = 4, so it is real. Process B.`);
+  const t2 = pop();
+  r.step(P({}, { polled: t2.label, 'd > dist[B]': '9 > 4' }), [L('if (d > dist[u]) continue')],
+    `Later the old <b>${t2.label}</b> comes out. Its distance 9 is bigger than dist[B] = 4, so it is <b>stale</b>: skip it with <code>continue</code>.`);
+  r.step(P({}, { 'heap size': 'at most E entries' }), [], 'Cost: the heap can hold one entry per edge relaxation (≤ E), so each operation is O(log E) = O(log V). Simpler and usually faster than a real decrease-key.');
+  Viz.mount('#op4', { frames: r.frames, title: 'Lazy deletion in Dijkstra', code });
+})();
+</script>
+
+<h2>Build it yourself</h2>
+<p>The interview version: a min-heap of <code>int</code>s with <code>offer</code>, <code>peek</code>, <code>poll</code>. Tested against <code>java.util.PriorityQueue</code> with 300,000 random operations.</p>
+<pre class="code"><code><span class="k">import</span> java.util.Arrays;
+<span class="k">import</span> java.util.NoSuchElementException;
+
+<span class="c">// A min-heap of ints in an array (what PriorityQueue does).</span>
+<span class="c">// Parent of i is (i - 1) / 2. Children are 2i + 1, 2i + 2.</span>
+<span class="k">class</span> MinHeap {
+    <span class="k">private int</span>[] a = <span class="k">new int</span>[<span class="n">4</span>];
+    <span class="k">private int</span> size = <span class="n">0</span>;
+
+    <span class="k">void</span> offer(<span class="k">int</span> x) {
+        <span class="k">if</span> (size == a.length)
+            a = Arrays.copyOf(a, size * <span class="n">2</span>);   <span class="c">// grow</span>
+        a[size] = x;            <span class="c">// put it at the end</span>
+        siftUp(size++);         <span class="c">// then let it float up</span>
+    }
+
+    <span class="k">int</span> peek() {
+        <span class="k">if</span> (size == <span class="n">0</span>) <span class="k">throw new</span> NoSuchElementException();
+        <span class="k">return</span> a[<span class="n">0</span>];            <span class="c">// smallest is at the root</span>
+    }
+
+    <span class="k">int</span> poll() {
+        <span class="k">if</span> (size == <span class="n">0</span>) <span class="k">throw new</span> NoSuchElementException();
+        <span class="k">int</span> min = a[<span class="n">0</span>];
+        a[<span class="n">0</span>] = a[--size];       <span class="c">// last element to the root</span>
+        siftDown(<span class="n">0</span>);            <span class="c">// then let it sink</span>
+        <span class="k">return</span> min;
+    }
+
+    <span class="k">private void</span> siftUp(<span class="k">int</span> i) {
+        <span class="k">while</span> (i &gt; <span class="n">0</span>) {
+            <span class="k">int</span> p = (i - <span class="n">1</span>) / <span class="n">2</span>;
+            <span class="k">if</span> (a[p] &lt;= a[i]) <span class="k">break</span>;   <span class="c">// in order</span>
+            swap(i, p);
+            i = p;
+        }
+    }
+
+    <span class="k">private void</span> siftDown(<span class="k">int</span> i) {
+        <span class="k">while</span> (<span class="n">2</span> * i + <span class="n">1</span> &lt; size) {     <span class="c">// has a left child</span>
+            <span class="k">int</span> c = <span class="n">2</span> * i + <span class="n">1</span>;
+            <span class="k">if</span> (c + <span class="n">1</span> &lt; size &amp;&amp; a[c + <span class="n">1</span>] &lt; a[c]) c++;
+            <span class="k">if</span> (a[i] &lt;= a[c]) <span class="k">break</span>;   <span class="c">// smaller than both</span>
+            swap(i, c);                <span class="c">// swap with smaller kid</span>
+            i = c;
+        }
+    }
+
+    <span class="k">private void</span> swap(<span class="k">int</span> i, <span class="k">int</span> j) {
+        <span class="k">int</span> t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+
+    <span class="k">int</span> size() { <span class="k">return</span> size; }
+}</code></pre>
+<p>For a max-heap flip the two comparisons (<code>a[p] &gt;= a[i]</code>, pick the <i>larger</i> child). For objects, take a <code>Comparator&lt;T&gt;</code> in the constructor and replace each <code>&lt;</code> with <code>cmp.compare(x, y) &lt; 0</code>.</p>
+
+<h2>The real Java class</h2>
+<ul>
+  <li><b>Fields:</b> <code>Object[] queue</code>, <code>int size</code>, <code>Comparator comparator</code> (null means natural order, so the elements must be <code>Comparable</code>, or you get <code>ClassCastException</code> on the second offer), <code>modCount</code> for fail-fast iterators.</li>
+  <li><b>Default capacity 11.</b> Growth: if the capacity is under 64 it <b>doubles + 2</b>, otherwise it grows by <b>50%</b>. The array never shrinks.</li>
+  <li><b>siftUp / siftDown</b> are exactly the loops above, written as "hole" moves: instead of swapping at each level, Java keeps the moving element in a variable, slides parents (or children) into the hole, and writes the element once at the end. Same comparisons, fewer writes.</li>
+  <li><b>Building from a collection</b> (<code>new PriorityQueue&lt;&gt;(list)</code>) runs <b>heapify</b>: siftDown from the last parent back to the root. That is <b>O(n)</b>, faster than n offers (O(n log n)).</li>
+  <li><b>Iterator and toString are in array order, not sorted.</b> To get sorted output, poll repeatedly (O(n log n)) or copy to a list and sort.</li>
+  <li><b><code>remove(Object)</code> and <code>contains</code> are O(n)</b>: there is no index from value to position, so it scans. After finding index i, <code>removeAt(i)</code> moves the last element into i and sifts it down, or up if it did not move down: O(log n) for that part.</li>
+  <li><b>No decrease-key.</b> If you change a field an element is compared by while it is inside the queue, the heap is silently broken. Remove and re-add (O(n)), or use lazy deletion (above).</li>
+  <li><b>No nulls</b> (<code>NullPointerException</code>): <code>poll()</code> and <code>peek()</code> return null for empty. <b>Not thread-safe</b>: use <code>PriorityBlockingQueue</code>.</li>
+  <li><b>Ties are not stable</b>: two equal elements can come out in any order. Add a tie-breaker (e.g. an index or timestamp) to the comparator if order matters.</li>
+</ul>
+
+<h2>Cost of every operation</h2>
+<table>
+<tr><th>Operation</th><th>Average</th><th>Worst</th><th>Why</th></tr>
+<tr><td><code>peek()</code></td><td>O(1)</td><td>O(1)</td><td>The minimum is always at index 0.</td></tr>
+<tr><td><code>offer(x)</code> / <code>add(x)</code></td><td>O(1)*</td><td>O(log n)</td><td>Sift up one path. *On random data the new element usually stops after about 2 levels. A grow adds an O(n) copy, amortized O(1).</td></tr>
+<tr><td><code>poll()</code> / <code>remove()</code></td><td>O(log n)</td><td>O(log n)</td><td>The last element starts at the root and usually sinks almost to the bottom.</td></tr>
+<tr><td><code>remove(Object)</code></td><td>O(n)</td><td>O(n)</td><td>Linear search for the element, then O(log n) to fix.</td></tr>
+<tr><td><code>contains(Object)</code></td><td>O(n)</td><td>O(n)</td><td>Linear scan; the heap rule does not help searching.</td></tr>
+<tr><td><code>new PriorityQueue&lt;&gt;(collection)</code></td><td>O(n)</td><td>O(n)</td><td>Bottom-up heapify: most nodes are near the leaves and sink only a little.</td></tr>
+<tr><td>iterate / toString</td><td>O(n)</td><td>O(n)</td><td>Array order, not sorted.</td></tr>
+<tr><td>sorted output (poll all)</td><td>O(n log n)</td><td>O(n log n)</td><td>n polls: this is heap sort.</td></tr>
+</table>
+
+<h2>Why and when to use it</h2>
+<ul>
+  <li><b>Top k / k-th largest</b>: a min-heap of size k; when it grows past k, poll the smallest. O(n log k) time, O(k) memory.</li>
+  <li><b>Merge k sorted lists</b>: the heap holds one head per list; always poll the smallest.</li>
+  <li><b>Shortest paths</b> (Dijkstra) and <b>minimum spanning tree</b> (Prim): always expand the cheapest frontier entry.</li>
+  <li><b>Scheduling</b>: meeting rooms (min-heap of end times), task scheduler, CPU tasks by priority.</li>
+  <li><b>Running median</b>: two heaps, a max-heap for the lower half and a min-heap for the upper half.</li>
+</ul>
+
+<h2>When not to use it</h2>
+<ul>
+  <li>You need to <b>remove or update arbitrary elements</b> fast, or need both min and max: use a <a href="ds-treemap.html">TreeMap / TreeSet</a> (O(log n) remove, first and last).</li>
+  <li>You need the elements <b>sorted once</b>: just sort the array, O(n log n) with a better constant.</li>
+  <li>You need "is x present?": a <a href="ds-hashmap.html">HashSet</a> is O(1); the heap is O(n).</li>
+  <li>The order is simply <b>first come, first served</b>: an <a href="ds-arraydeque.html">ArrayDeque</a> queue is O(1).</li>
+  <li>Priorities are small integers (0..k): an array of buckets (bucket queue) is O(1) per operation.</li>
+  <li>You want a single k-th element and can modify the array: quickselect is O(n) average (see <a href="quick-sort.html">Quick sort</a>).</li>
+</ul>
+
+<h2>Used in these patterns</h2>
+<ul>
+  <li><a href="heap.html">Heap / priority queue</a>: the pattern lesson for this structure.</li>
+  <li><a href="top-k.html">Top k</a> and <a href="two-heaps.html">Two heaps</a> (running median).</li>
+  <li><a href="merge-lists.html">Merge lists</a>: merge k sorted lists with a heap of heads.</li>
+  <li><a href="dijkstra.html">Dijkstra</a>, <a href="shortest-paths-advanced.html">Shortest paths (advanced)</a> and <a href="mst.html">Minimum spanning tree</a> (Prim): lazy deletion as above.</li>
+  <li><a href="intervals.html">Intervals</a>: meeting rooms with a min-heap of end times. <a href="greedy.html">Greedy</a>: always take the best next choice.</li>
+</ul>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Array heap: parent (i−1)/2, kids 2i+1 and 2i+2.</b> offer = append + sift up, poll = last to root + sift down, both O(log n); peek O(1). Iteration is not sorted. <code>remove(x)</code> and <code>contains(x)</code> are O(n). No decrease-key: push again and skip stale entries. Compare with <code>Integer.compare</code>, never <code>a - b</code>.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li><code>(a, b) -&gt; a - b</code> or <code>b - a</code> on values that can be large or negative: overflow silently corrupts the order. Use <code>Integer.compare</code>, <code>Comparator.comparingInt</code>, <code>reverseOrder()</code>.</li>
+  <li>Expecting <code>System.out.println(pq)</code> or a for-each loop to show sorted order. Only <code>poll()</code> gives sorted order.</li>
+  <li>Forgetting a max-heap needs a comparator: <code>new PriorityQueue&lt;&gt;()</code> is always a <b>min</b>-heap.</li>
+  <li>Changing an element's priority field while it is inside the queue (e.g. editing <code>dist</code> inside the stored object). The heap does not notice.</li>
+  <li>Using <code>pq.remove(x)</code> inside a loop: O(n) each, so O(n²) total. Use lazy deletion or a TreeSet.</li>
+  <li>Top k largest with a <b>max</b>-heap of all n elements: O(n) memory and O(n log n). A <b>min</b>-heap of size k is the expected answer.</li>
+  <li>Putting <code>int[]</code> in a PriorityQueue without a comparator: arrays are not Comparable, so the second offer throws <code>ClassCastException</code>.</li>
+</ul></div>
+
+<h2>Interview questions on the internals</h2>
+<details class="quiz"><summary>How is a PriorityQueue stored? Where are the children of index i?</summary>
+<p>As a complete binary tree written level by level into an array (<code>Object[] queue</code>). Children of i are at 2i + 1 and 2i + 2, the parent at (i − 1) / 2. The root, index 0, is the minimum.</p></details>
+<details class="quiz"><summary>Why is offer O(log n)?</summary>
+<p>The new element is placed in the next free leaf, so the tree stays complete and has height about log₂ n. Sift-up swaps it with its parent while it is smaller: at most one swap per level.</p></details>
+<details class="quiz"><summary>In poll, why move the last element to the root instead of promoting a child?</summary>
+<p>Removing the last slot keeps the tree complete (no gaps in the array). Then sift-down repairs the order along one path, always swapping with the smaller child so the new parent is smaller than both children.</p></details>
+<details class="quiz"><summary>Does iterating a PriorityQueue give sorted order?</summary>
+<p>No. The iterator and <code>toString</code> walk the array, which is only heap-ordered. Offering 5, 1, 4, 2, 3 prints <code>[1, 2, 4, 5, 3]</code>. Poll repeatedly to get sorted order.</p></details>
+<details class="quiz"><summary>What is wrong with <code>(a, b) -&gt; a - b</code>?</summary>
+<p>Integer overflow. <code>Integer.MIN_VALUE - 1</code> wraps to <code>Integer.MAX_VALUE</code>, so MIN looks bigger than 1. Use <code>Integer.compare(a, b)</code>, which only compares.</p></details>
+<details class="quiz"><summary>What is the cost of <code>remove(Object)</code>, and why?</summary>
+<p>O(n). The heap has no map from value to index, so it does a linear search. The fix afterwards (move the last element in, sift down or up) is O(log n).</p></details>
+<details class="quiz"><summary>Java's PriorityQueue has no decrease-key. How do you run Dijkstra with it?</summary>
+<p>Lazy deletion: when a distance improves, offer a new (node, distance) entry. When polling, skip entries whose distance is larger than the current best <code>dist[node]</code>. The heap holds at most E entries, so it is O(E log E) = O(E log V).</p></details>
+<details class="quiz"><summary>Building a heap from n elements: O(n log n) or O(n)?</summary>
+<p>n offers cost O(n log n), but bottom-up heapify (what <code>new PriorityQueue&lt;&gt;(collection)</code> does) is O(n): half the nodes are leaves and do not move, a quarter move at most one level, and the sum n/4·1 + n/8·2 + … is below n.</p></details>
+<details class="quiz"><summary>How do you get a max-heap?</summary>
+<p><code>new PriorityQueue&lt;&gt;(Comparator.reverseOrder())</code> or <code>(a, b) -&gt; Integer.compare(b, a)</code>. For objects: <code>Comparator.comparingInt(Task::priority).reversed()</code>.</p></details>
+
+<nav class="pager"><a href="ds-arraydeque.html">← ArrayDeque</a><a href="ds-treemap.html">TreeMap &amp; TreeSet →</a></nav>
+</main>
+</body>
+</html>

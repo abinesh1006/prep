@@ -153,6 +153,18 @@
     <span class="k">if</span> (i &gt;= k - <span class="n">1</span>) use(dq.peekFirst());    <span class="c">// front = best</span>
 }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-arraydeque.html">ArrayDeque</a><code>&lt;Integer&gt;</code> of indices</td><td><code>pollFirst</code> when the front leaves the window; <code>pollLast</code> while the back is worse than the new item; front = best</td><td>O(1) amortised — each index enters and leaves once</td><td>A <a href="ds-priorityqueue.html">PriorityQueue</a> costs O(log n) per step and cannot drop expired items cheaply; a <a href="ds-treemap.html">TreeMap</a> of counts is O(log n) too.</td></tr>
+<tr><td>Indices, not values</td><td>the index tells whether the front is outside the window (<code>&lt;= i - k</code>)</td><td>O(1)</td><td>With values only, two equal numbers at different positions are indistinguishable.</td></tr>
+<tr><td>Two deques <code>maxQ</code> / <code>minQ</code> (1438)</td><td>current window max and min at the two fronts; shrink from the left while max − min &gt; limit</td><td>O(n) total</td><td>A <a href="ds-treemap.html">TreeMap</a> of counts gives max and min in O(log n).</td></tr>
+<tr><td><code>int[] dp</code> + deque over dp (1696, 1425)</td><td>best score reaching i = <code>nums[i]</code> + the max dp in the last k cells, read from the deque front</td><td>O(n) instead of O(n · k)</td><td>Scanning the last k dp values every time is O(n · k).</td></tr>
+<tr><td><code>long[] pre</code> + deque of increasing prefix sums (862)</td><td>shortest subarray with sum ≥ k, where numbers can be negative</td><td>O(n)</td><td>Sliding window fails with negatives; <code>long</code> because prefix sums overflow int.</td></tr>
+<tr><td><code>Deque&lt;int[]&gt;</code> of <code>{x, y − x}</code> (1499)</td><td>the best <code>y − x</code> among points within distance k behind</td><td>O(n)</td><td>A heap of the same pairs works at O(n log n) with lazy removal.</td></tr>
+</table>
+<p>The deque keeps the window's candidates in sorted order while only ever touching its two ends, which is why every element costs O(1) amortised.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Front = best, and leaves when too old. Back = newest; it kicks out everyone worse before it joins.</b> Store indices, not values.</p></div>
 

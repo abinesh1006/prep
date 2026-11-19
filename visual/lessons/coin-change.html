@@ -162,6 +162,17 @@ int countOrders(int amount, int[] coins) {
 <span class="c">// count orderings: amount OUTSIDE</span>
 <span class="k">for</span> (<span class="k">int</span> a = <span class="n">1</span>; a &lt;= T; a++) <span class="k">for</span> (<span class="k">int</span> c : coins) <span class="k">if</span> (c &lt;= a) dp[a] += dp[a - c];</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><code>int[] dp</code> of size amount + 1 (<a href="ds-array-arraylist.html">array</a>)</td><td><code>dp[a]</code> = answer for amount a, so <code>dp[a - c]</code> is one index away</td><td>O(1) per lookup; O(T · k) time</td><td>Memoised recursion with a <a href="ds-hashmap.html">HashMap</a> has the same time but boxing, hashing and a call stack T deep.</td></tr>
+<tr><td><code>amount + 1</code> as "infinity" (322)</td><td>an impossible marker that <code>+ 1</code> cannot overflow</td><td>O(1)</td><td><code>Integer.MAX_VALUE + 1</code> wraps to a negative number and wins every <code>min</code>.</td></tr>
+<tr><td>Loop order: coins outside (518) vs amount outside (377)</td><td>the same array, filled in a different order, counts combinations vs orderings</td><td>—</td><td>Swapping the loops by mistake silently answers the other question.</td></tr>
+<tr><td><a href="ds-hashmap.html">HashSet</a><code>&lt;String&gt;</code> dict + <code>boolean[] ok</code> (139)</td><td>"is <code>s.substring(j, i)</code> a word?" and "can the first i letters be split?"</td><td>O(1) average per lookup (+ O(L) to hash the piece)</td><td>Scanning the word list every time is O(words) per check; a <a href="trie.html">trie</a> also works.</td></tr>
+<tr><td><code>boolean[] travel</code> + <code>int[] dp</code> by day (983)</td><td>which days need a pass; <code>dp[d]</code> = cheapest cost to cover days 1..d</td><td>O(last day)</td><td>DP over the list of travel days only needs binary search for "7/30 days ago" — more code, same idea.</td></tr>
+</table>
+<p>Unbounded knapsack DP is one array indexed by amount. What changes between problems is the combine step (min, sum, or) and the loop order.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Last coin → look back by each coin.</b> Min coins: any loop order. Count ways: <b>coins outside = combinations</b>, amount outside = orderings.</p></div>
 

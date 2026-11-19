@@ -254,6 +254,20 @@
 <span class="c">// Remove from the middle of an array in O(1):</span>
 list.set(i, last); pos.put(last, i); list.remove(list.size() - <span class="n">1</span>);</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-arraydeque.html">ArrayDeque</a><code>&lt;int[]&gt;</code> of <code>{val, minSoFar}</code> (155)</td><td>each entry remembers the minimum at the time it was pushed, so <code>getMin</code> is <code>peek()[1]</code></td><td>O(1) every method</td><td>Scanning for the minimum is O(n); a <a href="ds-priorityqueue.html">PriorityQueue</a> cannot follow a pop.</td></tr>
+<tr><td><a href="ds-array-arraylist.html">ArrayList</a> + <a href="ds-hashmap.html">HashMap</a> value → index (380)</td><td>the list gives <code>getRandom</code> by index; the map finds the item; remove = move the last item into its slot</td><td>O(1) average</td><td>A <a href="ds-hashmap.html">HashSet</a> alone cannot pick a random element in O(1); a list alone cannot find one in O(1).</td></tr>
+<tr><td><code>HashMap&lt;Integer, Set&lt;Integer&gt;&gt;</code> of indices (381)</td><td>with duplicates, each value may sit at many indices</td><td>O(1) average</td><td>A <code>List</code> of indices makes removing one specific index O(k).</td></tr>
+<tr><td><a href="ds-hashmap.html">HashMap</a><code>&lt;String, List&lt;…&gt;&gt;</code> + binary search (981)</td><td>per key, timestamps arrive increasing, so a list stays sorted; binary search finds the latest ≤ t</td><td>O(1) set, O(log n) get</td><td>A <a href="ds-treemap.html">TreeMap</a> per key with <code>floorKey</code> is also O(log n), with more objects.</td></tr>
+<tr><td>Two <code>int[300]</code> rings <code>time</code> / <code>hits</code> (362)</td><td>slot <code>t % 300</code> holds one second; reset when the stored time is old</td><td>O(1) hit, O(300) count, fixed memory</td><td>A queue of every hit grows with traffic.</td></tr>
+<tr><td><a href="ds-hashmap.html">HashMap</a> + doubly <a href="ds-linked-list.html">linked list</a> with sentinels (146)</td><td>the map finds a node; the list moves it to the front and drops the oldest from the back</td><td>O(1) get/put</td><td>An <a href="ds-array-arraylist.html">ArrayList</a> makes "move to front" O(n); <code>LinkedHashMap</code> with access order is the built-in version.</td></tr>
+<tr><td>HashMaps + max-<a href="ds-priorityqueue.html">PriorityQueue</a> (355)</td><td>tweets per user as lists, follows as sets; the heap merges the newest tweets of everyone followed</td><td>O(f log f) for 10 tweets</td><td>Merging all tweets and sorting is O(T log T).</td></tr>
+<tr><td><code>HashMap&lt;Integer, LinkedHashSet&lt;Integer&gt;&gt;</code> buckets + <code>minFreq</code> (460)</td><td>keys grouped by frequency; insertion order inside a bucket gives the least-recent key to evict</td><td>O(1) get/put</td><td>A heap by (freq, time) is O(log n) and needs lazy updates.</td></tr>
+</table>
+<p>Design questions are solved by listing each method and its required speed, then giving each method its own structure — and making every method update all of them.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>One structure per method, glued together and always updated together.</b> Array + map for random; queue for time windows; binary search for "at time t"; buckets of LRU lists for LFU.</p></div>
 

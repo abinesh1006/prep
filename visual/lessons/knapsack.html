@@ -175,6 +175,17 @@ return dp[C];` });
         dp[c] = Math.max(dp[c], v[i] + dp[c - w[i]]);
 <span class="c">// subset sum: boolean dp, dp[0] = true, dp[s] |= dp[s - x]</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td>1D <code>int[] dp</code> over capacity, filled BACKWARDS</td><td><code>dp[c]</code> = best value with capacity c; going from big c down means <code>dp[c - w]</code> is still last item's value, so each item is used once</td><td>O(n · C) time, O(C) memory</td><td>A 2D <code>dp[n][C]</code> table is clearer but n times the memory; going forwards turns it into unbounded (coin change).</td></tr>
+<tr><td><code>boolean[] can</code> (416, 1049)</td><td>"can some subset reach sum s?" — <code>can[s] |= can[s - x]</code></td><td>O(n · sum/2)</td><td>A <a href="ds-hashmap.html">HashSet</a> of reachable sums works but hashes every sum for every number.</td></tr>
+<tr><td><code>int[] ways</code> (494)</td><td>count subsets with sum <code>p = (total + target) / 2</code> — the +/− signs become "which numbers are positive"</td><td>O(n · p)</td><td>Trying all 2ⁿ sign choices is exponential.</td></tr>
+<tr><td><code>int[][] dp</code> — two capacities (474)</td><td>zeros used and ones used, both looped backwards per string</td><td>O(len · m · n)</td><td>A 3D table with the item index as the first dimension uses len times more memory.</td></tr>
+<tr><td><code>int[][] dp</code> members × profit capped at <code>minProfit</code> (879)</td><td>every profit ≥ minProfit shares one cell, so the table stays small</td><td>O(len · n · minProfit)</td><td>Tracking exact profit makes the table as wide as the total profit.</td></tr>
+</table>
+<p>All of 0/1 knapsack is one array indexed by capacity; the only thing to get right is the direction of the inner loop.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Take it or leave it. One row → capacity backwards.</b> Forwards = unlimited copies (coin change).</p></div>
 

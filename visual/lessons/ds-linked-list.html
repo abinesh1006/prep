@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Linked List</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Data structures</span><span class="sp"></span>
+  <a href="../index.html#lessons">All structures</a>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Data structure · Inside Java</div>
+<h1>Linked list</h1>
+<p class="lede">A chain of separate little objects, each holding a value and the address of the next one. Adding or removing a link is cheap once you are standing at the right place — but getting to that place means walking the chain.</p>
+<p class="meta">Time to learn: about 1.5 hours · Prerequisites: <a href="ds-array-arraylist.html">Array &amp; ArrayList</a>, <a href="big-o.html">Big-O</a></p>
+
+<div class="box signal"><span class="tag">Use it when you need…</span>
+<ul>
+  <li><b>O(1) insert or remove at a node you already hold</b> — no shifting, just re-pointing two or four arrows.</li>
+  <li><b>O(1) add/remove at both ends</b> (a doubly linked list with head and tail).</li>
+  <li>To move a node from the middle to the end in O(1) — the heart of an <a href="lru-cache.html">LRU cache</a>.</li>
+  <li>In interviews: whenever the problem hands you a <code>ListNode head</code>.</li>
+</ul></div>
+
+<h2>In plain words</h2>
+<p>An array keeps its values in one block, side by side. A linked list does not. Every value lives in its own small object called a <b>node</b>, created wherever the memory allocator found room. To keep them in order, each node stores a reference to the <b>next</b> node. The list itself only remembers the first node, the <b>head</b>. The last node's next is <code>null</code>.</p>
+<p>A <b>singly</b> linked list has only <code>next</code>. A <b>doubly</b> linked list also has <code>prev</code>, so you can walk backwards and unlink a node without knowing who points at it. A <b>sentinel</b> (dummy) node is a fake node that always sits at the front (and often another at the back), so the list is never truly empty and the code never has to ask "is this the head?".</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A treasure hunt. Each clue tells you where the next clue is hidden. Slipping a new clue into the middle is easy — rewrite one clue to point at the new one, and make the new one point onward. But to reach clue number 50 you must visit clues 1 to 49 in order; you cannot jump. An array is a numbered row of lockers; a linked list is a treasure hunt.</p></div>
+
+<h2>What it looks like in memory</h2>
+<div id="mem"></div>
+<script>
+// Doubly linked list drawn with the graph panel: arrows above = next, arrows below = prev.
+function dlPanel(o) {
+  const nodes = o.nodes.map(n => ({ id: n.id, label: n.label, x: n.x, y: n.y }));
+  const at = Object.fromEntries(o.nodes.map(n => [n.id, n]));
+  const edges = [];
+  const bend = (a, b) => (Math.abs(at[a].x - at[b].x) > (o.gap || 130) * 1.5 && at[a].y === at[b].y ? 46 : 24);
+  for (const [a, b] of Object.entries(o.next || {})) if (b && at[b]) edges.push({ a, b, dir: true, bend: bend(a, b) });
+  for (const [a, b] of Object.entries(o.prev || {})) if (b && at[b]) edges.push({ a, b, dir: true, bend: bend(a, b) });
+  return { type: 'graph', id: o.id || 'g', label: o.label, h: o.h || 100, nodes, edges, marks: o.marks, edgeMarks: o.edgeMarks, pointers: o.pointers };
+}
+// lay out ids left to right on one row
+function row(ids, labels, x0 = 60, gap = 130, y = 46) {
+  return ids.map((id, i) => ({ id, label: labels[id] ?? id, x: x0 + i * gap, y }));
+}
+function chain(ids) {
+  const next = {}, prev = {};
+  for (let i = 0; i + 1 < ids.length; i++) { next[ids[i]] = ids[i + 1]; prev[ids[i + 1]] = ids[i]; }
+  return { next, prev };
+}
+(() => {
+  const r = Viz.recorder();
+  const single = { type: 'list', id: 'l', label: 'singly linked: 7 → 3 → 9 → 4 (nodes live anywhere on the heap)',
+    nodes: [{ id: 'a', val: 7 }, { id: 'b', val: 3 }, { id: 'c', val: 9 }, { id: 'd', val: 4 }],
+    next: { a: 'b', b: 'c', c: 'd', d: null }, pos: { a: [0, 0], b: [1, 1], c: [2, 0], d: [3, 1] }, pointers: { head: 'a' } };
+  r.step([single], [], 'Four separate <b>node</b> objects. Each has a value and a <b>next</b> reference (the box on the right). The list only knows the <b>head</b>; the last next is <b>null</b> (∅). The nodes are not side by side in memory — they sit wherever there was room.');
+  const ids = ['H', 'a', 'b', 'c', 'T'], labels = { a: 7, b: 3, c: 9 };
+  const dl = dlPanel({ label: 'doubly linked with sentinels: H ⇄ 7 ⇄ 3 ⇄ 9 ⇄ T', nodes: row(ids, labels, 60, 150), ...chain(ids), marks: { H: 'visited', T: 'visited' } });
+  r.step([dl, { type: 'text', id: 't', text: 'arrows above = next · arrows below = prev' }], [],
+    'A <b>doubly</b> linked list: every node also points back (<b>prev</b>). <b>H</b> and <b>T</b> are <b>sentinels</b> — dummy nodes that are always there, so even an empty list is H ⇄ T and no operation needs a null check.');
+  r.step([dl, { type: 'vars', id: 'v', vars: { 'node header': '12 B', item: '4 B', next: '4 B', prev: '4 B', 'Integer it points to': '16 B' } }], [],
+    'The price of all those arrows: a <b>java.util.LinkedList</b> node is about 24 bytes, plus 16 for the boxed Integer — about <b>40 bytes per element</b>, versus 4 in an int[].');
+  Viz.mount('#mem', { frames: r.frames, title: 'Linked list memory layout' });
+})();
+</script>
+
+<h2>Watch the operations</h2>
+
+<h3>1. addFirst on a singly linked list — O(1), no shifting</h3>
+<div id="op-push"></div>
+<script>
+(() => {
+  const r = Viz.recorder();
+  const base = [{ id: 'b', val: 3 }, { id: 'c', val: 9 }, { id: 'd', val: 4 }];
+  const pos = { b: [1, 0], c: [2, 0], d: [3, 0] };
+  const L = (extra) => ({ type: 'list', id: 'l', label: 'list', nodes: extra.nodes || base, next: { b: 'c', c: 'd', d: null, ...(extra.next || {}) }, pos: { ...pos, ...(extra.pos || {}) }, pointers: extra.pointers, marks: extra.marks });
+  r.step([L({ pointers: { head: 'b' } })], [7], 'The list is 3 → 9 → 4. We want 7 at the front.');
+  const withN = [{ id: 'n', val: 7 }, ...base];
+  r.step([L({ nodes: withN, next: { n: null }, pos: { n: [0, 1] }, pointers: { head: 'b', n: 'n' }, marks: { n: 'active' } })], [8], 'Create the new node somewhere in memory. Its next is null for now.');
+  r.step([L({ nodes: withN, next: { n: 'b' }, pos: { n: [0, 1] }, pointers: { head: 'b', n: 'n' }, marks: { n: 'active', b: 'compare' } })], [9], '<b>n.next = head</b>: the new node points at the old first node. Nothing else moved.');
+  r.step([L({ nodes: withN, next: { n: 'b' }, pos: { n: [0, 0] }, pointers: { head: 'n' }, marks: { n: 'done' } })], [10], 'Return the new node as the <b>head</b>. Two reference writes, whatever the length: <b>O(1)</b>. The same on an ArrayList (<code>add(0, x)</code>) shifts every element.');
+  Viz.mount('#op-push', { frames: r.frames, title: 'Singly linked addFirst', code:
+`class ListNode {
+    int val; ListNode next;
+    ListNode(int v) { val = v; }
+}
+
+// put a value at the front: O(1)
+ListNode addFirst(ListNode head, int v) {
+    ListNode n = new ListNode(v);
+    n.next = head;     // new node -> old head
+    return n;          // new node is the head
+}` });
+})();
+</script>
+
+<h3>2. get(i) — you must walk, but Java walks from the nearer end</h3>
+<p>No address arithmetic is possible, so finding index <i>i</i> means following arrows. A doubly linked list can start from whichever end is closer.</p>
+<div id="op-get"></div>
+<script>
+(() => {
+  const vals = [5, 8, 2, 6, 1, 9], size = vals.length;
+  const ids = ['H', ...vals.map((_, i) => 'n' + i), 'T'];
+  const labels = Object.fromEntries(vals.map((v, i) => ['n' + i, v]));
+  const r = Viz.recorder();
+  const panel = (marks, cur) => dlPanel({ label: 'H ⇄ 5 ⇄ 8 ⇄ 2 ⇄ 6 ⇄ 1 ⇄ 9 ⇄ T', nodes: row(ids, labels, 40, 97), gap: 97, ...chain(ids), marks: { H: 'visited', T: 'visited', ...marks }, pointers: {} });
+  for (const i of [1, 4]) {
+    let hops = 0;
+    const front = i < size / 2;
+    let k = front ? 0 : size - 1;
+    r.step([panel({ ['n' + k]: 'active' }, 'n' + k), { type: 'vars', id: 'v', vars: { i, 'size / 2': size / 2, start: front ? 'head.next' : 'tail.prev', hops } }], front ? [3, 4] : [7, 8],
+      `get(${i}): is ${i} &lt; ${size / 2}? ${front ? 'Yes → start at the <b>front</b>' : 'No → start at the <b>back</b>'} (cur = ${front ? 'head.next' : 'tail.prev'}, index ${k}).`);
+    while (k !== i) {
+      k += front ? 1 : -1; hops++;
+      const seen = {}; for (let j = Math.min(k, front ? 0 : size - 1); j <= Math.max(k, front ? 0 : size - 1); j++) seen['n' + j] = 'visited';
+      r.step([panel({ ...seen, ['n' + k]: 'active' }, 'n' + k), { type: 'vars', id: 'v', vars: { i, k, hops } }], front ? [5, 6] : [9, 10],
+        `Follow <b>${front ? 'next' : 'prev'}</b> to index ${k}. Every hop is a pointer read from a different spot in memory.`);
+    }
+    r.step([panel({ ['n' + i]: 'done' }, 'n' + i), { type: 'vars', id: 'v', vars: { i, value: vals[i], hops }, marks: { hops: 'active' } }], [12],
+      `Found index ${i} → <b>${vals[i]}</b> after ${hops} hop${hops === 1 ? '' : 's'}. In the worst case (the middle) it is n/2 hops: still <b>O(n)</b>.`);
+  }
+  Viz.mount('#op-get', { frames: r.frames, title: 'Linked list get', code:
+`private Node node(int i) {
+    Node cur;
+    if (i < size / 2) {          // front half
+        cur = head.next;
+        for (int k = 0; k < i; k++)
+            cur = cur.next;
+    } else {                     // back half
+        cur = tail.prev;
+        for (int k = size - 1; k > i; k--)
+            cur = cur.prev;
+    }
+    return cur;
+}` });
+})();
+</script>
+
+<h3>3. Insert after a node — four pointer writes</h3>
+<p>We already hold node <b>p</b> (the 3) and insert 5 after it. Watch the order: the new node is wired up first, then the neighbours are switched over.</p>
+<div id="op-ins"></div>
+<script>
+(() => {
+  const r = Viz.recorder();
+  const labels = { p: 3, q: 9, n: 5 };
+  const X = { H: 60, p: 210, q: 420, T: 570 };
+  const nodes = (withN, final) => final ? row(['H', 'p', 'n', 'q', 'T'], labels, 60, 150) :
+    [...['H', 'p', 'q', 'T'].map(id => ({ id, label: labels[id] ?? id, x: X[id], y: 46 })), ...(withN ? [{ id: 'n', label: 5, x: 315, y: 150 }] : [])];
+  const S = { H: 'visited', T: 'visited' };
+  const P = (o) => dlPanel({ label: 'linkAfter(p, 5)', h: 190, nodes: nodes(o.n, o.final), next: { H: 'p', T: null, ...o.next }, prev: { p: 'H', ...o.prev }, marks: { ...S, ...o.marks }, edgeMarks: o.em, pointers: o.ptr });
+  r.step([P({ next: { p: 'q', q: 'T' }, prev: { q: 'p', T: 'q' }, marks: { p: 'compare' } })], [1], 'We hold <b>p</b> (the node 3). Its next is 9.');
+  r.step([P({ n: 1, next: { p: 'q', q: 'T' }, prev: { q: 'p', T: 'q' }, marks: { p: 'compare', n: 'active' }, ptr: { n: 'n' } })], [2], 'Create node <b>n</b> = 5. Nobody points at it yet, so the list is still valid.');
+  r.step([P({ n: 1, next: { p: 'q', q: 'T' }, prev: { q: 'p', T: 'q', n: 'p' }, marks: { p: 'compare', n: 'active' }, em: { 'n-p': 'active' }, ptr: { n: 'n' } })], [3], '1) <b>n.prev = p</b>: the new node points back to 3.');
+  r.step([P({ n: 1, next: { p: 'q', q: 'T', n: 'q' }, prev: { q: 'p', T: 'q', n: 'p' }, marks: { p: 'compare', n: 'active' }, em: { 'n-q': 'active' }, ptr: { n: 'n' } })], [4], '2) <b>n.next = p.next</b>: the new node points forward to 9. The new node is fully wired; the old list has not changed yet.');
+  r.step([P({ n: 1, next: { p: 'q', q: 'T', n: 'q' }, prev: { q: 'n', T: 'q', n: 'p' }, marks: { p: 'compare', n: 'active' }, em: { 'q-n': 'active' }, ptr: { n: 'n' } })], [5], '3) <b>p.next.prev = n</b>: 9 now points back to 5 instead of 3.');
+  r.step([P({ n: 1, next: { p: 'n', q: 'T', n: 'q' }, prev: { q: 'n', T: 'q', n: 'p' }, marks: { p: 'compare', n: 'active' }, em: { 'p-n': 'active' }, ptr: { n: 'n' } })], [6], '4) <b>p.next = n</b>: 3 now points forward to 5. This must come <b>last</b> — step 2 and step 3 still needed the old p.next.');
+  r.step([P({ final: 1, next: { p: 'n', q: 'T', n: 'q' }, prev: { q: 'n', T: 'q', n: 'p' }, marks: { n: 'done' } })], [7], 'Done: H ⇄ 3 ⇄ 5 ⇄ 9 ⇄ T. Four writes, no shifting, <b>O(1)</b>. Thanks to the sentinels the same four lines work for an empty list (p = H, p.next = T) with no if-statements.');
+  Viz.mount('#op-ins', { frames: r.frames, title: 'Doubly linked insert', code:
+`private void linkAfter(Node p, int v) {
+    Node n = new Node(v);
+    n.prev = p;
+    n.next = p.next;
+    p.next.prev = n;
+    p.next = n;
+    size++;
+}` });
+})();
+</script>
+
+<h3>4. Unlink a node — two pointer writes</h3>
+<div id="op-del"></div>
+<script>
+(() => {
+  const r = Viz.recorder();
+  const labels = { a: 3, b: 5, c: 9 };
+  const ids = ['H', 'a', 'b', 'c', 'T'];
+  const S = { H: 'visited', T: 'visited' };
+  const P = (o) => dlPanel({ label: 'unlink(n) where n is the node 9', nodes: o.nodes || row(ids, labels, 60, 150), gap: 150, next: { H: 'a', a: 'b', ...o.next }, prev: { a: 'H', b: 'a', ...o.prev }, marks: { ...S, ...o.marks }, edgeMarks: o.em, pointers: o.ptr });
+  r.step([P({ next: { b: 'c', c: 'T' }, prev: { c: 'b', T: 'c' }, marks: { c: 'bad' } })], [1], 'Remove <b>n</b> = 9. Because it is doubly linked, n itself tells us both neighbours: n.prev = 5 and n.next = T. No walk needed.');
+  r.step([P({ next: { b: 'T', c: 'T' }, prev: { c: 'b', T: 'c' }, marks: { c: 'bad' }, em: { 'b-T': 'active' } })], [2], '<b>n.prev.next = n.next</b>: 5 now points forward past 9, straight to T.');
+  r.step([P({ next: { b: 'T', c: 'T' }, prev: { c: 'b', T: 'b' }, marks: { c: 'bad' }, em: { 'T-b': 'active' } })], [3], '<b>n.next.prev = n.prev</b>: T now points back past 9, to 5.');
+  r.step([P({ next: { b: 'T', c: 'T' }, prev: { c: 'b', T: 'b' }, marks: { c: 'dim' }, em: { 'c-T': 'dim', 'c-b': 'dim' } })], [5], 'Nobody points at 9 any more. Its own arrows still exist, but it is unreachable, so the garbage collector will free it. <b>O(1)</b>.');
+  r.step([P({ nodes: row(['H', 'a', 'b', 'T'], labels, 60, 150), next: { b: 'T' }, prev: { T: 'b' }, marks: {} })], [5], 'H ⇄ 3 ⇄ 5 ⇄ T. On a <b>singly</b> linked list this would need the node <i>before</i> 9, which means walking from the head: O(n).');
+  Viz.mount('#op-del', { frames: r.frames, title: 'Doubly linked unlink', code:
+`private int unlink(Node n) {
+    n.prev.next = n.next;
+    n.next.prev = n.prev;
+    size--;
+    return n.val;
+}` });
+})();
+</script>
+
+<h3>5. Why arrays scan faster: cache locality</h3>
+<p>The CPU never reads one number from RAM; it loads a whole <b>cache line</b> (64 bytes) at a time. Below, each row is one cache line of memory. Count the slow trips to RAM (cache misses).</p>
+<div id="op-cache"></div>
+<script>
+(() => {
+  const R = 6, C = 8;
+  const cells = Array.from({ length: R }, () => Array(C).fill(''));
+  for (let c = 0; c < C; c++) cells[0][c] = c + 1;
+  const nodes = [[2, 5], [4, 1], [1, 6], [5, 3], [3, 0]];
+  nodes.forEach(([rr, cc], i) => cells[rr][cc] = 'n' + i);
+  const rowLabels = Array.from({ length: R }, (_, i) => 'line ' + i);
+  const r = Viz.recorder();
+  const loaded = new Set();
+  const G = (marks, arrows = []) => {
+    const m = {};
+    for (const rr of loaded) for (let c = 0; c < C; c++) m[`${rr},${c}`] = 'visited';
+    return { type: 'grid', id: 'g', label: 'memory (one row = one 64-byte cache line)', cells, rowLabels, marks: { ...m, ...marks }, arrows };
+  };
+  let miss = 0, hit = 0;
+  const V = (what) => ({ type: 'vars', id: 'v', vars: { scanning: what, 'cache misses': miss, hits: hit }, marks: { 'cache misses': 'bad' } });
+  r.step([G({}), V('-')], [], 'Row 0 holds an int[] of 8 numbers side by side. Nodes n0…n4 of a linked list were allocated at random spots.');
+  loaded.add(0); miss++;
+  r.step([G({ '0,0': 'active' }), V('array')], [2], 'Read a[0]: not in cache → <b>miss</b>, a slow trip to RAM (~100 ns). The CPU brings the <b>whole line</b> back: a[0] to a[7] are now cached.');
+  hit++;
+  r.step([G({ '0,1': 'active' }), V('array')], [2], 'a[1] is already in the cache → <b>hit</b> (~1 ns). The CPU also notices the steady pattern and prefetches the next line early.');
+  hit += 6;
+  r.step([G({ '0,7': 'active' }), V('array')], [2], 'a[2] … a[7]: all hits. <b>8 numbers, 1 miss.</b>');
+  loaded.clear();
+  const arrows = [];
+  nodes.forEach(([rr, cc], i) => {
+    loaded.add(rr); miss++;
+    if (i > 0) arrows.push([nodes[i - 1][0], nodes[i - 1][1], rr, cc, 'compare']);
+    r.step([G({ [`${rr},${cc}`]: 'active' }, [...arrows]), V('list')], [5, 6],
+      i === 0 ? 'Now the list (cache emptied for a fair race). Read head n0 → <b>miss</b>.' :
+      `Follow next to n${i}: a different cache line → another <b>miss</b>. The CPU cannot prefetch, because it does not know the address until it has read the previous node.`);
+  });
+  r.step([G({}, arrows), V('done')], [], 'Array: 8 values, 1 miss. List: 5 values, 5 misses. Same O(n), but in practice scanning a LinkedList is often <b>several times slower</b> than an ArrayList.');
+  Viz.mount('#op-cache', { frames: r.frames, title: 'Cache locality', code:
+`// array: neighbours share a cache line
+for (int i = 0; i < n; i++) sum += a[i];
+
+// list: every node may be anywhere
+for (Node c = head; c != null; c = c.next)
+    sum += c.val;` });
+})();
+</script>
+
+<h2>Build it yourself</h2>
+<p>A doubly linked list of ints with head and tail sentinels — the exact shape used inside an LRU cache. Tested against <code>java.util.LinkedList</code> with 20,000 random operations.</p>
+<pre class="code"><code>import java.util.NoSuchElementException;
+
+// Doubly linked list with two sentinel (dummy) nodes.
+public class MyLinkedList {
+    private static class Node {
+        int val;
+        Node prev, next;
+        Node(int val) { this.val = val; }
+    }
+
+    private final Node head = new Node(0); // sentinel
+    private final Node tail = new Node(0); // sentinel
+    private int size = 0;
+
+    public MyLinkedList() {
+        head.next = tail;                  // empty list:
+        tail.prev = head;                  // H &lt;-&gt; T
+    }
+
+    public void addFirst(int v) { linkAfter(head, v); }
+    public void addLast(int v) { linkAfter(tail.prev, v); }
+
+    // Insert v at index i (0..size): O(n) find, O(1) link.
+    public void add(int i, int v) {
+        if (i &lt; 0 || i &gt; size)
+            throw new IndexOutOfBoundsException(i);
+        linkAfter(i == size ? tail.prev : node(i).prev, v);
+    }
+
+    public int get(int i) { return node(i).val; }
+
+    public int removeFirst() {
+        if (size == 0) throw new NoSuchElementException();
+        return unlink(head.next);
+    }
+
+    public int removeLast() {
+        if (size == 0) throw new NoSuchElementException();
+        return unlink(tail.prev);
+    }
+
+    public int size() { return size; }
+
+    // Four pointer writes. No null checks thanks to sentinels.
+    private void linkAfter(Node p, int v) {
+        Node n = new Node(v);
+        n.prev = p;
+        n.next = p.next;
+        p.next.prev = n;
+        p.next = n;
+        size++;
+    }
+
+    // Two pointer writes: neighbours skip over n.
+    private int unlink(Node n) {
+        n.prev.next = n.next;
+        n.next.prev = n.prev;
+        size--;
+        return n.val;
+    }
+
+    // Walk from the nearer end: at most size/2 hops.
+    private Node node(int i) {
+        if (i &lt; 0 || i &gt;= size)
+            throw new IndexOutOfBoundsException(i);
+        Node cur;
+        if (i &lt; size / 2) {
+            cur = head.next;
+            for (int k = 0; k &lt; i; k++)
+                cur = cur.next;
+        } else {
+            cur = tail.prev;
+            for (int k = size - 1; k &gt; i; k--)
+                cur = cur.prev;
+        }
+        return cur;
+    }
+}</code></pre>
+<p>On LeetCode you rarely build a whole list class — you get a bare <code>ListNode</code> (<code>val</code>, <code>next</code>) and write functions over it. The same sentinel trick applies there: <code>ListNode dummy = new ListNode(0); dummy.next = head;</code> so deleting the first node is no special case, then <code>return dummy.next</code>.</p>
+
+<h2>The real Java class</h2>
+<ul>
+  <li><code>java.util.LinkedList&lt;E&gt;</code> is a <b>doubly</b> linked list. Fields: <code>Node&lt;E&gt; first</code>, <code>Node&lt;E&gt; last</code>, <code>int size</code>. Node: <code>E item; Node&lt;E&gt; next; Node&lt;E&gt; prev</code>.</li>
+  <li>It uses <b>no sentinels</b>: <code>first</code> and <code>last</code> are <code>null</code> when empty, so methods like <code>linkLast</code> and <code>unlink</code> are full of <code>if (prev == null)</code> branches. Our sentinel version shows why dummy nodes are popular.</li>
+  <li><code>get(i)</code> calls <code>node(i)</code>, which walks from <code>first</code> if <code>i &lt; (size &gt;&gt; 1)</code>, else from <code>last</code> — exactly the animation above.</li>
+  <li>It implements both <code>List</code> and <code>Deque</code>: <code>addFirst/addLast/pollFirst/pollLast/peekFirst/peekLast</code> are O(1). It accepts <code>null</code> elements (<code>ArrayDeque</code> does not).</li>
+  <li>It does <b>not</b> implement <code>RandomAccess</code>. <code>Collections.binarySearch</code> on it falls back to iterator walking.</li>
+  <li>The only way to get O(1) insert/remove <i>in the middle</i> is through a <code>ListIterator</code> you already moved there (<code>it.add(x)</code>, <code>it.remove()</code>). <code>list.add(i, x)</code> still walks to i first: O(n).</li>
+  <li>Iterators are fail-fast (<code>modCount</code>), like ArrayList. Java 21 adds <code>reversed()</code> via <code>SequencedCollection</code>.</li>
+  <li>Inside the JDK, linked nodes appear where O(1) relinking matters: <code>LinkedHashMap</code> threads a doubly linked list through its entries (LRU order), and <code>HashMap</code> buckets are singly linked chains.</li>
+</ul>
+<h3>Why it is rarely the right choice in Java</h3>
+<p>Big-O says a linked list wins at front/middle inserts. Real machines disagree more often than not:</p>
+<ul>
+  <li><b>Front/back operations</b>: <a href="ds-arraydeque.html"><code>ArrayDeque</code></a> also does them in O(1), with no node allocation and contiguous memory. It beats LinkedList as both stack and queue.</li>
+  <li><b>Middle inserts</b>: you first have to <i>find</i> the spot (O(n) walk, full of cache misses). <code>ArrayList.add(i, x)</code> also costs O(n), but its shift is one <code>System.arraycopy</code> — a fast bulk memory move. For lists up to many thousands of elements, ArrayList usually wins.</li>
+  <li><b>Memory</b>: ~40 bytes per Integer element vs ~20 in ArrayList and 4 in int[]; more garbage-collector work.</li>
+  <li>Even Joshua Bloch, who wrote <code>LinkedList</code>, has said he never uses it.</li>
+</ul>
+<p>Where linked nodes <b>do</b> win: when you keep a direct reference to a node (from a HashMap) and must move or delete it in O(1) — LRU and LFU caches, and interview problems built on <code>ListNode</code>.</p>
+
+<h2>Cost of every operation</h2>
+<table>
+<tr><th>Operation</th><th>Average</th><th>Worst</th><th>Why</th></tr>
+<tr><td><code>addFirst</code>, <code>addLast</code>, <code>removeFirst</code>, <code>removeLast</code></td><td>O(1)</td><td>O(1)</td><td>Head/tail are known; a few pointer writes.</td></tr>
+<tr><td>Insert/remove at a node you hold</td><td>O(1)</td><td>O(1)</td><td>Doubly: 4 writes to insert, 2 to unlink. Singly: you need the node before.</td></tr>
+<tr><td><code>get(i)</code>, <code>set(i, x)</code></td><td>O(n)</td><td>O(n)</td><td>Walk up to n/2 nodes from the nearer end.</td></tr>
+<tr><td><code>add(i, x)</code>, <code>remove(i)</code></td><td>O(n)</td><td>O(n)</td><td>Walk to i (O(n)), then O(1) to relink.</td></tr>
+<tr><td><code>contains(x)</code>, <code>indexOf(x)</code></td><td>O(n)</td><td>O(n)</td><td>Visit each node, comparing with <code>equals</code>.</td></tr>
+<tr><td>Iterate all</td><td>O(n)</td><td>O(n)</td><td>Same Big-O as an array, but a cache miss per node.</td></tr>
+<tr><td>Memory</td><td colspan="2">~24 B per node + the element</td><td>Two references and an object header per element.</td></tr>
+</table>
+
+<h2>Why and when to use it</h2>
+<ul>
+  <li>The problem gives you <code>ListNode</code>: reversing, merging, finding the middle, detecting a cycle — the list <i>is</i> the input.</li>
+  <li>You hold references to nodes and need O(1) move-to-front / unlink: LRU cache (<code>HashMap&lt;key, Node&gt;</code> + doubly linked list with sentinels).</li>
+  <li>Splicing whole chains in O(1) (merge two sorted lists by re-pointing, not copying).</li>
+</ul>
+
+<h2>When not to use it</h2>
+<ul>
+  <li>As a stack or queue → <a href="ds-arraydeque.html"><code>ArrayDeque</code></a>.</li>
+  <li>As a general list, or anything with index access → <a href="ds-array-arraylist.html"><code>ArrayList</code></a>.</li>
+  <li>For "remove from the middle by value" → a <a href="ds-hashmap.html"><code>HashSet</code></a> or <a href="ds-treemap.html"><code>TreeSet</code></a> finds it in O(1)/O(log n) instead of walking.</li>
+  <li>For an LRU cache in real code → <code>LinkedHashMap</code> with access order already does it (see <a href="ds-hashmap.html">HashMap</a>). Interviewers still often ask you to build it by hand.</li>
+</ul>
+
+<h2>Used in these patterns</h2>
+<ul>
+  <li><a href="linked-list-reverse.html">Reverse a linked list</a> — re-point every <code>next</code> with prev/cur/next.</li>
+  <li><a href="fast-slow-pointers.html">Fast &amp; slow pointers</a> — middle node, cycle detection.</li>
+  <li><a href="merge-lists.html">Merge lists</a> — dummy head + splice; k lists with a heap.</li>
+  <li><a href="lru-cache.html">LRU cache</a> and <a href="design-patterns-dsa.html">Design problems</a> — HashMap to nodes + doubly linked list with sentinels.</li>
+  <li><a href="graph-basics.html">Graph basics</a> — adjacency lists are lists of neighbours (an ArrayList in Java is the better choice).</li>
+</ul>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Holding the node → O(1) relink. Finding the node → O(n) walk.</b> Doubly + sentinels = no null checks. In Java, <code>LinkedList</code> loses to <code>ArrayList</code> and <code>ArrayDeque</code> almost every time because of cache misses and memory; linked nodes shine when a HashMap hands you the node.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Wrong order of pointer writes: doing <code>p.next = n</code> first loses the old <code>p.next</code> forever. Wire the new node first, change the old neighbours last.</li>
+  <li>Forgetting to update <code>prev</code> in a doubly linked list — forward walks look fine, backward walks break.</li>
+  <li>No dummy node, then a special case for "delete the head" that you forget. Use <code>dummy.next = head</code>.</li>
+  <li>Losing the rest of the list during reversal: save <code>next = cur.next</code> before changing <code>cur.next</code>.</li>
+  <li><code>for (int i = 0; i &lt; list.size(); i++) list.get(i)</code> on a LinkedList: each <code>get</code> walks, so the loop is O(n²). Use for-each.</li>
+  <li><code>while (cur.next != null)</code> when <code>cur</code> itself may be null → NullPointerException. Check the right one.</li>
+</ul></div>
+
+<h2>Interview questions on the internals</h2>
+<details class="quiz"><summary>Singly vs doubly linked list — what does the extra pointer buy?</summary>
+<p>Walking backwards, and O(1) removal of a node you hold (it knows its predecessor). Cost: one more reference per node and two extra writes per insert.</p></details>
+<details class="quiz"><summary>What is a sentinel node and why use one?</summary>
+<p>A dummy node that is always present at the front (and/or back). Every real node then has a real predecessor and successor, so insert and delete need no null checks or head/tail special cases.</p></details>
+<details class="quiz"><summary>Is java.util.LinkedList singly or doubly linked? Does it use sentinels?</summary>
+<p>Doubly linked, with <code>first</code> and <code>last</code> fields and no sentinels (they are null when the list is empty).</p></details>
+<details class="quiz"><summary>How does LinkedList.get(i) find the node?</summary>
+<p>It walks from <code>first</code> if <code>i &lt; size/2</code>, otherwise from <code>last</code> backwards. So at most n/2 hops, still O(n).</p></details>
+<details class="quiz"><summary>Insertion in the middle is O(1) for a linked list and O(n) for an array. Why is ArrayList still usually faster?</summary>
+<p>The O(1) assumes you already hold the node; finding it is an O(n) walk with a cache miss per hop. ArrayList's O(n) shift is one contiguous memory move, which the CPU does extremely fast. Plus LinkedList allocates a node per insert.</p></details>
+<details class="quiz"><summary>What is cache locality?</summary>
+<p>The CPU loads memory in 64-byte lines and prefetches sequential addresses. Data that is contiguous (arrays) gets mostly cache hits; data reached through pointers to random addresses (linked nodes) gets a miss per access.</p></details>
+<details class="quiz"><summary>Which Java collection should you use for a queue or stack, and why not LinkedList?</summary>
+<p><code>ArrayDeque</code>: O(1) at both ends using a circular array, no per-element node objects, better cache behaviour. LinkedList works but is slower and uses more memory.</p></details>
+<details class="quiz"><summary>How would you build an O(1) LRU cache?</summary>
+<p>A <code>HashMap&lt;key, Node&gt;</code> for O(1) lookup plus a doubly linked list with sentinels in recency order. On get, unlink the node and re-add it at the front; on put over capacity, unlink <code>tail.prev</code> and remove its key from the map. Or extend <code>LinkedHashMap</code> with access order.</p></details>
+<details class="quiz"><summary>How do you delete a node from a singly linked list when you are given only that node (not the head)?</summary>
+<p>Copy the next node's value into it and unlink the next node: <code>node.val = node.next.val; node.next = node.next.next;</code>. It does not work for the last node.</p></details>
+
+<nav class="pager"><a href="ds-array-arraylist.html">← Array &amp; ArrayList</a><a href="ds-hashmap.html">HashMap &amp; HashSet →</a></nav>
+</main>
+</body>
+</html>

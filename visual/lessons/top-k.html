@@ -148,6 +148,24 @@ PriorityQueue&lt;T&gt; heap = <span class="k">new</span> PriorityQueue&lt;&gt;(b
 }
 <span class="c">// heap now holds the k best; heap.peek() is the kth best</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-priorityqueue.html"><code>PriorityQueue&lt;Integer&gt;</code> min-heap of size k</a></td><td>703, 215: the root is the k-th largest; anything smaller is thrown out.</td><td>O(log k) per element, O(n log k) total</td>
+<td>Sorting is O(n log n); a max-heap of all n items is O(n) space.</td></tr>
+<tr><td><a href="ds-hashmap.html"><code>HashMap&lt;Integer, Integer&gt;</code> counts</a></td><td>347, 692: value &rarr; how often it appears, before ranking.</td><td>O(1) average per update</td>
+<td>Sorting the array and counting runs is O(n log n).</td></tr>
+<tr><td><a href="ds-priorityqueue.html"><code>PriorityQueue</code> ordered by count</a></td><td>347: keep the k most frequent. 692: a comparator with ties broken by word order.</td><td>O(n log k)</td>
+<td>The bucket array from the animation (<code>List[]</code> indexed by count) is O(n) and also a valid answer for 347.</td></tr>
+<tr><td><a href="ds-priorityqueue.html"><code>PriorityQueue&lt;int[]&gt;</code> max-heap by distance</a></td><td>973: evict the farthest of k kept points.</td><td>O(n log k)</td>
+<td>Quickselect is O(n) average but trickier to get right.</td></tr>
+<tr><td><a href="ds-array-arraylist.html">sorted <code>int[]</code> + <code>ArrayList</code></a></td><td>658: binary search the start of a k-wide window.</td><td>O(log(n &minus; k) + k)</td>
+<td>A heap by distance works but ignores that the array is already sorted.</td></tr>
+<tr><td><a href="ds-arraydeque.html"><code>ArrayDeque&lt;Integer&gt;</code></a></td><td>239: decreasing deque of indexes, front is the window maximum.</td><td>O(n) total</td>
+<td>A heap is O(n log k) and cannot drop the leaving element cheaply.</td></tr>
+</table>
+<p>For "top k", keep a heap of size k with the worst kept item on top, so each newcomer is compared with it in O(1) and swapped in O(log k).</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Top k largest → min-heap of size k. Top k smallest → max-heap of size k.</b> The top is the one you would throw out. Frequencies → count map first, then heap or buckets.</p></div>
 

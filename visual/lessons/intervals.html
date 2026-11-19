@@ -165,6 +165,22 @@
 <span class="c">// rooms: sort by start, min-heap of ends; reuse if ends.peek() &lt;= start</span>
 <span class="c">// most non-overlapping (activity selection): sort by END, keep if start &gt;= lastEnd</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[][]</code> + <code>Arrays.sort</code></a></td><td>Sort by start (252, 56, 253) or by end (435, 452); then only neighbours can overlap.</td><td>O(n log n)</td>
+<td>Without sorting you compare every pair, O(n²). Use <code>Integer.compare</code> in the comparator; <code>a[0] - b[0]</code> can overflow.</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>ArrayList&lt;int[]&gt;</code></a></td><td>56, 57, 986: merged intervals, unknown count; extend the last one in place, then <code>toArray(new int[0][])</code>.</td><td>O(1) amortised <code>add</code></td>
+<td>An <code>int[][]</code> needs its size up front.</td></tr>
+<tr><td><a href="heap.html"><code>PriorityQueue&lt;Integer&gt;</code></a></td><td>253: end times of busy rooms; the root is the room that frees up first.</td><td>O(log n) per meeting</td>
+<td>Checking every room each time is O(n²). Two sorted arrays of starts and ends also work in O(n log n).</td></tr>
+<tr><td>two indexes</td><td>986: both lists are already sorted, so walk them together.</td><td>O(m + n)</td>
+<td>Merging both into one list and sorting costs O((m + n) log(m + n)).</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>ArrayList&lt;Interval&gt;</code></a></td><td>759: flatten every employee's intervals into one list and sort by start.</td><td>O(n log n)</td>
+<td>A heap of each employee's next interval gives O(n log k), better when k is small.</td></tr>
+</table>
+<p>Sorting is the real data structure here: once intervals are in start order, a list for the output and (for rooms) a min-heap of end times are all you need.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Intervals → sort first. Merge: sort by start, stretch with max. Keep the most: sort by end. Rooms: heap of end times (or +1/−1 sweep).</b></p></div>
 

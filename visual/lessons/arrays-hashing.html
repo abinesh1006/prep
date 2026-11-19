@@ -276,6 +276,24 @@ Map&lt;Integer, Integer&gt; seen = <span class="k">new</span> HashMap&lt;&gt;();
 <span class="c">// Counting: map.merge(x, 1, Integer::sum);</span>
 <span class="c">// Grouping: map.computeIfAbsent(key, k -&gt; new ArrayList&lt;&gt;()).add(x);</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-hashmap.html"><code>HashSet&lt;Integer&gt;</code></a></td><td>217: "seen it already?". 128: "is <code>x - 1</code> in the set?" to find where a run starts.</td><td>O(1) average <code>add</code> / <code>contains</code></td>
+<td>Sorting first is O(n log n), and 128 asks for O(n).</td></tr>
+<tr><td><a href="ds-hashmap.html"><code>HashMap&lt;Integer, Integer&gt;</code></a></td><td>Two Sum: value &rarr; index of the number that completes me.</td><td>O(1) average <code>get</code> / <code>put</code></td>
+<td>Nested loop O(n²); sorting would scramble the indices we must return.</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[26]</code> counter</a></td><td>242: count each letter with <code>count[c - 'a']++</code>.</td><td>O(1) per letter, O(26) to check</td>
+<td>A <code>HashMap&lt;Character, Integer&gt;</code> works (and is needed for Unicode) but hashes and boxes every char.</td></tr>
+<tr><td><a href="ds-hashmap.html"><code>HashMap&lt;String, List&lt;String&gt;&gt;</code></a></td><td>49: sorted letters (from a sorted <code>char[]</code>) &rarr; the words that share them.</td><td>O(k log k) per word for the key, O(1) average to file it</td>
+<td>Comparing every pair of words is O(n² &middot; k).</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>List&lt;Integer&gt;[]</code> buckets</a></td><td>347: <code>bucket[c]</code> holds the numbers seen exactly c times; walk from the top.</td><td>O(n) total</td>
+<td>Sorting by count is O(n log n); a heap is O(n log k).</td></tr>
+<tr><td><a href="ds-hashmap.html"><code>Set&lt;Character&gt;[]</code> (9 each)</a></td><td>36: one set per row, column and 3&times;3 box to spot a repeat.</td><td>O(1) average per cell, O(81) total</td>
+<td>Re-scanning the row, column and box for every cell repeats work; a <code>boolean[9][9]</code> per group is an equally good choice.</td></tr>
+</table>
+<p>Almost every problem here asks "have I met the thing that completes me?" or "how many of each?" Those are exactly the two questions a hash map (or a small counting array when keys are tiny) answers in O(1).</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Searching inside a loop? Replace the search with a map.</b> Seen → set. How many → map of counts. Which group → map of key → list. The key is the trick: complement, sorted letters, count signature.</p></div>
 

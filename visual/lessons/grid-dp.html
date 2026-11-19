@@ -177,6 +177,17 @@
     }
 <span class="c">// one row is enough: dp[j] = combine(dp[j] /* up */, dp[j-1] /* left */)</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td>One <code>int[] row</code> (62, 63)</td><td><code>row[j]</code> still holds the value from above before you overwrite it, and <code>row[j - 1]</code> is already this row's left</td><td>O(n) memory</td><td>The full <code>int[m][n]</code> table is easier to read but m times the memory.</td></tr>
+<tr><td><code>int[][] dp</code> (64)</td><td>best path sum into each cell; first row and column filled from one direction only</td><td>O(m · n)</td><td>Recursion without memo is O(2^(m+n)).</td></tr>
+<tr><td>Padded <code>int[m + 1][n + 1]</code> (221, 1277)</td><td>an extra zero row and column, so <code>dp[i - 1][j - 1]</code> never goes out of bounds</td><td>O(m · n)</td><td>Without padding every edge cell needs an <code>if</code>.</td></tr>
+<tr><td><code>int[] best</code> of size n + 1 (120)</td><td>bottom-up over the triangle: each cell picks the smaller of the two below it</td><td>O(n) memory</td><td>Top-down needs special cases at both ends of every row.</td></tr>
+<tr><td><code>int[][] need</code>, filled from bottom-right (174)</td><td>the HP you need on entering each cell; padded with <code>MAX_VALUE</code> except next to the princess</td><td>O(m · n)</td><td>Forward DP does not work: the best path so far can still die later.</td></tr>
+</table>
+<p>A grid DP table has the same shape as the grid; each cell reads only up and left (or down and right), which is why one row is usually enough.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Right/down only → up + left.</b> Paths: add. Cost: min + cell. Square: min of three + 1.</p></div>
 

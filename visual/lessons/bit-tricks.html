@@ -199,6 +199,22 @@ n &amp; -n            <span class="c">// keep only the lowest 1 bit</span>
 x ^ x == <span class="n">0</span>, x ^ <span class="n">0</span> == x   <span class="c">// pairs cancel</span>
 <span class="k">for</span> (<span class="k">int</span> m = <span class="n">0</span>; m &lt; (<span class="n">1</span> &lt;&lt; n); m++)  <span class="c">// every subset of n items</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td>one <code>int</code> as 32 bits</td><td>136, 191, 190, 371: XOR, <code>n &amp; (n - 1)</code>, shifts and carries on the bits themselves.</td><td>O(1) per operation</td>
+<td>A <code>HashSet</code> finds 136's single number in O(n) space; XOR needs O(1).</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[] ans</code></a></td><td>338: <code>ans[i] = ans[i &gt;&gt; 1] + (i &amp; 1)</code>, reusing answers already computed.</td><td>O(n)</td>
+<td>Counting bits of each number separately is O(n log n).</td></tr>
+<tr><td><code>int mask</code> 0..2<sup>n</sup> &minus; 1</td><td>78: each mask is one subset; bit j says "take nums[j]".</td><td>O(n &middot; 2<sup>n</sup>)</td>
+<td>Backtracking has the same cost; masks need no recursion.</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>ArrayList&lt;List&lt;Integer&gt;&gt;</code></a></td><td>78: holds the 2<sup>n</sup> subsets.</td><td>O(1) amortised <code>add</code></td>
+<td>&mdash;</td></tr>
+<tr><td>ints <code>diff</code>, <code>diff &amp; -diff</code></td><td>260: the lowest set bit splits the numbers into two XOR groups.</td><td>O(1) extra</td>
+<td>A HashMap of counts is O(n) space.</td></tr>
+</table>
+<p>The integer itself is the data structure: 32 tiny booleans you can test, set and combine in one CPU step. Use <code>1L &lt;&lt;</code> when you need more than 31 bits.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>XOR cancels pairs. n &amp; (n−1) eats the lowest 1. Shift left doubles, shift right halves.</b></p></div>
 

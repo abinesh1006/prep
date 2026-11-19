@@ -186,6 +186,18 @@ pq.add(<span class="k">new int</span>[]{<span class="n">0</span>, src});
         <span class="k">if</span> (d + w &lt; dist[v]) { dist[v] = d + w; pq.add(<span class="k">new int</span>[]{dist[v], v}); }
 }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td>Adjacency list <code>List&lt;List&lt;int[]&gt;&gt;</code> (<a href="ds-array-arraylist.html">ArrayList</a>)</td><td>each edge stored as <code>{to, weight}</code> (or <code>double[]</code> for 1514)</td><td>O(V + E) memory</td><td>An adjacency matrix is O(V²) memory and O(V) per relax scan — fine only for dense graphs.</td></tr>
+<tr><td><a href="ds-priorityqueue.html">PriorityQueue</a> — a min-heap (<a href="heap.html">heap</a>)</td><td>always take the unsettled node with the smallest known distance</td><td>O(log n) add/poll; O((V + E) log V) total</td><td>A plain <a href="ds-arraydeque.html">ArrayDeque</a> (BFS) is only right when every edge costs the same; a linear scan for the minimum is O(V²).</td></tr>
+<tr><td><code>int[] dist</code> + the stale check <code>if (d &gt; dist[u]) continue</code></td><td>best distance found so far; an older, larger entry in the heap is skipped</td><td>O(1)</td><td>Java's PriorityQueue has no decrease-key and <code>remove(Object)</code> is O(n), so we push duplicates and ignore stale ones (lazy deletion).</td></tr>
+<tr><td>Max-heap of <code>double[]</code> + <code>double[] best</code> (1514)</td><td>largest probability first — products of values ≤ 1 only shrink, so greedy still works</td><td>O(log n) per heap op</td><td>Taking logs and running min-Dijkstra on −log p is the same algorithm, just harder to read.</td></tr>
+<tr><td><code>int[][] effort</code> / <code>boolean[][] seen</code> + heap of <code>{value, r, c}</code> (1631, 778)</td><td>grid cells are the nodes; the "distance" is the largest step (or height) on the path</td><td>O(mn log mn)</td><td>Binary search on the answer + BFS also works, with an extra log factor.</td></tr>
+<tr><td>Two <code>int[]</code> — <code>cost</code> and <code>next</code> (787)</td><td>Bellman-Ford rounds: read last round's costs, write this round's, at most k + 1 rounds</td><td>O(k · E)</td><td>Plain Dijkstra settles a node by cost alone and can discard a pricier route that has fewer stops.</td></tr>
+</table>
+<p>Dijkstra is BFS with the queue swapped for a heap: once edges have different weights, "next in line" must mean "closest so far", and the heap gives that in O(log n).</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Pop the smallest, skip if stale, relax the neighbours.</b> Weights ≥ 0 only. Unweighted → BFS; negative → Bellman-Ford.</p></div>
 

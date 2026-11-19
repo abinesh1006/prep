@@ -154,6 +154,24 @@ Deque&lt;Integer&gt; st = <span class="k">new</span> ArrayDeque&lt;&gt;();
 }
 <span class="c">// next SMALLER: flip &gt; to &lt;.  previous greater: the top after pushing</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-arraydeque.html"><code>ArrayDeque&lt;Integer&gt;</code> of indexes</a></td><td>739, 503, 84, 85, 907: indexes still waiting for their answer, values kept in order.</td><td>O(1) amortised push/pop, O(n) total</td>
+<td>For each element, scanning forward is O(n²). Store indexes, not values: the answer needs the distance.</td></tr>
+<tr><td><a href="ds-hashmap.html"><code>HashMap&lt;Integer, Integer&gt;</code></a></td><td>496: value &rarr; its next greater, built from nums2, read for nums1.</td><td>O(1) average lookup</td>
+<td>Searching nums2 for each query is O(m &middot; n).</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[] ans</code> (filled with &minus;1 or 0)</a></td><td>The answer for each index, written when it is popped.</td><td>O(1) per write</td>
+<td>Default "no answer" values save a second pass.</td></tr>
+<tr><td><a href="ds-arraydeque.html"><code>ArrayDeque&lt;int[]&gt;</code> <code>{price, span}</code></a></td><td>901: online, so each entry carries the span it swallowed.</td><td>O(1) amortised per call</td>
+<td>Walking back over past prices is O(n) per call.</td></tr>
+<tr><td><a href="ds-string-stringbuilder.html"><code>StringBuilder</code> as a stack</a></td><td>402: digits kept increasing; drop a bigger digit while k &gt; 0.</td><td>O(1) per digit</td>
+<td>Trying every set of k removals is exponential.</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[] left</code>, <code>right</code>, <code>heights</code></a></td><td>907: how far each value stays the minimum on each side. 85: column heights per row, fed to the 84 routine.</td><td>O(n) per pass</td>
+<td>Recomputing each range or each row from scratch is O(n²).</td></tr>
+</table>
+<p>The stack keeps only the candidates that can still be someone's answer, in sorted order; each index is pushed once and popped once, so the whole scan is O(n).</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>"Next greater" → decreasing stack, "next smaller" → increasing stack. Pop = that element just found its answer.</b> Store indices, not values.</p></div>
 

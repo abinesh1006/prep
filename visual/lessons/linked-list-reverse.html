@@ -171,6 +171,22 @@ while (curr != null) {         // until we fall off
 }
 <span class="k">return</span> prev;</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-linked-list.html"><code>ListNode</code> (singly linked)</a></td><td>Rewire <code>next</code> pointers in place.</td><td>O(1) per node, O(1) extra</td>
+<td>Copying values to an ArrayList and back is O(n) space and misses the point.</td></tr>
+<tr><td><code>prev</code>, <code>curr</code>, <code>next</code> pointers</td><td>206: <code>next</code> saves the rest of the list before <code>curr.next</code> is cut.</td><td>O(1)</td>
+<td>With only two pointers you lose the rest of the list the moment you flip a link.</td></tr>
+<tr><td><a href="ds-linked-list.html">dummy <code>ListNode(0, head)</code></a></td><td>92, 24, 25: a node before the head, so reversing the first part needs no special case.</td><td>O(1)</td>
+<td>Without it you write separate code for "the head changes".</td></tr>
+<tr><td>slow / fast pointers</td><td>234, 143: find the middle in one pass, then reverse the second half.</td><td>O(n), O(1) extra</td>
+<td>Counting the length first is two passes; an ArrayDeque stack of values for 234 is O(n) space.</td></tr>
+<tr><td><a href="recursion.html">call stack</a></td><td>206 <code>reverseRec</code>: each frame holds one node until the return.</td><td>O(n) stack space</td>
+<td>The loop is O(1) space; a 10<sup>5</sup>-node list can overflow the stack recursively.</td></tr>
+</table>
+<p>A linked list can be reversed without any extra structure because changing a pointer is O(1); the only rule is to save <code>next</code> before you overwrite it.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Save, flip, step, step.</b> prev starts null, the answer is prev. Sublist: dummy + pre + "move the next node to the front".</p></div>
 

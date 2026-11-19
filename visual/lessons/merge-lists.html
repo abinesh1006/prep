@@ -160,6 +160,22 @@ tail.next = (a != <span class="k">null</span>) ? a : b;
 <span class="k">return</span> dummy.next;
 <span class="c">// k lists: heap of fronts; poll, hook, push poll.next</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-linked-list.html"><code>ListNode</code> dummy + <code>tail</code></a></td><td>21, 148: append the smaller head in O(1) without a special case for the first node.</td><td>O(1) per node, O(1) extra</td>
+<td>Building a new list copies every node, O(n) extra.</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[] nums1</code>, filled from the back</a></td><td>88: write the largest into the empty slots at the end so nothing is overwritten.</td><td>O(m + n), O(1) extra</td>
+<td>Copy then <code>Arrays.sort</code> is O((m + n) log(m + n)); a temp copy of nums1 costs O(m).</td></tr>
+<tr><td><a href="heap.html"><code>PriorityQueue&lt;ListNode&gt;</code></a></td><td>23: the smallest of k list heads.</td><td>O(log k) per node, O(n log k) total</td>
+<td>Scanning all k heads each step is O(n &middot; k); merging pairs in rounds is also O(n log k) but more code.</td></tr>
+<tr><td><a href="heap.html"><code>PriorityQueue&lt;int[]&gt;</code> <code>{value, row, col}</code></a></td><td>378, 632: the heap holds where each value came from, so we can push its next neighbour.</td><td>O(log k) per poll</td>
+<td>Storing only values loses the position needed to advance.</td></tr>
+<tr><td>one int <code>max</code></td><td>632: the heap gives the minimum; the maximum is tracked as values are pushed.</td><td>O(1)</td>
+<td>A TreeSet gives both ends but is clumsy with equal values.</td></tr>
+</table>
+<p>Merging two sorted sources needs only pointers; merging k of them needs one more thing, the cheapest "who is smallest" answer, which is a min-heap of size k.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Dummy + tail, smaller front wins, hook the leftovers.</b> K lists: heap of fronts → O(N log k).</p></div>
 

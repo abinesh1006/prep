@@ -228,6 +228,16 @@ dp[<span class="n">0</span>] = ...;                          <span class="c">// 
     dp[i] = combine(dp[i - <span class="n">1</span>], dp[i - <span class="n">2</span>], ...); <span class="c">// 4. recurrence</span>
 <span class="k">return</span> dp[n];</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><code>int[] dp</code> (<a href="ds-array-arraylist.html">array</a>) — the template</td><td><code>dp[i]</code> = the answer for the first i items; index = subproblem</td><td>O(1) per read/write; O(n) memory</td><td>Plain recursion without storing answers recomputes the same <code>i</code> again and again: O(2ⁿ) for 70 and 509.</td></tr>
+<tr><td>Two variables <code>prev1</code>, <code>prev2</code> (70, 509, 746, 198, 213, 91)</td><td>each answer reads only the last two, so keep just those two</td><td>O(1) memory</td><td>The full table is easier to debug; shrink it once the recurrence is right.</td></tr>
+<tr><td>Two calls on index ranges (213)</td><td>the circle: rob houses 0..n−2 or 1..n−1, take the better</td><td>O(n)</td><td>Copying the array into two new arrays also works but costs O(n) memory.</td></tr>
+<tr><td><code>int[] points</code> indexed by value (740)</td><td>total points for each value; neighbours in the array are values ±1, so it becomes House Robber</td><td>O(n + max)</td><td>A <a href="ds-hashmap.html">HashMap</a> would need sorting the keys to walk them in order; array indices are already sorted.</td></tr>
+</table>
+<p>In 1D DP the table is just an array whose index is the subproblem. Once you see which cells the recurrence reads, you can usually keep only those few variables.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Same question asked twice → write the answer down.</b> Define dp[i] in one sentence, find the last choice, fill smallest first.</p></div>
 

@@ -155,6 +155,16 @@ boolean safe(int row, int col) {
     }
 }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><code>boolean[] col</code>, <code>d1</code> (r + c), <code>d2</code> (r − c + n)</td><td>"is this column or diagonal already attacked?" — each diagonal has one number, so it is one index</td><td>O(1) check, set, unset</td><td>Scanning the board for attackers is O(n) per check; the template's <a href="ds-hashmap.html">HashSet</a>s are the same idea with hashing overhead.</td></tr>
+<tr><td><code>char[][] board</code> (51)</td><td>place <code>Q</code>, recurse, put <code>.</code> back; <code>new String(row)</code> for each row of a solution</td><td>O(1) per place; O(n²) per saved solution</td><td>Only 52 can skip the board entirely: it counts, so the three arrays are enough.</td></tr>
+<tr><td><code>boolean[9][9]</code> row / col / box (36), <code>[9][10]</code> (37)</td><td>"does row r, column c, box b already have digit d?" with <code>b = (r / 3) * 3 + c / 3</code></td><td>O(1)</td><td>Scanning the row, column and box for each digit is O(27) per check — 27× slower inside the solver's search.</td></tr>
+<tr><td>Trie nodes <code>Node[26]</code> (212) — see <a href="trie.html">trie</a></td><td>walk the board once and match every word at the same time; a shared prefix is followed only once</td><td>O(total word length) to build</td><td>Running Word Search once per word repeats the same board walk for every word.</td></tr>
+</table>
+<p>Constraint problems live or die by how fast you can ask "is this placement legal?". Encoding each line — column, diagonal, box — as one array index makes that O(1).</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>One queen per row. Three sets: col, row−col, row+col.</b> Place, recurse, remove from all three.</p></div>
 

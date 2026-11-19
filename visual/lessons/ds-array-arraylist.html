@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Array and ArrayList</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Data structures</span><span class="sp"></span>
+  <a href="../index.html#lessons">All structures</a>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Data structure · Inside Java</div>
+<h1>Array &amp; ArrayList</h1>
+<p class="lede">An array is one unbroken row of equal-sized boxes in memory, so the computer can jump straight to box number <i>i</i>. An <code>ArrayList</code> is that same array plus a size counter and a rule for getting a bigger array when it fills up.</p>
+<p class="meta">Time to learn: about 1.5 hours · Prerequisites: <a href="big-o.html">Big-O</a></p>
+
+<div class="box signal"><span class="tag">Use it when you need…</span>
+<ul>
+  <li><b>Read or write by position</b> — <code>a[i]</code>, <code>list.get(i)</code> — in O(1).</li>
+  <li><b>Add or remove at the end</b> — <code>list.add(x)</code>, <code>list.remove(list.size() - 1)</code> — in O(1) (amortized).</li>
+  <li><b>Fast scanning</b> from left to right: the boxes sit next to each other, which the CPU cache loves.</li>
+  <li>A fixed number of counters (<code>int[26]</code> for letters) or a DP table.</li>
+</ul></div>
+
+<h2>In plain words</h2>
+<p>When you write <code>new int[5]</code>, Java asks for one block of memory big enough for five ints (5 × 4 bytes) and remembers where the block starts. Every box has the same width, so the address of box <i>i</i> is simple arithmetic: <b>start + i × width</b>. No searching, no walking — one multiplication and one addition. That is why <code>a[i]</code> is O(1) no matter how big the array is.</p>
+<p>The catch: an array's length is fixed when it is created. <code>ArrayList</code> hides that. It keeps an array that is usually a bit bigger than needed, plus a <code>size</code> counter that says how many boxes are really in use. When every box is full and you add one more, it makes a new array <b>1.5 times bigger</b>, copies everything over, and carries on.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>An array is a row of numbered lockers in a corridor. To reach locker 37 you do not open lockers 0 to 36 — you know each locker is 30 cm wide, so you walk straight to 37 × 30 cm. An ArrayList is a club that rents a row of lockers. When all are taken, it rents a new row one and a half times as long somewhere else and moves everybody's things over in one go. Moving day is slow, but it happens rarely, and each move buys a lot of free lockers.</p></div>
+
+<h2>What it looks like in memory</h2>
+<p>First an <code>int[]</code>: the numbers themselves sit side by side. Then what an <code>ArrayList&lt;Integer&gt;</code> really holds: an array of <i>references</i> (arrows), each pointing to a separate <code>Integer</code> object somewhere else on the heap.</p>
+<div id="mem"></div>
+<script>
+(() => {
+  const vals = [7, 3, 9, 4, 1];
+  const r = Viz.recorder();
+  r.step([
+    { type: 'array', id: 'a', label: 'int[] a = {7, 3, 9, 4, 1}', values: vals },
+    { type: 'array', id: 'ad', label: 'address of each box (start 1000, 4 bytes per int)', values: vals.map((_, i) => 1000 + 4 * i), indices: false },
+    { type: 'vars', id: 'v', vars: { start: 1000, width: '4 bytes', length: 5 } }
+  ], [], 'An <b>int[]</b> is one unbroken block. Box i lives at <b>1000 + i × 4</b>: box 3 is at 1012. The numbers are stored <b>inside</b> the boxes.');
+  r.step([
+    { type: 'array', id: 'a', label: 'Object[] elementData inside ArrayList<Integer>: references', values: ['→A', '→B', '→C', '→D', '→E'], marks: { 0: 'compare', 1: 'compare', 2: 'compare', 3: 'compare', 4: 'compare' } },
+    { type: 'stack', id: 'h', label: 'Integer objects, each one somewhere else on the heap', kind: 'set', items: ['A: 7', 'B: 3', 'C: 9', 'D: 4', 'E: 1'] },
+    { type: 'vars', id: 'v', vars: { 'per element': '4-byte ref + 16-byte Integer' } }
+  ], [], 'An <b>ArrayList&lt;Integer&gt;</b> cannot hold plain ints. Its array holds <b>references</b>; each number is a separate <b>Integer</b> object (about 16 bytes). Reading one value means two memory trips: the box, then the object it points to.');
+  Viz.mount('#mem', { frames: r.frames, title: 'Array memory layout' });
+})();
+</script>
+
+<h2>Watch the operations</h2>
+
+<h3>1. get(i) — jump straight to the box</h3>
+<p>Reading box 3, box 0 or box 4 costs exactly the same: one bounds check and one address calculation.</p>
+<div id="op-get"></div>
+<script>
+(() => {
+  const a = [7, 3, 9, 4, 1], size = a.length;
+  const r = Viz.recorder();
+  const arr = (marks, i) => ({ type: 'array', id: 'a', label: 'data (size 5)', values: a, marks, pointers: i == null ? {} : { i } });
+  for (const i of [3, 0, 4]) {
+    r.step([arr({ [i]: 'compare' }, i), { type: 'vars', id: 'v', vars: { i, check: `0 ≤ ${i} < ${size}` }, marks: { check: 'done' } }], [2],
+      `get(${i}): first the <b>bounds check</b>. Java always checks, so a wrong index fails loudly instead of reading random memory.`);
+    r.step([arr({ [i]: 'done' }, i), { type: 'vars', id: 'v', vars: { i, address: `1000 + ${i} × 4 = ${1000 + 4 * i}`, value: a[i] }, marks: { address: 'active' } }], [4],
+      `Address = start + i × width = <b>${1000 + 4 * i}</b>. One multiplication, one addition, one read → <b>${a[i]}</b>. Same cost for every i: O(1).`);
+  }
+  r.step([arr({}, 5), { type: 'vars', id: 'v', vars: { i: 5, check: `5 < 5 is false` }, marks: { check: 'bad' } }], [3],
+    'get(5) on a list of size 5: the check fails and Java throws <b>IndexOutOfBoundsException</b>. Valid indexes are 0 to size − 1.');
+  Viz.mount('#op-get', { frames: r.frames, title: 'ArrayList get', code:
+`public E get(int i) {
+    if (i < 0 || i >= size)       // bounds check
+        throw new IndexOutOfBoundsException(i);
+    return (E) data[i];           // start + i * width
+}` });
+})();
+</script>
+
+<h3>2. add(x) — and what happens when the array is full</h3>
+<p>We start with capacity 4 so the growth shows up quickly (the real default is 10). Watch the <b>copies</b> counter.</p>
+<div id="op-add"></div>
+<script>
+(() => {
+  let data = Array(4).fill(null), size = 0, copies = 0;
+  const r = Viz.recorder();
+  const dim = () => Object.fromEntries(data.map((x, i) => [i, x == null ? 'dim' : '']).filter(e => e[1]));
+  const panel = (marks = {}) => ({ type: 'array', id: 'a', label: `elementData (capacity ${data.length})`, values: data.map(x => x ?? ''), marks: { ...dim(), ...marks }, pointers: { size } });
+  const vars = mk => ({ type: 'vars', id: 'v', vars: { size, capacity: data.length, 'copies so far': copies }, marks: mk });
+  r.step([panel(), vars()], [], 'An empty ArrayList: an array of 4 empty boxes and <b>size = 0</b>. <b>size</b> also points at the next free box.');
+  for (let x = 10; x <= 100; x += 10) {
+    if (size === data.length) {
+      r.step([panel(Object.fromEntries(data.map((_, i) => [i, 'bad']))), vars({ size: 'bad' })], [2],
+        `add(${x}): size == capacity == ${size}. <b>No free box.</b> An array cannot grow in place — the memory after it may belong to something else.`);
+      const cap = data.length + (data.length >> 1);
+      const nd = Array(cap).fill(null);
+      for (let i = 0; i < size; i++) nd[i] = data[i];
+      copies += size; data = nd;
+      r.step([panel(Object.fromEntries([...Array(size).keys()].map(i => [i, 'done']))), vars({ capacity: 'active', 'copies so far': 'active' })], [7, 8],
+        `grow(): new capacity = ${size} + (${size} >> 1) = <b>${cap}</b>. A brand-new array; all ${size} elements are copied (System.arraycopy). The old array becomes garbage.`);
+    }
+    data[size] = x;
+    r.step([panel({ [size]: 'active' }), vars()], [3], `Write ${x} into box ${size}, then size becomes ${size + 1}. No copying: <b>O(1)</b>.`);
+    size++;
+  }
+  r.step([panel(), vars({ 'copies so far': 'done' })], [], `10 adds cost 10 writes + ${copies} copies. Growth happened only 3 times, and each time bought more free boxes than the last. That is why add is <b>O(1) amortized</b>.`);
+  Viz.mount('#op-add', { frames: r.frames, title: 'ArrayList add and grow', code:
+`public void add(E x) {
+    if (size == data.length) grow(); // full?
+    data[size++] = x;                // write at end
+}
+
+private void grow() {
+    int cap = data.length + (data.length >> 1);
+    data = Arrays.copyOf(data, cap); // x1.5, copy all
+}` });
+})();
+</script>
+
+<h3>3. Why "amortized O(1)" — the cost of every add, as bars</h3>
+<p>Each bar is the work one <code>add</code> did: 1 for a plain write, 1 + size when it also had to copy. Spikes are rare and get further apart.</p>
+<div id="op-amort"></div>
+<script>
+(() => {
+  const N = 16; let cap = 4, size = 0, total = 0;
+  const cost = Array(N).fill('');
+  const kinds = Array(N).fill('dim');
+  const r = Viz.recorder();
+  const show = (say, line) => r.step([
+    { type: 'array', id: 'b', label: 'work done by add number i', values: cost, bars: true, marks: Object.fromEntries(kinds.map((k, i) => [i, k])) },
+    { type: 'vars', id: 'v', vars: { adds: size, capacity: cap, 'total work': total, average: size ? (total / size).toFixed(2) : '-' }, marks: { average: 'done' } }
+  ], line, say);
+  show('16 adds, starting at capacity 4. Each bar will show how much work that one add did.', []);
+  for (let i = 0; i < N; i++) {
+    let c = 1, grew = false;
+    if (size === cap) { c += size; cap += cap >> 1; grew = true; }
+    cost[i] = c; kinds[i] = grew ? 'bad' : 'done'; total += c; size++;
+    show(grew ? `add #${i}: the array was full → copy ${c - 1} elements + 1 write = <b>${c}</b>. Capacity is now ${cap}.`
+              : `add #${i}: a free box was there → <b>1</b> unit of work.`, grew ? [2, 7, 8] : [3]);
+  }
+  show(`Total ${total} units for ${N} adds = <b>${(total / N).toFixed(2)} per add</b>. With ×1.5 growth the copies add up to at most about 2n, so the average stays below 3 — a constant. That is <b>amortized O(1)</b>.`, []);
+  Viz.mount('#op-amort', { frames: r.frames, title: 'Amortized cost of add', code:
+`public void add(E x) {
+    if (size == data.length) grow(); // rare, O(n)
+    data[size++] = x;                // usual, O(1)
+}
+
+private void grow() {
+    int cap = data.length + (data.length >> 1);
+    data = Arrays.copyOf(data, cap);
+}` });
+})();
+</script>
+
+<h3>4. add(i, x) — inserting in the middle shifts everything after it</h3>
+<p>Insert 15 at index 1. Every element from index 1 to the end must move one box to the right first, starting from the back so nothing is overwritten.</p>
+<div id="op-ins"></div>
+<script>
+(() => {
+  const data = [10, 20, 30, 40, 50, null, null, null]; let size = 5; const i = 1, x = 15;
+  const r = Viz.recorder();
+  const dim = () => Object.fromEntries(data.map((v, k) => [k, v == null ? 'dim' : '']).filter(e => e[1]));
+  const panel = (marks = {}) => ({ type: 'array', id: 'a', label: 'data (capacity 8)', values: data.map(v => v ?? ''), marks: { ...dim(), ...marks }, pointers: { i, size } });
+  let moved = 0;
+  r.step([panel({ [i]: 'compare' }), { type: 'vars', id: 'v', vars: { call: 'add(1, 15)', shifts: 0 } }], [1], 'add(1, 15). There is spare capacity, so no growth. But box 1 is taken by 20 — it has to make room.');
+  for (let k = size - 1; k >= i; k--) {
+    data[k + 1] = data[k]; moved++;
+    r.step([panel({ [k]: 'compare', [k + 1]: 'active' }), { type: 'vars', id: 'v', vars: { call: 'add(1, 15)', shifts: moved } }], [4],
+      `Copy ${data[k]} from box ${k} to box ${k + 1}. System.arraycopy moves the block as if from the back, so the overlap is safe.`);
+  }
+  data[i] = x;
+  r.step([panel({ [i]: 'done' }), { type: 'vars', id: 'v', vars: { call: 'add(1, 15)', shifts: moved } }], [5], `Box 1 is free to overwrite: write <b>15</b>.`);
+  size++;
+  r.step([panel({}), { type: 'vars', id: 'v', vars: { size, shifts: moved }, marks: { shifts: 'bad' } }], [6],
+    `size becomes ${size}. It took <b>${moved} shifts</b> = size − i. Insert at the front of a list of a million → a million shifts: <b>O(n)</b>.`);
+  Viz.mount('#op-ins', { frames: r.frames, title: 'ArrayList insert in the middle', code:
+`public void add(int i, E x) {
+    if (size == data.length) grow();
+    // move data[i..size-1] one box to the right
+    System.arraycopy(data, i, data, i + 1, size - i);
+    data[i] = x;
+    size++;
+}` });
+})();
+</script>
+
+<h3>5. remove(i) — removing from the middle shifts everything left</h3>
+<div id="op-rem"></div>
+<script>
+(() => {
+  const data = [10, 15, 20, 30, 40, 50, null, null]; let size = 6; const i = 1;
+  const r = Viz.recorder();
+  const dim = () => Object.fromEntries(data.map((v, k) => [k, v == null ? 'dim' : '']).filter(e => e[1]));
+  const panel = (marks = {}) => ({ type: 'array', id: 'a', label: 'data (capacity 8)', values: data.map(v => v ?? ''), marks: { ...dim(), ...marks }, pointers: { i, size } });
+  const old = data[i]; let moved = 0;
+  r.step([panel({ [i]: 'bad' }), { type: 'vars', id: 'v', vars: { call: 'remove(1)', old } }], [2], `remove(1): remember the old value <b>${old}</b> to return it. Its box will be filled by the element after it.`);
+  for (let k = i; k < size - 1; k++) {
+    data[k] = data[k + 1]; moved++;
+    r.step([panel({ [k + 1]: 'compare', [k]: 'active' }), { type: 'vars', id: 'v', vars: { call: 'remove(1)', shifts: moved } }], [4], `Copy ${data[k]} from box ${k + 1} down to box ${k}.`);
+  }
+  size--; data[size] = null;
+  r.step([panel({ [size]: 'dim' }), { type: 'vars', id: 'v', vars: { size, shifts: moved }, marks: { shifts: 'bad' } }], [5],
+    `The last box still holds a stale copy of 50 → set it to <b>null</b> so the garbage collector can free the object. ${moved} shifts: <b>O(n)</b>. Removing the <b>last</b> element needs zero shifts: O(1).`);
+  Viz.mount('#op-rem', { frames: r.frames, title: 'ArrayList remove in the middle', code:
+`public E remove(int i) {
+    E old = get(i);                  // also checks i
+    // move data[i+1..size-1] one box to the left
+    System.arraycopy(data, i + 1, data, i, size - i - 1);
+    data[--size] = null;             // let GC free it
+    return old;
+}` });
+})();
+</script>
+
+<h2>Build it yourself</h2>
+<p>The version interviewers ask for: a generic growable array with <code>add</code>, <code>add(i, x)</code>, <code>get</code>, <code>set</code>, <code>remove</code>. Tested against <code>java.util.ArrayList</code> with 20,000 random operations.</p>
+<pre class="code"><code>import java.util.Arrays;
+
+// A growable array, like java.util.ArrayList.
+public class MyArrayList&lt;E&gt; {
+    private Object[] data = new Object[10]; // capacity
+    private int size = 0;                   // slots used
+
+    // Add at the end: O(1) amortized.
+    public void add(E x) {
+        if (size == data.length) grow();    // full?
+        data[size++] = x;
+    }
+
+    // Insert at index i: shifts the tail right, O(n).
+    public void add(int i, E x) {
+        if (i &lt; 0 || i &gt; size)
+            throw new IndexOutOfBoundsException(i);
+        if (size == data.length) grow();
+        // move data[i..size-1] one slot to the right
+        System.arraycopy(data, i, data, i + 1, size - i);
+        data[i] = x;
+        size++;
+    }
+
+    // Read index i: O(1), address = base + i * width.
+    @SuppressWarnings("unchecked")
+    public E get(int i) {
+        if (i &lt; 0 || i &gt;= size)
+            throw new IndexOutOfBoundsException(i);
+        return (E) data[i];
+    }
+
+    public E set(int i, E x) {
+        E old = get(i);                     // checks i
+        data[i] = x;
+        return old;
+    }
+
+    // Remove index i: shifts the tail left, O(n).
+    public E remove(int i) {
+        E old = get(i);                     // checks i
+        // move data[i+1..size-1] one slot to the left
+        System.arraycopy(data, i + 1, data, i, size - i - 1);
+        data[--size] = null;                // let GC free it
+        return old;
+    }
+
+    public int size() { return size; }
+
+    // New array 1.5x bigger, copy everything over: O(n).
+    private void grow() {
+        int cap = data.length + (data.length &gt;&gt; 1);
+        data = Arrays.copyOf(data, Math.max(cap, 1));
+    }
+}</code></pre>
+<p>Why <code>Object[]</code> and a cast? Java cannot do <code>new E[10]</code> (generics are erased at run time), so the real ArrayList also stores <code>Object[]</code> and casts on the way out.</p>
+
+<h2>The real Java class</h2>
+<h3>Arrays</h3>
+<ul>
+  <li>An array is an <b>object</b> on the heap: a small header (about 16 bytes, which includes the <code>length</code>) followed by the elements. <code>length</code> is a field, not a method — <code>a.length</code>, but <code>list.size()</code> and <code>s.length()</code>.</li>
+  <li>New arrays are filled with defaults: <code>0</code>, <code>false</code>, <code>'\u0000'</code> or <code>null</code>.</li>
+  <li>Every access is <b>bounds-checked</b>; the JIT compiler removes the check inside simple loops where it can prove the index is safe.</li>
+  <li><code>int[][]</code> is an array of row arrays, not one flat block. Rows can have different lengths, and each row is its own object.</li>
+  <li>Element sizes: <code>byte</code>/<code>boolean</code> 1, <code>char</code>/<code>short</code> 2, <code>int</code>/<code>float</code> 4, <code>long</code>/<code>double</code> 8, a reference usually 4 (compressed pointers on heaps under 32 GB).</li>
+</ul>
+<h3>java.util.ArrayList</h3>
+<ul>
+  <li>Fields: <code>transient Object[] elementData</code>, <code>int size</code>, plus <code>modCount</code> inherited from <code>AbstractList</code>.</li>
+  <li><code>new ArrayList&lt;&gt;()</code> starts with a shared <b>empty</b> array; the first <code>add</code> allocates capacity <b>10</b> (lazy since Java 8).</li>
+  <li>Growth: <code>newCapacity = old + (old &gt;&gt; 1)</code> — 10, 15, 22, 33, 49, … (Java 17+ computes it in <code>ArraysSupport.newLength</code>). Copying uses <code>Arrays.copyOf</code>, which calls the native <code>System.arraycopy</code>.</li>
+  <li>It <b>never shrinks</b> by itself. <code>trimToSize()</code> shrinks, <code>ensureCapacity(n)</code> or <code>new ArrayList&lt;&gt;(n)</code> pre-sizes so a known number of adds never copies.</li>
+  <li><b>Fail-fast iterators</b>: every structural change bumps <code>modCount</code>; an iterator that sees it change throws <code>ConcurrentModificationException</code>. That is what happens when you call <code>list.remove(x)</code> inside a for-each loop. Use <code>iterator.remove()</code> or <code>list.removeIf(...)</code>.</li>
+  <li>It implements the marker interface <code>RandomAccess</code>, telling algorithms like <code>Collections.binarySearch</code> that <code>get(i)</code> is fast. <code>LinkedList</code> does not.</li>
+  <li>Not thread-safe. <code>Vector</code> is the old synchronized version (also doubles instead of ×1.5); avoid both <code>Vector</code> and <code>Collections.synchronizedList</code> in new code unless you really share the list.</li>
+  <li><code>Arrays.asList(arr)</code> is a <b>fixed-size</b> view backed by the array (<code>add</code> throws). <code>List.of(...)</code> (Java 9) is fully immutable and rejects <code>null</code>.</li>
+  <li>Java 21 (sequenced collections): <code>getFirst()</code>, <code>getLast()</code>, <code>removeLast()</code>, <code>reversed()</code>. <code>addFirst</code> exists too, but on ArrayList it is still an O(n) shift.</li>
+</ul>
+<h3>Why int[] beats ArrayList&lt;Integer&gt; — boxing</h3>
+<p>Generics only work with objects, so <code>ArrayList&lt;Integer&gt;</code> stores each number as an <code>Integer</code> object. Compared with <code>int[]</code>:</p>
+<ul>
+  <li><b>Memory</b>: about 4 bytes per element in <code>int[]</code> versus about 20 (4-byte reference + 16-byte object) — five times more.</li>
+  <li><b>Speed</b>: every read follows a pointer to a different place in memory (a likely cache miss), and every <code>add(5)</code> may allocate a new object (autoboxing calls <code>Integer.valueOf</code>).</li>
+  <li><b>Correctness traps</b>: <code>==</code> compares references. <code>Integer.valueOf</code> caches −128..127, so <code>a.get(0) == a.get(1)</code> is true for 100 and false for 1000. Use <code>.equals</code> or unbox to <code>int</code>. Unboxing a <code>null</code> throws <code>NullPointerException</code>.</li>
+</ul>
+<p>Rule of thumb in interviews: known size → <code>int[]</code>; unknown size or you must return a <code>List</code> → <code>ArrayList&lt;Integer&gt;</code>.</p>
+
+<h2>Cost of every operation</h2>
+<table>
+<tr><th>Operation</th><th>Average</th><th>Worst</th><th>Why</th></tr>
+<tr><td><code>a[i]</code>, <code>get(i)</code>, <code>set(i, x)</code></td><td>O(1)</td><td>O(1)</td><td>Address = start + i × width.</td></tr>
+<tr><td><code>add(x)</code> at the end</td><td>O(1) amortized</td><td>O(n)</td><td>Usually a free box; when full, grow copies all n.</td></tr>
+<tr><td><code>add(i, x)</code> in the middle</td><td>O(n)</td><td>O(n)</td><td>Shifts size − i elements right (index 0 is the worst).</td></tr>
+<tr><td><code>remove(i)</code></td><td>O(n)</td><td>O(n)</td><td>Shifts size − i − 1 elements left; the last one is O(1).</td></tr>
+<tr><td><code>contains(x)</code>, <code>indexOf(x)</code></td><td>O(n)</td><td>O(n)</td><td>No order to exploit: checks each box with <code>equals</code>.</td></tr>
+<tr><td><code>remove(Object x)</code></td><td>O(n)</td><td>O(n)</td><td>Find it (O(n)) then shift (O(n)).</td></tr>
+<tr><td>Binary search (sorted)</td><td>O(log n)</td><td>O(log n)</td><td>Random access lets you jump to the middle.</td></tr>
+<tr><td>Iterate all</td><td>O(n)</td><td>O(n)</td><td>Sequential memory: fastest scan of any structure.</td></tr>
+<tr><td>Memory</td><td colspan="2">n to 1.5n boxes</td><td>Spare capacity after growth; <code>trimToSize()</code> to reclaim.</td></tr>
+</table>
+
+<h2>Why and when to use it</h2>
+<ul>
+  <li>The default list in Java. Index access, appending, sorting (<code>Arrays.sort</code>, <code>list.sort</code>), binary search, and scanning are all as fast as they get.</li>
+  <li><code>int[]</code> for counting (<code>int[26]</code> letters, <code>int[128]</code> ASCII), prefix sums, DP tables, visited flags (<code>boolean[]</code>), and union-find parents.</li>
+  <li><code>ArrayList</code> as a <b>stack</b> when you only touch the end (backtracking: <code>path.add(x)</code> … <code>path.remove(path.size() - 1)</code>).</li>
+  <li>Building results of unknown length that you must return as a <code>List</code>.</li>
+</ul>
+
+<h2>When not to use it</h2>
+<ul>
+  <li>Many inserts/removes at the <b>front</b> → use <a href="ds-arraydeque.html"><code>ArrayDeque</code></a> (O(1) at both ends).</li>
+  <li>"Is x in here?" asked many times → use a <a href="ds-hashmap.html"><code>HashSet</code></a> (O(1) instead of O(n)).</li>
+  <li>Always need the smallest/largest → <a href="ds-priorityqueue.html"><code>PriorityQueue</code></a>; need sorted order with inserts → <a href="ds-treemap.html"><code>TreeMap</code>/<code>TreeSet</code></a>.</li>
+  <li>Inserts in the middle while walking with an iterator, at huge scale → a linked structure can win, but measure first (see <a href="ds-linked-list.html">Linked list</a>).</li>
+</ul>
+
+<h2>Used in these patterns</h2>
+<ul>
+  <li><a href="arrays-hashing.html">Arrays &amp; hashing</a> — <code>int[26]</code> counters; <a href="prefix-sum.html">Prefix sum</a> — the <code>pre[]</code> array.</li>
+  <li><a href="two-pointers.html">Two pointers</a>, <a href="sliding-window.html">Sliding window</a>, <a href="in-place-tricks.html">In-place tricks</a>, <a href="kadane.html">Kadane</a> — O(1) index access from both ends.</li>
+  <li><a href="binary-search.html">Binary search</a>, <a href="binary-search-answer.html">Binary search on the answer</a>, <a href="rotated-array.html">Rotated array</a> — jumping to the middle needs random access.</li>
+  <li><a href="merge-sort.html">Merge sort</a>, <a href="quick-sort.html">Quick sort</a>, <a href="matrix-traversal.html">Matrix traversal</a>, <a href="strings-palindromes.html">Strings &amp; palindromes</a> (<code>char[]</code>).</li>
+  <li><a href="dp-intro.html">DP intro</a>, <a href="grid-dp.html">Grid DP</a>, <a href="knapsack.html">Knapsack</a>, <a href="dp-advanced.html">Advanced DP</a> — the dp table.</li>
+  <li><a href="backtracking.html">Backtracking</a>, <a href="permutations.html">Permutations</a> — <code>ArrayList</code> path, add and remove at the end.</li>
+  <li><a href="heap.html">Heap</a>, <a href="union-find.html">Union-find</a>, <a href="segment-tree-fenwick.html">Segment tree &amp; Fenwick</a> — trees stored inside an array.</li>
+  <li><a href="graph-basics.html">Graph basics</a> — adjacency list <code>List&lt;List&lt;Integer&gt;&gt;</code>.</li>
+</ul>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>Address = start + i × width</b> → O(1) index. <b>Full? New array ×1.5, copy all</b> → add is O(1) amortized. <b>Middle insert/remove shifts</b> → O(n). Known size of numbers → <code>int[]</code>, not <code>ArrayList&lt;Integer&gt;</code>.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li><code>list.remove(1)</code> on a <code>List&lt;Integer&gt;</code> removes <b>index</b> 1, not the value 1. For the value: <code>list.remove(Integer.valueOf(1))</code>.</li>
+  <li>Comparing boxed values with <code>==</code>: works up to 127 by luck, fails at 128.</li>
+  <li>Removing inside a for-each loop → <code>ConcurrentModificationException</code>. Use <code>removeIf</code> or an explicit iterator.</li>
+  <li><code>list.add(0, x)</code> in a loop: O(n) each, O(n²) total. Add at the end and reverse once, or use <code>ArrayDeque</code>.</li>
+  <li>Calling <code>add</code> on <code>Arrays.asList(...)</code> or <code>List.of(...)</code> → <code>UnsupportedOperationException</code>.</li>
+  <li><code>new ArrayList&lt;&gt;(n)</code> sets <b>capacity</b>, not size — <code>get(0)</code> still throws. To get n zeros use <code>new int[n]</code> or <code>new ArrayList&lt;&gt;(Collections.nCopies(n, 0))</code>.</li>
+  <li><code>Arrays.fill(new int[3][3], …)</code> or <code>new ArrayList[n]</code> filled with the <b>same</b> list object: every row is shared.</li>
+</ul></div>
+
+<h2>Interview questions on the internals</h2>
+<details class="quiz"><summary>Why is array access O(1) but linked-list access O(n)?</summary>
+<p>Array boxes are equal-sized and contiguous, so the address of box i is computed (start + i × width) in one step. A linked list's nodes are scattered; the only way to find node i is to follow i next-pointers from the head.</p></details>
+<details class="quiz"><summary>What exactly happens when an ArrayList is full and you call add?</summary>
+<p><code>grow()</code> computes a new capacity of old + old/2, allocates a new array, copies every element with <code>System.arraycopy</code>, swaps the field to the new array, then writes the element. The old array becomes garbage.</p></details>
+<details class="quiz"><summary>Prove that add is amortized O(1).</summary>
+<p>With growth factor 1.5, the copies happen at sizes c, 1.5c, 2.25c, … up to n. That is a geometric series whose sum is at most about n / (1.5 − 1) = 2n. So n adds cost n writes + at most ~2n copies = O(n) total, O(1) per add on average.</p></details>
+<details class="quiz"><summary>Why grow by a factor (×1.5 or ×2) and not by a fixed +10?</summary>
+<p>Adding a constant k means a copy every k adds: n/k copies of average size n/2 → O(n²) total, O(n) per add. Only multiplying keeps the total linear. Java picks 1.5 over 2 to waste less spare memory.</p></details>
+<details class="quiz"><summary>Is the capacity ever reduced when you remove elements?</summary>
+<p>No. <code>remove</code> and <code>clear</code> keep the big array. Call <code>trimToSize()</code> if the memory matters.</p></details>
+<details class="quiz"><summary>Why does ArrayList&lt;Integer&gt; use so much more memory than int[]?</summary>
+<p>Each element is a separate Integer object (~16 bytes) plus a 4-byte reference in the array, versus 4 bytes inline. It also costs a pointer hop per read, which hurts cache performance.</p></details>
+<details class="quiz"><summary>What is the difference between capacity and size?</summary>
+<p>Capacity is the length of the internal array (boxes available). Size is how many boxes hold real elements. Only indexes below size are valid.</p></details>
+<details class="quiz"><summary>Why does removing in a for-each loop throw ConcurrentModificationException?</summary>
+<p>The iterator remembers <code>modCount</code>. <code>list.remove</code> increments it; on the next <code>next()</code> the iterator sees the mismatch and fails fast instead of skipping or repeating elements.</p></details>
+<details class="quiz"><summary>How do you delete many elements from an ArrayList efficiently?</summary>
+<p><code>removeIf(pred)</code> or a write-pointer pass (keep the elements you want at <code>write++</code>, then cut the tail) — one O(n) pass instead of O(n) per removal.</p></details>
+
+<nav class="pager"><a href="../index.html#lessons">← All structures</a><a href="ds-linked-list.html">Linked list →</a></nav>
+</main>
+</body>
+</html>

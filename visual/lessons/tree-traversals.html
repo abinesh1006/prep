@@ -215,6 +215,24 @@ traversalDemo('#demo3', 'post');
     <span class="c">// POST-order work here (me after children)</span>
 }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><code>TreeNode</code> (val, left, right)</td><td>Every traversal follows the left and right links.</td><td>O(1) per step</td>
+<td>&mdash;</td></tr>
+<tr><td><a href="recursion.html">call stack</a></td><td>Recursive pre / in / post-order: the stack remembers which nodes are half done.</td><td>O(h) space, h = height</td>
+<td>Fine unless the tree is a 10<sup>5</sup>-deep chain, which overflows the stack.</td></tr>
+<tr><td><a href="ds-arraydeque.html"><code>ArrayDeque&lt;TreeNode&gt;</code> as a stack</a></td><td>144, 94, 145: the iterative versions; it is the call stack, made explicit.</td><td>O(1) push / pop, O(h) space</td>
+<td><code>java.util.Stack</code> is legacy and synchronized.</td></tr>
+<tr><td><a href="ds-linked-list.html"><code>LinkedList&lt;Integer&gt;</code></a></td><td>145: <code>addFirst</code> turns "me, right, left" into post-order.</td><td>O(1) <code>addFirst</code></td>
+<td>An ArrayList with <code>add(0, x)</code> is O(n) per insert; collecting then reversing also works.</td></tr>
+<tr><td><a href="ds-hashmap.html"><code>HashMap&lt;Integer, Integer&gt;</code></a></td><td>105: value &rarr; its index in inorder, to split left and right subtrees.</td><td>O(1) average lookup</td>
+<td>Searching inorder each time is O(n) per node, O(n²) total.</td></tr>
+<tr><td><a href="ds-string-stringbuilder.html"><code>StringBuilder</code></a> + <a href="ds-arraydeque.html"><code>ArrayDeque&lt;String&gt;</code></a></td><td>297: write pre-order with <code>#</code> for null; read tokens back from the front of a queue.</td><td>O(n) both ways</td>
+<td>String <code>+</code> is O(n²); an index into the split array also works instead of the queue.</td></tr>
+</table>
+<p>A traversal is a walk that must remember where to come back to; recursion hides that memory in the call stack, and the iterative versions show it as an explicit ArrayDeque.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Pre = me first. In = me in the middle. Post = me last.</b> In-order of a BST is sorted. Post-order when you need the children's answers first.</p></div>
 

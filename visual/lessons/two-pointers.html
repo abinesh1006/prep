@@ -123,6 +123,22 @@
     <span class="k">else</span> r--;
 }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-array-arraylist.html">sorted <code>int[]</code></a></td><td>O(1) access at both ends, and the sorted order tells which pointer to move.</td><td>O(1) per step, O(n) total</td>
+<td>A HashMap also solves pair sums in O(n) but needs O(n) extra space; Two Sum II asks for O(1).</td></tr>
+<tr><td><a href="ds-string-stringbuilder.html"><code>String</code></a></td><td>125: <code>charAt(l)</code> and <code>charAt(r)</code> from both ends.</td><td>O(1) per <code>charAt</code></td>
+<td>Building a cleaned, reversed copy works but costs O(n) extra space.</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>Arrays.sort(int[])</code></a></td><td>3Sum: sorted order makes the inner two-pointer scan work and puts duplicates side by side so we can skip them.</td><td>O(n log n), hidden under the O(n²) scan</td>
+<td>Removing duplicate triplets with a <code>HashSet&lt;List&lt;Integer&gt;&gt;</code> is slower and messier.</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>ArrayList&lt;List&lt;Integer&gt;&gt;</code></a></td><td>3Sum: collect an unknown number of triplets.</td><td>O(1) amortised <code>add</code></td>
+<td>A plain array needs its size up front.</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[] height</code> + two ints</a></td><td>11 and 42: just the heights, plus <code>leftMax</code> / <code>rightMax</code> in 42.</td><td>O(1) extra space</td>
+<td>Trapping Rain Water can use two prefix-max arrays, but that is O(n) extra space; the pointers remove it.</td></tr>
+</table>
+<p>Two pointers is the pattern that needs almost no structure: a sorted array and two indexes replace the hash map, which is why its space is O(1).</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Sorted + pair → two pointers. Unsorted + pair → hash map.</b> Too small → left moves. Too big → right moves.</p></div>
 

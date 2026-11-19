@@ -172,6 +172,18 @@ pq.add({<span class="n">0</span>, start});
     <span class="k">for</span> (edge u -&gt; v, c) <span class="k">if</span> (!in[v]) pq.add({c, v});
 }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td>Edge list sorted by weight (Kruskal: 1135, 1168, 1489)</td><td>try the cheapest edge first</td><td>O(E log E) for the sort</td><td>Scanning all edges for the minimum every time is O(E²).</td></tr>
+<tr><td>Union-find <code>int[] parent</code> (<a href="union-find.html">union-find</a>)</td><td>"would this edge close a cycle?" = are both ends already in one group?</td><td>~O(α(n)) per find/union</td><td>A DFS reachability check per edge costs O(V + E) each, O(E · V) overall.</td></tr>
+<tr><td><code>int[] best</code> + <code>boolean[] inTree</code>, no heap (1584)</td><td>Prim on a complete graph: the cheapest known link from the tree to each point, scanned linearly</td><td>O(n²) total</td><td>Every pair of points is an edge (n² of them): a heap costs O(n² log n), and Kruskal must sort n² edges.</td></tr>
+<tr><td><a href="ds-priorityqueue.html">PriorityQueue</a> (template Prim)</td><td>the cheapest edge leaving the tree, for sparse adjacency-list graphs</td><td>O(E log V)</td><td>On sparse graphs the O(V²) array scan above wastes time.</td></tr>
+<tr><td><a href="ds-array-arraylist.html">ArrayList</a><code>&lt;int[]&gt;</code> edges + virtual node 0 (1168)</td><td>a well becomes an edge from a made-up "water source" node 0, so the problem is a plain MST</td><td>O(n + p) edges</td><td>Handling "well or pipe?" separately turns a textbook MST into special cases.</td></tr>
+<tr><td><code>int[][] es</code> with the original index appended (1489)</td><td>after sorting, every edge still knows its position in the input</td><td>O(1) extra per edge</td><td>Sorting the input array directly loses the indices the answer must report.</td></tr>
+</table>
+<p>Kruskal is "sort, then union-find"; Prim is "grow one tree, always take the cheapest way out". Which structure wins depends on density, which is why 1584 drops the heap.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Kruskal = sort edges + Union-Find, skip loops, stop at n − 1. Prim = grow one tree by the cheapest outgoing edge.</b> Complete graph → array Prim O(n²).</p></div>
 

@@ -228,6 +228,24 @@ void reverse(int[] a, int l, int r) {
 
 <span class="c">// Missing number by XOR: x = n; for i: x ^= i ^ a[i]; return x;</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-array-arraylist.html">the input <code>int[]</code> + <code>swap</code></a></td><td>283, 75: move values into their zone by swapping.</td><td>O(1) per swap, O(1) extra</td>
+<td>A second array is simpler but O(n) space, which these problems forbid.</td></tr>
+<tr><td><a href="ds-array-arraylist.html">the input <code>int[]</code>, reversed in parts</a></td><td>189: reverse all, reverse [0, k), reverse [k, n).</td><td>O(n) time, O(1) extra</td>
+<td>A copy array is O(n) space; rotating one step at a time is O(n &middot; k).</td></tr>
+<tr><td><a href="ds-array-arraylist.html">the array's own indexes as a hash</a></td><td>442: negate <code>nums[v - 1]</code> to mark v as seen. 41: cyclic sort sends v to index v &minus; 1.</td><td>O(1) per mark, O(1) extra</td>
+<td>A <code>HashSet&lt;Integer&gt;</code> is O(n) space; the problems ask for O(1).</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[] ans</code></a></td><td>238: holds left products first, then is multiplied by a running right product.</td><td>O(n) for the output only</td>
+<td>Separate <code>left[]</code> and <code>right[]</code> arrays cost 2n extra; division breaks on a zero.</td></tr>
+<tr><td>one int (XOR)</td><td>268: <code>x ^= i ^ nums[i]</code> leaves the missing number.</td><td>O(1) extra</td>
+<td>A HashSet is O(n) space; the sum formula works too but can overflow for huge n.</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>ArrayList&lt;Integer&gt;</code></a></td><td>442: the answer list (its size is unknown).</td><td>O(1) amortised <code>add</code></td>
+<td>The output does not count as extra space, so this does not break O(1).</td></tr>
+</table>
+<p>When the problem says "O(1) extra space", the array itself becomes the data structure: its slots are reused as markers, homes or scratch space.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>3 values → 3 pointers. Rotate → 3 reversals. Values 0..n → value v lives at index v. "Except self" → left × right.</b></p></div>
 

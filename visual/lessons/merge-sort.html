@@ -141,6 +141,22 @@
     merge(a, lo, mid, hi);   <span class="c">// take the smaller front, copy leftovers</span>
 }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[] tmp</code> buffer</a></td><td>912, 493: merging needs somewhere to write; allocate it once and reuse it.</td><td>O(n) extra space</td>
+<td>A new array in every merge call is many allocations; merging in place is O(n²) or very complex.</td></tr>
+<tr><td><a href="ds-linked-list.html"><code>ListNode</code> + dummy head</a></td><td>21, 148: merging lists only relinks <code>next</code> pointers, so no buffer is needed; slow/fast pointers find the split point.</td><td>O(1) extra per merge</td>
+<td>Copying the list to an array, sorting and rebuilding costs O(n) extra; quick sort is awkward without random access.</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[] idx</code> + <code>int[] count</code></a></td><td>315: sort the indexes, not the values, so each count stays with its original position.</td><td>O(n) extra</td>
+<td>Sorting the values themselves loses "who was where".</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>ArrayList&lt;Integer&gt;</code></a></td><td>315: the return type.</td><td>O(n) to fill</td>
+<td>&mdash;</td></tr>
+<tr><td><code>long</code> compare</td><td>493: <code>a[i] &gt; 2L * a[j]</code>.</td><td>O(1)</td>
+<td><code>2 * a[j]</code> overflows <code>int</code> near 2<sup>31</sup>.</td></tr>
+</table>
+<p>Arrays need a temporary buffer to merge; linked lists do not, which is why merge sort is the natural sort for lists (148).</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Split to 1s, merge by "smaller front wins".</b> log n levels × n work = O(n log n), always. Stable. O(n) extra space.</p></div>
 

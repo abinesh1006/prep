@@ -140,6 +140,17 @@
 <span class="k">for</span> (x : a) { pos = firstIndexWith(tails[pos] &gt;= x);
               <span class="k">if</span> (pos == size) tails.add(x); <span class="k">else</span> tails.set(pos, x); }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><code>int[] dp</code> / <code>len</code> (O(n²))</td><td><code>len[i]</code> = longest increasing run ending at i, from every earlier <code>j</code> with <code>a[j] &lt; a[i]</code></td><td>O(n²) time, O(n) memory</td><td>Trying every subsequence is O(2ⁿ).</td></tr>
+<tr><td><code>int[] tails</code> + binary search (300, 354)</td><td><code>tails[k]</code> = smallest possible last value of a run of length k+1; it stays sorted, so a binary search finds where <code>x</code> goes</td><td>O(log n) per element; O(n log n) total</td><td>A <a href="ds-treemap.html">TreeSet</a> with <code>ceiling</code> + remove also gives O(n log n), but objects and boxing cost more than one array.</td></tr>
+<tr><td><code>int[] cnt</code> (673)</td><td>how many runs reach <code>len[i]</code> at index i — summed when lengths tie</td><td>O(1) per update</td><td><code>tails</code> cannot count; this needs the O(n²) table.</td></tr>
+<tr><td><code>int[] parent</code> + <a href="ds-array-arraylist.html">ArrayList</a> result (368)</td><td>the previous index in the best chain, followed backward to rebuild the actual subset</td><td>O(n)</td><td>Storing a whole list per index costs O(n²) memory.</td></tr>
+<tr><td>Sorted <code>int[][]</code> (646, 354)</td><td>646: sort by end and choose greedily; 354: width up, height DOWN for equal widths, then LIS on heights</td><td>O(n log n) sort</td><td>Sorting 354 with heights up lets two envelopes of the same width nest.</td></tr>
+</table>
+<p>The simple table answers "how long, and how many"; the <code>tails</code> array trades that for speed — it keeps a sorted summary you can binary-search.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>dp[i] = longest run ending at i; answer = max of dp.</b> Fast: <b>tails, binary search, replace or append</b>.</p></div>
 

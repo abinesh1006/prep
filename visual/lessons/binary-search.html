@@ -155,6 +155,20 @@
 }
 <span class="k">return</span> lo;                 <span class="c">// n means "nowhere"</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-array-arraylist.html">sorted <code>int[]</code></a></td><td>704, 35, 34: jump to <code>mid</code> in O(1) and drop half.</td><td>O(log n) search</td>
+<td>A linked list cannot jump to the middle. A HashSet answers "is it there?" but not "where would it go?" (35) or "first and last position" (34).</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[][]</code> read as one flat array</a></td><td>74: index <code>mid</code> maps to <code>matrix[mid / n][mid % n]</code>.</td><td>O(log(m &middot; n))</td>
+<td>Copying into a 1D array first costs O(m &middot; n) time and space.</td></tr>
+<tr><td>two ints (<code>lo</code>, <code>hi</code>) over 1..n</td><td>278: no array at all, only the API <code>isBadVersion</code>.</td><td>O(log n) calls</td>
+<td>Calling the API on every version is O(n) calls.</td></tr>
+<tr><td><a href="ds-array-arraylist.html">unsorted <code>int[]</code></a></td><td>162: comparing <code>nums[mid]</code> with <code>nums[mid + 1]</code> says which side climbs to a peak.</td><td>O(log n)</td>
+<td>A linear scan for the maximum is O(n).</td></tr>
+</table>
+<p>Binary search needs one thing from its structure: O(1) access to any position plus an order that tells you which half to throw away. A sorted array gives both.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Sorted → halve it.</b> Exact match: <code>lo &lt;= hi</code>, move to <code>mid ± 1</code>. First/last: <code>lo &lt; hi</code>, <code>hi = mid</code> keeps the candidate.</p></div>
 

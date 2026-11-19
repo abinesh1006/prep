@@ -161,6 +161,19 @@ void backtrack(int[] nums, boolean[] used, List<Integer> path) {
     used[i] = <span class="k">false</span>; path.remove(path.size() - <span class="n">1</span>);
 }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><code>boolean[] used</code> (<a href="ds-array-arraylist.html">array</a>)</td><td>"is <code>nums[i]</code> already in the path?" — the loop starts at 0, so this is the only guard</td><td>O(1)</td><td><code>path.contains</code> is O(n) per check; a <code>HashSet</code> of values fails with duplicates (47).</td></tr>
+<tr><td><a href="ds-array-arraylist.html">ArrayList</a> <code>path</code></td><td>add / remove at the end while going in and coming back; copy at the leaf</td><td>O(1); O(n) per copy</td><td>Same as in backtracking: save a copy, never the live list.</td></tr>
+<tr><td>Sorted <code>int[]</code> (47)</td><td>equal values side by side for the <code>!used[i-1]</code> duplicate skip</td><td>O(n log n) once</td><td>Collecting into a <code>Set&lt;List&lt;Integer&gt;&gt;</code> still generates all n! orderings first.</td></tr>
+<tr><td><code>char[]</code> (784)</td><td>flip one letter's case in place, recurse, flip back; <code>new String(c)</code> at the leaf</td><td>O(1) per flip</td><td>A <a href="ds-string-stringbuilder.html">StringBuilder</a> <code>setCharAt</code> is the same idea; a new string per branch copies O(n).</td></tr>
+<tr><td><code>String[] KEYS</code> + <a href="ds-string-stringbuilder.html">StringBuilder</a> (17)</td><td>digit → its letters by index; append a letter, recurse, delete it</td><td>O(1)</td><td>A <code>HashMap&lt;Character, String&gt;</code> works, but the digits 2..9 are already perfect indices.</td></tr>
+<tr><td>The <code>int[]</code> itself — swap and reverse (31)</td><td>next permutation in place: find the dip, swap with the next larger, reverse the tail</td><td>O(n) time, O(1) space</td><td>Generating all permutations to find the next one is O(n!).</td></tr>
+<tr><td><a href="ds-array-arraylist.html">ArrayList</a> <code>left</code> + <code>int[] fact</code> (60)</td><td>remaining digits; <code>k / fact[i]</code> picks which one comes next; <code>remove(index)</code></td><td>O(n) per remove, O(n²) total</td><td>n ≤ 9, so the shifting is cheaper than any cleverer structure.</td></tr>
+</table>
+<p>Order matters in permutations, so every choice is open at every level; the <code>used</code> array is what keeps a number from being chosen twice in one ordering.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Order matters → loop from 0 with used[].</b> Duplicates → <b>sort + skip if twin is unused</b>.</p></div>
 

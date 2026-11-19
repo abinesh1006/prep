@@ -175,6 +175,18 @@
 }
 <span class="k">return</span> order.size() == n ? order : <span class="c">/* cycle */</span> empty;</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td>Adjacency list <code>List&lt;List&lt;Integer&gt;&gt;</code> (<a href="ds-array-arraylist.html">ArrayList</a>)</td><td>for each course, the courses it unlocks (<code>next</code>); in 802 the reversed edges (<code>before</code>)</td><td>O(V + E) memory</td><td>An adjacency matrix makes every "who do I unlock?" scan O(V).</td></tr>
+<tr><td><code>int[] indeg</code> (<a href="ds-array-arraylist.html">array</a>)</td><td>how many prerequisites are still unmet; <code>--indeg[v] == 0</code> means v is ready</td><td>O(1) decrement</td><td>Recomputing in-degrees by scanning every edge after each step is O(E) per step.</td></tr>
+<tr><td><a href="ds-arraydeque.html">ArrayDeque</a> queue of ready nodes</td><td>everything with in-degree 0, in any order</td><td>O(1) offer/poll</td><td>A <a href="ds-priorityqueue.html">PriorityQueue</a> is needed only when the smallest valid order is asked for, at O(log V) per step.</td></tr>
+<tr><td><code>int[] order</code> (210), <code>int[] start</code> (2050)</td><td>the order taken; the earliest start time, raised along each edge as courses finish</td><td>O(1) per write</td><td>In 2050 the DP must follow the topological order — every prerequisite is final before it is read.</td></tr>
+<tr><td><a href="ds-hashmap.html">HashMap</a> <code>usedBy</code> / <code>missing</code> (2115)</td><td>recipes and ingredients are strings, not 0..n−1, so the graph and the in-degrees are keyed by name</td><td>O(1) average per lookup</td><td>Mapping names to ids first, then using arrays, is equally valid but more code.</td></tr>
+<tr><td><code>Map&lt;Character, Set&lt;Character&gt;&gt;</code> + <a href="ds-string-stringbuilder.html">StringBuilder</a> (269)</td><td>letter → letters after it; the <a href="ds-hashmap.html">Set</a> drops a repeated edge so <code>indeg</code> is not counted twice; append letters as they come out</td><td>O(1) average add; O(1) amortised append</td><td>A list of edges would count the same pair twice and the in-degree would never reach 0.</td></tr>
+</table>
+<p>Kahn's algorithm is just two arrays and a queue: the in-degree array says who is ready, the queue holds them, and comparing the output size with n detects a cycle.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Count arrows in. Start with the zeros. Removing a node frees its followers.</b> Fewer than n out = cycle.</p></div>
 

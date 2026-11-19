@@ -259,6 +259,18 @@ in = (mask &gt;&gt; i &amp; <span class="n">1</span>) == <span class="n">1</span
 <span class="c">// Tree DP: return a tuple</span>
 <span class="k">int</span>[] dfs(node) { L = dfs(left); R = dfs(right); <span class="k">return</span> combine(L, R); }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td>A few state variables (309, 714), <code>int[] hold</code> / <code>free</code> (188)</td><td>one value per state — holding, free, cooling down — and per transactions-left in 188</td><td>O(1) or O(k) memory</td><td>A full <code>dp[day][state]</code> table is the readable first step; only the previous day is read.</td></tr>
+<tr><td><code>int[]{skip, rob}</code> returned by <code>dfs</code> (337)</td><td>tree DP: each subtree reports its best with and without its root robbed</td><td>O(n), O(h) stack</td><td>A <a href="ds-hashmap.html">HashMap</a><code>&lt;TreeNode, Integer&gt;</code> memo works but hashes every node twice.</td></tr>
+<tr><td>Padded <code>int[] v</code> + <code>int[][] dp</code> (312)</td><td>balloons with 1s added at both ends; <code>dp[l][r]</code> = best bursting everything strictly between l and r</td><td>O(n³) time, O(n²) memory</td><td>Choosing the first balloon to burst leaves neighbours that change; the last balloon keeps the sides independent.</td></tr>
+<tr><td>Sorted <code>int[] pos</code> with 0 and n + <code>int[][] dp</code> (1547)</td><td>the cut points as an interval-DP index</td><td>O(m³)</td><td>Recursion over stick lengths explodes without the table.</td></tr>
+<tr><td><code>boolean[n][1 &lt;&lt; n] seen</code> + <a href="ds-arraydeque.html">ArrayDeque</a><code>&lt;int[]&gt;</code> (847)</td><td>BFS over states <code>{node, mask of visited nodes}</code> — n ≤ 12, so 2ⁿ masks fit</td><td>O(2ⁿ · n²)</td><td>A <code>HashSet&lt;String&gt;</code> of states is far slower than indexing by mask.</td></tr>
+<tr><td>Returned int state 0/1/2 (968)</td><td>not covered / has camera / covered</td><td>O(n)</td><td>Placing cameras top-down misses the greedy rule: cover leaves from their parents.</td></tr>
+</table>
+<p>Advanced DP keeps the same idea — a table of answers to smaller problems — but the index changes: an interval, a bitmask of chosen items, or a node of a tree.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Name the states and draw the arrows. Intervals: fill by length, pick k as the last action. Small n + "all of them" → bitmask. Trees → return {take, skip}.</b></p></div>
 

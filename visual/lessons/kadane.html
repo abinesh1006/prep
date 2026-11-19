@@ -125,6 +125,22 @@
 }
 <span class="c">// Product: track hi and lo; candidates are a[i], hi*a[i], lo*a[i]</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[]</code> input</a></td><td>Read each value once, left to right.</td><td>O(1) per element, O(n) total</td>
+<td>Trying every subarray is O(n²) (or O(n³) without a running sum).</td></tr>
+<tr><td>two ints (<code>cur</code>, <code>best</code>)</td><td>53: best sum ending here, and best seen so far.</td><td>O(1) extra</td>
+<td>A full <code>dp[]</code> array of "best ending at i" works, but only <code>dp[i - 1]</code> is ever read, so it wastes O(n) space.</td></tr>
+<tr><td>two ints (<code>hi</code>, <code>lo</code>)</td><td>152: a negative number swaps the biggest and smallest product, so keep both.</td><td>O(1) extra</td>
+<td>Tracking only the max fails on <code>[-2, 3, -4]</code>.</td></tr>
+<tr><td>ints <code>total</code>, max and min sums</td><td>918: wrap-around answer = total &minus; smallest subarray. 1749: max of |best| and |worst|.</td><td>O(1) extra</td>
+<td>Doubling the array to 2n and using a deque works for 918 but is more code and O(n) space.</td></tr>
+<tr><td>one int (<code>minPrice</code>)</td><td>121: cheapest price so far.</td><td>O(1) extra</td>
+<td>Checking every buy/sell pair is O(n²).</td></tr>
+</table>
+<p>Kadane is a DP whose table collapses to a few variables: each step only needs the answer for the previous index, so no array beyond the input is kept.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Keep or restart: cur = max(x, cur + x).</b> A negative run is dead weight. Products: carry both hi and lo — a minus sign swaps them.</p></div>
 

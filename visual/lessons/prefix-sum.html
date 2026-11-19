@@ -169,6 +169,22 @@ count.put(<span class="n">0</span>, <span class="n">1</span>);
     count.merge(sum, <span class="n">1</span>, Integer::sum);      <span class="c">// then record</span>
 }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[n + 1] pre</code></a></td><td>303 / 1480: <code>pre[r + 1] - pre[l]</code> answers any range sum.</td><td>O(n) build, O(1) per query</td>
+<td>Looping each query is O(n) per query. The extra slot <code>pre[0] = 0</code> removes the <code>l == 0</code> special case.</td></tr>
+<tr><td>two ints (<code>total</code>, <code>left</code>)</td><td>724: right sum = total &minus; left &minus; nums[i].</td><td>O(1) extra</td>
+<td>A full prefix array works but only one running value is ever read.</td></tr>
+<tr><td><a href="ds-hashmap.html"><code>HashMap&lt;Integer, Integer&gt;</code> sum &rarr; count</a></td><td>560: how many earlier prefixes equal <code>sum - k</code>.</td><td>O(1) average per step, O(n) total</td>
+<td>Negatives break the sliding window; checking every pair of prefixes is O(n²).</td></tr>
+<tr><td><a href="ds-hashmap.html"><code>HashMap&lt;Integer, Integer&gt;</code> key &rarr; first index</a></td><td>523: remainder &rarr; first index. 525: balance (+1 / &minus;1) &rarr; first index. Keep the first so the subarray is longest.</td><td>O(1) average</td>
+<td>For 525 an <code>int[2n + 1]</code> offset by n also works, since the balance stays in &minus;n..n; the map is easier to get right.</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[m + 1][n + 1]</code></a></td><td>304: 2D prefix sums, any rectangle from 4 corners.</td><td>O(m &middot; n) build, O(1) per query</td>
+<td>Summing the rectangle each time is O(m &middot; n) per query.</td></tr>
+</table>
+<p>A prefix array turns "sum of a range" into one subtraction; pairing it with a hash map turns "how many ranges have sum k" into one lookup per index.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Range sum = pre[r+1] − pre[l]. Subarray = difference of two prefixes.</b> Seed the map with {0 : 1}; look back first, then record.</p></div>
 

@@ -225,6 +225,18 @@
 <span class="c">// Floyd: k OUTSIDE, then i, then j</span>
 d[i][j] = min(d[i][j], d[i][k] + d[k][j]);</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td>Adjacency list + <a href="ds-priorityqueue.html">PriorityQueue</a> (743)</td><td>Dijkstra: always settle the closest node next</td><td>O((V + E) log V)</td><td>Bellman-Ford solves it too, at O(V · E).</td></tr>
+<tr><td>Two <code>int[]</code> — <code>cost</code> and <code>next = cost.clone()</code> (787)</td><td>Bellman-Ford, one round per allowed stop: read only last round's prices</td><td>O(k · E)</td><td>Updating one array in place can chain several flights in a single round and break the stop limit.</td></tr>
+<tr><td><code>int[][] d</code> — Floyd-Warshall (1334)</td><td>every pair's shortest distance; <code>k</code> loop outside</td><td>O(n³), fine for n ≤ 100</td><td>Dijkstra from every city is O(n · E log n) — faster on sparse graphs, more code.</td></tr>
+<tr><td><a href="ds-arraydeque.html">ArrayDeque</a><code>&lt;int[]&gt;</code> as a 0-1 BFS deque (2290, 1368)</td><td>cost-0 moves go to the front (<code>offerFirst</code>), cost-1 moves to the back</td><td>O(1) per push; O(mn) total</td><td>Dijkstra with a heap gives the same answer at O(mn log mn).</td></tr>
+<tr><td><code>int[][] dist</code> filled with <code>MAX_VALUE</code> (2290, 1368)</td><td>best cost into each cell; a smaller one replaces it</td><td>O(1)</td><td>A <code>boolean[][] seen</code> is not enough: a cell can be reached first by a worse path.</td></tr>
+<tr><td><code>boolean[][] reach</code> (1462)</td><td>Floyd-style transitive closure: can i reach j through k?</td><td>O(n³), then O(1) per query</td><td>A BFS per query is O(V + E) each.</td></tr>
+</table>
+<p>The edge weights pick the structure: all equal → queue, 0 or 1 → deque, any non-negative → heap, all pairs on a small graph → a 2D table.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Limited stops → Bellman-Ford with a copy each round. 0/1 weights → deque, 0 to the front. All pairs → Floyd, k outermost.</b></p></div>
 

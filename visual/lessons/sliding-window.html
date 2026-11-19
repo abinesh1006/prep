@@ -198,6 +198,22 @@
 <span class="c">// Shortest: while (valid()) { best = min(...); remove(a[l++]); }</span>
 <span class="c">// Fixed k:  sum += a[r] - a[r - k];</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[]</code> + running sum</a></td><td>643: add <code>a[r]</code>, subtract <code>a[r - k]</code>.</td><td>O(1) per slide</td>
+<td>Re-adding each window from scratch is O(n &middot; k).</td></tr>
+<tr><td><a href="ds-hashmap.html"><code>HashSet&lt;Character&gt;</code></a></td><td>The animation for 3: which characters are inside the window right now.</td><td>O(1) average add / remove</td>
+<td>Re-scanning the window for each new char is O(n &middot; k).</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[128]</code> last index</a></td><td>3 (solution): where each char was last seen, so <code>l</code> jumps past the repeat in one step.</td><td>O(1) per char</td>
+<td>A <code>HashMap&lt;Character, Integer&gt;</code> does the same with hashing and boxing; 128 ASCII slots are enough.</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[26]</code> / <code>int[128]</code> counts</a></td><td>424, 567, 76: how many of each letter are in the window (and how many we still need).</td><td>O(1) per update, O(26) to compare</td>
+<td>Comparing two HashMaps per slide is slower; counting the window again is O(k).</td></tr>
+<tr><td><a href="ds-arraydeque.html"><code>ArrayDeque&lt;Integer&gt;</code></a></td><td>239: indexes with decreasing values; the front is the window maximum.</td><td>O(1) amortised at both ends, O(n) total</td>
+<td>A PriorityQueue is O(n log k) and cannot drop the leaving element cheaply; scanning each window is O(n &middot; k).</td></tr>
+</table>
+<p>The window only ever adds on the right and removes on the left, so each structure must support "add one, remove one" in O(1): a running sum, a count array, a set, or a deque for the maximum.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Contiguous + longest/shortest → window.</b> Right edge always grows; left edge shrinks only when the rule breaks. "Longest" updates after shrinking; "shortest" updates while shrinking.</p></div>
 

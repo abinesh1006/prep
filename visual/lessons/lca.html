@@ -162,6 +162,18 @@
 l = lca(left); r = lca(right);
 <span class="k">return</span> l != <span class="k">null</span> &amp;&amp; r != <span class="k">null</span> ? node : (l != <span class="k">null</span> ? l : r);</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td>TreeNode with the BST order (235)</td><td>compare p and q with <code>node.val</code>: both smaller → left, both bigger → right, otherwise this is the split point</td><td>O(h) time, O(1) space</td><td>Storing both root-to-node paths and comparing them works for any tree, but costs O(h) memory for nothing in a BST.</td></tr>
+<tr><td>The call stack + returned TreeNode (236)</td><td>each subtree reports "I found p, q, both (return me), or nothing (null)"</td><td>O(n) time, O(h) space</td><td>Building parent pointers first and walking up is a valid alternative, but needs a <a href="ds-hashmap.html">HashMap</a> and two passes.</td></tr>
+<tr><td><code>record Result(depth, lca)</code> (1123)</td><td>one bottom-up pass returns two facts: how deep my subtree goes and who the deepest leaves' LCA is</td><td>O(1) per node; O(n) total</td><td>Recomputing depth separately at every node is O(n²).</td></tr>
+<tr><td><a href="ds-string-stringbuilder.html">StringBuilder</a> paths (2096)</td><td>record root→start and root→dest as <code>L</code> / <code>R</code> characters; <code>deleteCharAt</code> on the way back</td><td>O(1) amortised append/delete</td><td><code>String</code> concatenation copies the whole path each step, O(h²); then drop the common prefix, turn start's part into <code>U</code>s.</td></tr>
+<tr><td><a href="ds-hashmap.html">HashMap</a><code>&lt;TreeNode, TreeNode&gt;</code> parent (863)</td><td>TreeNode has no parent pointer; the map lets you step up as well as down, turning the tree into an undirected graph</td><td>O(1) average get/put</td><td>You may not change the TreeNode class; the map adds the missing edge from outside.</td></tr>
+<tr><td><a href="ds-arraydeque.html">ArrayDeque</a> queue + <a href="ds-hashmap.html">HashSet</a> seen (863)</td><td>BFS outward one ring at a time from target; <code>seen</code> stops you walking straight back</td><td>O(1) per offer/poll/add</td><td>A DFS with a depth counter works too, but the ring-by-ring BFS stops exactly at ring k.</td></tr>
+</table>
+<p>Plain LCA needs only recursion; the extra structures appear when a problem asks you to move upward (parent map) or to spell out the path (StringBuilder).</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>BST: both smaller → left, both bigger → right, else here.</b> Binary tree: found on both sides → me; else pass up the side that found something.</p></div>
 

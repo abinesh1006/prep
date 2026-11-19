@@ -162,6 +162,22 @@ void quickSort(int[] a, int lo, int hi) {
 }
 <span class="c">// sort: recurse both sides. select: follow the side holding target.</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-array-arraylist.html">the input <code>int[]</code> + <code>swap</code></a></td><td>Partition in place: smaller left of the pivot, bigger right.</td><td>O(1) extra per partition</td>
+<td>Merge sort needs an O(n) buffer; quick sort needs none.</td></tr>
+<tr><td><code>Random</code> pivot</td><td>Pick a pivot that sorted or adversarial input cannot predict.</td><td>O(n log n) average sort, O(n) average quickselect</td>
+<td>Always taking the first element is O(n²) on already sorted input (LeetCode 912 tests that).</td></tr>
+<tr><td>call stack</td><td>Recursion on both sides (sort) or a loop on one side (quickselect).</td><td>O(log n) average depth, O(n) worst</td>
+<td>Quickselect needs no recursion at all, so it stays O(1) extra.</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[][] points</code></a></td><td>973: partition whole rows by squared distance.</td><td>O(n) average</td>
+<td>A heap of size k is O(n log k); sorting everything is O(n log n).</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>nums.clone()</code></a></td><td>324: select and 3-way partition a copy, then write it back into <code>nums</code> in wiggle order.</td><td>O(n) extra</td>
+<td>Writing in place would overwrite values we have not placed yet.</td></tr>
+</table>
+<p>Quick sort's selling point is that the array is its own workspace; the only cost beyond it is the recursion stack, and quickselect drops even that.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Partition = pivot lands home.</b> Both sides → quick sort O(n log n). One side → quickselect O(n). Random pivot dodges O(n²).</p></div>
 

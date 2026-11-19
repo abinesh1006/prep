@@ -200,6 +200,17 @@ int height(TreeNode node) {
     <span class="k">return</span> whatParentNeeds(l, r, node);        <span class="c">// Q2: what I return</span>
 }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td>The call stack (one frame per <code>dfs</code> call)</td><td>remember where we are, so a node can wait for both children's answers before computing its own</td><td>O(h) space; h = log n balanced, n for a chain</td><td>An explicit <a href="ds-arraydeque.html">ArrayDeque</a> stack is possible, but post-order (children first) needs extra "visited" bookkeeping — far messier for 110, 543, 124.</td></tr>
+<tr><td>TreeNode (the input)</td><td>the two child pointers to recurse into</td><td>O(1) per child</td><td>Each node is visited once, so every problem here is O(n) time.</td></tr>
+<tr><td>The return value — <code>int</code> height, <code>-1</code> sentinel (110), boolean (112)</td><td>Q2: the one fact the parent needs from me</td><td>O(1) per node</td><td>Returning a small object or <code>int[]</code> works when you need two facts; for 110 the <code>-1</code> "unbalanced" sentinel packs both facts into one int.</td></tr>
+<tr><td>A parameter passed down — <code>maxSoFar</code> (1448), remaining sum (112)</td><td>Q3: what the path above me knows</td><td>O(1) per call</td><td>A shared field would have to be undone on the way back up; a parameter is restored for free when the call returns.</td></tr>
+<tr><td>A field <code>best</code> (543, 124)</td><td>the answer that bends through a node (left arm + right arm), which the parent can never use</td><td>O(1)</td><td>Returning it would mix two meanings in one value; a static field is not reset between LeetCode test cases, so keep it an instance field.</td></tr>
+</table>
+<p>Tree recursion needs almost no data structures: the call stack does the remembering, and the only design decision is what travels up (the return value), what travels down (a parameter), and what is kept on the side (one field).</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Need from children? Return to parent? Pass down?</b> Up = return values (bottom-up). Down = parameters (top-down). "Anywhere in the tree" = return one branch, record the bend in <code>best</code>.</p></div>
 

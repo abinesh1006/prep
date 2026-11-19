@@ -185,6 +185,19 @@ boolean union(int a, int b) {
     components--; <span class="k">return true</span>;
 }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><code>int[] parent</code> — this lesson</td><td><code>find(x)</code>: walk up to the group leader, flattening the path on the way (path compression)</td><td>~O(α(n)) amortised per call, effectively constant</td><td>A BFS/DFS per "same group?" question is O(V + E) each; union-find also handles edges arriving one by one (684, 305).</td></tr>
+<tr><td><code>int[] rank</code> (template)</td><td>hang the shorter tree under the taller one so trees stay flat</td><td>O(1)</td><td>The solutions skip rank and keep only path compression — still O(log n) amortised and shorter to write in an interview.</td></tr>
+<tr><td><code>int</code> counter <code>components</code> / <code>islands</code></td><td>each successful <code>union</code> merges two groups: count − 1</td><td>O(1)</td><td>Counting distinct leaders at the end costs another O(n) pass — and cannot answer after each step (305).</td></tr>
+<tr><td><code>parent</code> of size 26 (990)</td><td>letters <code>a</code>..<code>z</code> are the nodes: index <code>c - 'a'</code></td><td>O(1)</td><td>A <a href="ds-hashmap.html">HashMap</a><code>&lt;Character, Character&gt;</code> works but boxes every letter.</td></tr>
+<tr><td><a href="ds-hashmap.html">HashMap</a><code>&lt;String, Integer&gt;</code> owner (721)</td><td>email → first account that had it; seeing it again means union those two accounts</td><td>O(1) average</td><td>Comparing every pair of accounts is O(n²·k).</td></tr>
+<tr><td><a href="ds-treemap.html">TreeSet</a><code>&lt;String&gt;</code> per leader (721)</td><td>collect each group's emails already in sorted order</td><td>O(log k) per add</td><td>An <a href="ds-array-arraylist.html">ArrayList</a> plus a sort at the end is equally fast; TreeSet also removes duplicate emails for free.</td></tr>
+<tr><td><code>parent</code> filled with <code>-1</code>, id <code>r * n + c</code> (305)</td><td>flattens the 2D grid to 1D; <code>-1</code> means "still water"</td><td>O(1)</td><td>A separate <code>boolean[][]</code> land grid is a second structure to keep in sync.</td></tr>
+</table>
+<p>Union-find answers one question — "are these two in the same group?" — and its whole state is one int array. Every extra structure here only translates the problem's names (letters, emails, grid cells) into array indices.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Same root = same group.</b> Union says false = this edge makes a cycle. Components = n − successful unions.</p></div>
 

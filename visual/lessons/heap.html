@@ -161,6 +161,24 @@ minH.peek();        <span class="c">// O(1)      the smallest</span>
 minH.poll();        <span class="c">// O(log n)  sift-down</span>
 <span class="c">// array view: kids 2i+1, 2i+2   parent (i-1)/2</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-priorityqueue.html"><code>PriorityQueue&lt;Integer&gt;</code> max-heap</a></td><td>1046: two heaviest stones; 621: most frequent task left. Built with <code>Collections.reverseOrder()</code>.</td><td>O(log n) <code>offer</code> / <code>poll</code>, O(1) <code>peek</code></td>
+<td>Re-sorting after each smash is O(n log n) per step.</td></tr>
+<tr><td><a href="ds-priorityqueue.html"><code>PriorityQueue&lt;Integer&gt;</code> min-heap of size k</a></td><td>703: the root is the k-th largest so far.</td><td>O(log k) per add</td>
+<td>Keeping a sorted list means O(k) inserts; sorting every time is worse.</td></tr>
+<tr><td><a href="ds-priorityqueue.html"><code>PriorityQueue&lt;int[]&gt;</code> max-heap by distance</a></td><td>973: keep the k closest; evict the farthest.</td><td>O(n log k)</td>
+<td>Sorting all points is O(n log n); quickselect is O(n) average but harder to write.</td></tr>
+<tr><td><a href="ds-arraydeque.html"><code>ArrayDeque&lt;int[]&gt;</code> + <code>int[26]</code></a></td><td>621: tasks cooling down wait in a FIFO queue with the time they can return; counts come from <code>int[26]</code>.</td><td>O(1) per queue op</td>
+<td>Putting cooling tasks back in the heap would let them run too early.</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[]</code> as a heap</a></td><td>The animation and 912 heapsort: children of i at 2i + 1 and 2i + 2, no node objects.</td><td>O(n) build, O(n log n) sort, O(1) extra</td>
+<td>A tree of node objects wastes memory and loses the O(1) parent/child arithmetic.</td></tr>
+<tr><td><a href="ds-priorityqueue.html"><code>PriorityQueue&lt;ListNode&gt;</code></a></td><td>23: the smallest head of k lists.</td><td>O(n log k)</td>
+<td>Scanning k heads each step is O(n &middot; k).</td></tr>
+</table>
+<p>Use a heap when you only ever need the smallest (or largest) item, again and again, while items keep arriving; it is cheaper than keeping everything sorted.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Insert at the end and bubble up; remove the root, put the last in its place, sink down.</b> Kids 2i+1, 2i+2 — parent (i−1)/2.</p></div>
 

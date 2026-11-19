@@ -186,6 +186,26 @@ Node find(String s) {
 }
 <span class="c">// search: walk, then check end.  startsWith: walk, path exists = true</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="trie.html"><code>Node[] next = new Node[26]</code> + <code>boolean end</code></a></td><td>208, 211, 648: one child slot per letter; <code>end</code> marks a full word.</td><td>O(L) per insert / search, L = word length</td>
+<td>A <code>HashSet&lt;String&gt;</code> finds whole words but cannot answer "does any word start with this?" without scanning all words.</td></tr>
+<tr><td><code>int kids</code> per node</td><td>14: walk down while the node has exactly one child and is not a word end.</td><td>O(total letters)</td>
+<td>Comparing strings character by character also works in O(total letters); the trie is the follow-up answer.</td></tr>
+<tr><td><a href="recursion.html">call stack</a></td><td>211, 212: on <code>.</code> or on the board, try every child recursively.</td><td>O(26<sup>dots</sup> &middot; L) worst</td>
+<td>A loop cannot branch into many children at once.</td></tr>
+<tr><td><a href="ds-string-stringbuilder.html"><code>StringBuilder</code></a></td><td>14, 648: build the prefix or the replaced sentence.</td><td>O(1) amortised append</td>
+<td>String <code>+</code> in a loop copies each time, O(n²).</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>List&lt;String&gt; top</code> per node</a></td><td>1268: after <code>Arrays.sort</code>, each node keeps its first 3 words.</td><td>O(1) per keystroke to answer</td>
+<td>Searching the product list for every prefix costs O(n &middot; L) per keystroke.</td></tr>
+<tr><td><a href="trie.html"><code>TrieNode[2]</code></a></td><td>421: a binary trie over bits 30..0; greedily take the opposite bit.</td><td>O(31) per number</td>
+<td>Trying every pair is O(n²).</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>char[][] board</code></a></td><td>212: mark a cell <code>#</code> while visiting, restore after.</td><td>O(1) per mark</td>
+<td>A separate <code>boolean[][] visited</code> works but costs O(m &middot; n) more space.</td></tr>
+</table>
+<p>A trie shares the common start of words, so a prefix question walks one path instead of checking every word; an array of 26 children is faster and simpler than a HashMap when the alphabet is a&ndash;z.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Edge = letter, path = prefix, end flag = whole word.</b> search needs the flag; startsWith only needs the path.</p></div>
 

@@ -172,6 +172,17 @@ void sink(char[][] g, int r, int c) {
 }
 <span class="c">// shortest path: BFS, dist[start] = 1, dist[next] = dist[cur] + 1</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td>The grid itself (<code>int[][]</code> / <code>char[][]</code>) as visited marks</td><td>mark a cell the moment you enter it: sink <code>1</code>→<code>0</code> (200), recolour (733), mark <code>S</code> (130), set <code>1</code> (1091)</td><td>O(1) per cell, no extra memory</td><td>A separate <code>boolean[m][n]</code> costs O(mn); use one when you must not change the input.</td></tr>
+<tr><td><code>int[][] DIRS</code></td><td>the four moves as data, so one loop handles up/down/left/right</td><td>O(1)</td><td>Four copied blocks of code invite a typo in one direction.</td></tr>
+<tr><td>The call stack (DFS, 733/200/695/130/417)</td><td>flood one region: each call handles a cell and recurses into its neighbours</td><td>O(mn) depth in the worst case</td><td>On a 300×300 all-land grid deep recursion can overflow the stack; an <a href="ds-arraydeque.html">ArrayDeque</a> stack does the same flood iteratively.</td></tr>
+<tr><td><a href="ds-arraydeque.html">ArrayDeque</a><code>&lt;int[]&gt;</code> queue (1091)</td><td>BFS from the start, one ring of cells per step, holding <code>{r, c}</code></td><td>O(1) offer/poll; O(mn) total</td><td>DFS finds *a* path, not the shortest; encoding <code>r * n + c</code> as one int would avoid the small arrays.</td></tr>
+<tr><td>Two <code>boolean[][]</code> — <code>pac</code>, <code>atl</code> (417)</td><td>which cells can reach each ocean, filled by climbing uphill from each coast</td><td>O(mn) memory</td><td>Starting a search from every cell toward the sea is O((mn)²); two searches from the edges are O(mn).</td></tr>
+</table>
+<p>A grid is a graph whose neighbours you compute instead of store, so the only structures you add are the visited marks (usually the grid itself) and, for shortest paths, a queue.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Grid = graph with 4 (or 8) neighbours.</b> Count groups → scan + DFS flood. Fewest moves → BFS with distances.</p></div>
 

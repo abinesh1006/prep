@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ArrayDeque Inside</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Data structures</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Data structure · Inside Java</div>
+<h1>ArrayDeque: stack and queue in one</h1>
+<p class="lede">One plain array bent into a circle. Two indexes, <code>head</code> and <code>tail</code>, walk around it, so adding or removing at either end is O(1) and nothing ever shifts. This one class is the stack, the queue and the deque you should use in every Java interview.</p>
+<p class="meta">Time to learn: about 1.5 hours · Prerequisites: <a href="ds-array-arraylist.html">Array &amp; ArrayList</a>, <a href="stack-basics.html">Stack basics</a></p>
+
+<div class="box signal"><span class="tag">Use it when you need…</span>
+<ul>
+  <li>a <b>stack</b> (last in, first out): <code>push</code>, <code>pop</code>, <code>peek</code> in O(1);</li>
+  <li>a <b>queue</b> (first in, first out) for BFS: <code>offer</code>, <code>poll</code>, <code>peek</code> in O(1);</li>
+  <li>a <b>deque</b>: add or remove at <b>both</b> ends in O(1), e.g. the monotonic deque of sliding window maximum, or 0-1 BFS.</li>
+</ul></div>
+
+<h2>In plain words</h2>
+<p>An <code>ArrayList</code> is fast at its end but slow at its front: removing index 0 shifts every other element one place left, which is O(n). A queue removes from the front all the time, so an ArrayList is a bad queue.</p>
+<p>The trick of ArrayDeque: <b>never shift anything</b>. Keep an index <code>head</code> (where the first element sits) and an index <code>tail</code> (the free slot just after the last element). Removing from the front just moves <code>head</code> one step right. Adding at the back writes at <code>tail</code> and moves it one step right.</p>
+<p>When an index walks off the end of the array, it <b>wraps around</b> to index 0, like the hand of a clock going from 12 back to 1. That is why it is called a <b>circular buffer</b> (or ring buffer). The array only grows when every slot is really full.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A round sushi conveyor with 8 plates. The chef puts new plates down at one spot (<code>tail</code>) and you take plates from another spot (<code>head</code>). Both spots move around the circle; no plate is ever pushed along. Only when every place on the belt is taken does the restaurant swap in a bigger belt and lay the plates out again in order.</p></div>
+
+<h2>What it looks like in memory</h2>
+<p>Capacity 8, five elements. The array (what the computer stores) and the queue order (what your code sees) are not the same picture: the queue starts at <code>head = 5</code>, runs to the end, and continues at index 0.</p>
+<div id="mem"></div>
+<script>
+// helper: line number of the first code line that contains `s`
+window.lineOf = (code, s) => {
+  const i = code.split('\n').findIndex(l => l.includes(s));
+  if (i < 0) throw new Error('line not found: ' + s);
+  return i + 1;
+};
+// a small JS model of IntDeque that records frames
+window.DequeModel = function (cap) {
+  this.a = Array(cap).fill(null); this.head = 0; this.tail = 0; this.size = 0;
+};
+DequeModel.prototype.used = function () {
+  const u = []; for (let i = 0; i < this.size; i++) u.push((this.head + i) % this.a.length); return u;
+};
+DequeModel.prototype.panel = function (marks = {}, label = 'a[] (the real array)') {
+  const used = new Set(this.used());
+  const values = this.a.map((v, i) => used.has(i) ? v : '');
+  const m = {}; for (const i of used) m[i] = 'visited';
+  for (const [k, v] of Object.entries(marks)) m[k] = v;
+  for (let i = 0; i < this.a.length; i++) if (!used.has(i) && !marks[i]) m[i] = 'dim';
+  return { type: 'array', id: 'a', label, values, marks: m, pointers: { head: this.head, tail: this.tail } };
+};
+DequeModel.prototype.order = function (kind = 'queue') {
+  return { type: 'stack', id: 'q', label: kind === 'stack' ? 'what your code sees (stack)' : 'what your code sees (queue order)',
+    kind, items: this.used().map(i => ({ id: 'e' + this.a[i], val: this.a[i] })) };
+};
+DequeModel.prototype.vars = function (extra = {}) {
+  return { type: 'vars', id: 'v', vars: { head: this.head, tail: this.tail, size: this.size, ...extra } };
+};
+(() => {
+  const d = new DequeModel(8);
+  d.head = 5; d.tail = 2; d.size = 5;
+  [[5, 'A'], [6, 'B'], [7, 'C'], [0, 'D'], [1, 'E']].forEach(([i, v]) => d.a[i] = v);
+  const r = Viz.recorder();
+  r.step([d.panel(), d.order(), d.vars()], [],
+    'The real array. Used slots are shaded; dim slots are free. <b>head = 5</b> is the first element, <b>tail = 2</b> is the next free slot. Slots 2, 3, 4 are free even though they sit between used ones.');
+  r.step([d.panel({ 5: 'active', 6: 'active', 7: 'active' }), d.order(), d.vars()], [],
+    'Read the queue from <b>head</b>: indexes 5, 6, 7 give <b>A, B, C</b> …');
+  r.step([d.panel({ 0: 'active', 1: 'active' }), d.order(), d.vars()], [],
+    '… then wrap past the end to index 0 and 1: <b>D, E</b>. Stop at <b>tail</b>. The order your code sees is A B C D E.');
+  Viz.mount('#mem', { frames: r.frames, title: 'Circular buffer layout', code:
+`class IntDeque {
+    int[] a = new int[8];
+    int head = 0;  // index of the first element
+    int tail = 0;  // index AFTER the last element
+    int size = 0;
+}` });
+})();
+</script>
+<p>The index of the <i>k</i>-th element is <code>(head + k) % capacity</code>. That one formula is the whole idea.</p>
+
+<h2>Watch the operations</h2>
+
+<h3>1. As a queue: offer at tail, poll at head, wrap around</h3>
+<p>Capacity 8. Offer 10 … 60, poll three times, then offer 70, 80, 90. Watch <code>tail</code> wrap from 7 back to 0 instead of the array growing.</p>
+<div id="op1"></div>
+<script>
+(() => {
+  const code =
+`void addLast(int x) {          // queue: offer
+    if (size == a.length) grow();
+    a[tail] = x;
+    tail = next(tail);
+    size++;
+}
+
+int pollFirst() {              // queue: poll
+    if (size == 0) throw new NoSuchElementException();
+    int x = a[head];
+    head = next(head);
+    size--;
+    return x;
+}
+
+int next(int i) { return (i + 1) % a.length; }`;
+  const L = s => lineOf(code, s);
+  const d = new DequeModel(8), r = Viz.recorder();
+  r.step([d.panel(), d.order(), d.vars()], [], 'Empty deque: <b>head = tail = 0</b>, size 0. Every slot is free.');
+  const offer = x => {
+    const t = d.tail;
+    d.a[t] = x;
+    r.step([d.panel({ [t]: 'active' }), d.order(), d.vars()], [L('a[tail] = x')],
+      `offer(${x}): write ${x} into the free slot at <b>tail = ${t}</b>. No shifting.`);
+    const old = d.tail; d.tail = (d.tail + 1) % 8; d.size++;
+    r.step([d.panel({ [t]: 'done' }), d.order(), d.vars()], [L('tail = next(tail)'), L('size++')],
+      old === 7 ? `tail was 7, the last index. <b>(7 + 1) % 8 = 0</b>, so tail <b>wraps to index 0</b>, which is free because we polled from there earlier.`
+        : `Move tail one step: <b>tail = ${d.tail}</b>, size = ${d.size}.`);
+  };
+  const poll = () => {
+    const h = d.head, x = d.a[h];
+    r.step([d.panel({ [h]: 'compare' }), d.order(), d.vars({ returned: x })], [L('int x = a[head]')],
+      `poll(): the front element is at <b>head = ${h}</b>: it is <b>${x}</b>.`);
+    d.head = (d.head + 1) % 8; d.size--;
+    r.step([d.panel({ [h]: 'dim' }), d.order(), d.vars({ returned: x })], [L('head = next(head)'), L('return x')],
+      `Move head one step to <b>${d.head}</b>. Slot ${h} is now free. Nothing else moved, so poll is O(1); an ArrayList would have shifted ${d.size} elements.`);
+  };
+  [10, 20, 30, 40, 50].forEach(offer);
+  poll(); poll(); poll();
+  [60, 70, 80, 90].forEach(offer);
+  r.step([d.panel(), d.order(), d.vars()], [], `Queue order is ${d.used().map(i => d.a[i]).join(', ')}: still first in, first out, even though <b>90 sits at index 0, before 40 in the array</b>. 6 of 8 slots used, no growth needed.`);
+  Viz.mount('#op1', { frames: r.frames, title: 'Queue on a circular array', code });
+})();
+</script>
+
+<h3>2. As a stack: push is addFirst, head steps back and wraps</h3>
+<p>Java's <code>Deque.push(x)</code> is <code>addFirst(x)</code> and <code>pop()</code> is <code>removeFirst()</code>. So the top of the stack is the <b>head</b>. Starting at head 0, the first push moves head <i>backwards</i>, and 0 − 1 wraps to index 7.</p>
+<div id="op2"></div>
+<script>
+(() => {
+  const code =
+`void addFirst(int x) {         // stack: push
+    if (size == a.length) grow();
+    head = prev(head);
+    a[head] = x;
+    size++;
+}
+
+int pollFirst() {              // stack: pop
+    if (size == 0) throw new NoSuchElementException();
+    int x = a[head];
+    head = next(head);
+    size--;
+    return x;
+}
+
+int prev(int i) {
+    return (i - 1 + a.length) % a.length;
+}`;
+  const L = s => lineOf(code, s);
+  const d = new DequeModel(8), r = Viz.recorder();
+  r.step([d.panel(), d.order('stack'), d.vars()], [], 'Empty deque, <b>head = tail = 0</b>. We use it as a stack.');
+  const push = x => {
+    const old = d.head;
+    d.head = (d.head + 7) % 8;
+    r.step([d.panel({ [d.head]: 'active' }), d.order('stack'), d.vars()], [L('head = prev(head)'), L('(i - 1 + a.length)')],
+      old === 0 ? `push(${x}): step head <b>back</b>. 0 − 1 would be −1, so <code>prev</code> adds the length first: (0 − 1 + 8) % 8 = <b>7</b>. Head wraps to the last slot.`
+        : `push(${x}): step head back from ${old} to <b>${d.head}</b>.`);
+    d.a[d.head] = x; d.size++;
+    r.step([d.panel({ [d.head]: 'done' }), d.order('stack'), d.vars()], [L('a[head] = x'), L('size++')],
+      `Write ${x} at index ${d.head}. It is now the <b>top</b> of the stack (the head).`);
+  };
+  const pop = () => {
+    const h = d.head, x = d.a[h];
+    r.step([d.panel({ [h]: 'compare' }), d.order('stack'), d.vars({ popped: x })], [L('int x = a[head]')],
+      `pop(): the top is at head = ${h}: <b>${x}</b>, the last one pushed.`);
+    d.head = (d.head + 1) % 8; d.size--;
+    r.step([d.panel({ [h]: 'dim' }), d.order('stack'), d.vars({ popped: x })], [L('head = next(head)'), L('return x')],
+      `Step head forward to <b>${d.head}</b>. Last in, first out, in O(1).`);
+  };
+  push(1); push(2); push(3);
+  pop();
+  push(4);
+  r.step([d.panel(), d.order('stack'), d.vars()], [], `Stack (top first): ${d.used().map(i => d.a[i]).join(', ')}. The array is filled from the right end backwards; you never notice, because you only ever touch the head.`);
+  Viz.mount('#op2', { frames: r.frames, title: 'Stack with push and pop', code });
+})();
+</script>
+
+<h3>3. Full: grow by doubling and unroll the circle</h3>
+<p>All 8 slots used, head = 5 (the queue wraps). One more offer. The array cannot simply be stretched: elements are copied into a new array twice as big, <b>in queue order</b>, so the copy starts at index 0 and nothing wraps any more.</p>
+<div id="op3"></div>
+<script>
+(() => {
+  const code =
+`void addLast(int x) {
+    if (size == a.length) grow();
+    a[tail] = x;
+    tail = next(tail);
+    size++;
+}
+
+void grow() {
+    int[] b = new int[a.length * 2];
+    for (int i = 0; i < size; i++) {
+        b[i] = a[(head + i) % a.length];
+    }
+    a = b;
+    head = 0;
+    tail = size;
+}`;
+  const L = s => lineOf(code, s);
+  const d = new DequeModel(8), r = Viz.recorder();
+  d.head = 5; d.tail = 5; d.size = 8;
+  ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].forEach((v, k) => d.a[(5 + k) % 8] = v);
+  const nb = Array(16).fill('');
+  const newPanel = (marks = {}, ptr = {}) => {
+    const m = {}; for (let i = 0; i < 16; i++) m[i] = nb[i] === '' ? 'dim' : 'visited';
+    Object.assign(m, marks);
+    return { type: 'array', id: 'b', label: 'b[] (new, 16 slots)', values: [...nb], marks: m, pointers: ptr, cell: 44 };
+  };
+  r.step([d.panel({}, 'a[] (old, 8 slots)'), d.vars({ offer: 'I' })], [L('if (size == a.length)')],
+    'offer(I): size is 8 and the array has 8 slots, and <b>head = tail = 5</b> (full). There is no free slot, so call <b>grow()</b>.');
+  r.step([d.panel({}, 'a[] (old, 8 slots)'), newPanel(), d.vars({ offer: 'I' })], [L('new int[a.length * 2]')],
+    'Allocate a new array of <b>16</b> slots. Java arrays have a fixed size, so growing always means "new array + copy".');
+  for (let i = 0; i < 8; i++) {
+    const src = (5 + i) % 8;
+    nb[i] = d.a[src];
+    if (i === 0 || i === 2 || i === 3 || i === 7) {
+      r.step([d.panel({ [src]: 'compare' }, 'a[] (old, 8 slots)'), newPanel({ [i]: 'active' }), d.vars({ i, from: `(5 + ${i}) % 8 = ${src}` })],
+        [L('b[i] = a[(head + i) % a.length]')],
+        i === 0 ? 'Copy in <b>queue order</b>, not array order: element 0 of the queue is at old index (head + 0) % 8 = 5. It goes to new index 0.'
+          : i === 3 ? `Element 3 of the queue is at old index (5 + 3) % 8 = <b>0</b>: the copy follows the wrap.`
+            : i === 7 ? 'Last one: old index 4 goes to new index 7. The circle is now <b>unrolled</b> into a straight line.'
+              : `Element ${i} comes from old index ${src}.`);
+    }
+  }
+  r.step([newPanel({}, { head: 0, tail: 8 }), { type: 'vars', id: 'v', vars: { head: 0, tail: 8, size: 8 } }], [L('head = 0'), L('tail = size')],
+    'Switch to the new array: <b>head = 0</b>, <b>tail = 8</b>. 8 free slots in front of us.');
+  nb[8] = 'I';
+  r.step([newPanel({ 8: 'done' }, { head: 0, tail: 9 }), { type: 'vars', id: 'v', vars: { head: 0, tail: 9, size: 9 } }], [L('a[tail] = x'), L('tail = next(tail)')],
+    'Now the normal offer: write I at tail 8, tail becomes 9. Growth cost O(n) once, but it doubles the room, so the <b>average</b> cost per offer stays O(1) (amortized, like ArrayList).');
+  Viz.mount('#op3', { frames: r.frames, title: 'Grow and unroll', code });
+})();
+</script>
+
+<h3>4. One deque, both ends: the sliding-window-maximum move</h3>
+<p>The monotonic deque needs <code>pollLast</code> (throw away smaller values at the back) and <code>pollFirst</code> (drop the index that left the window). Both are O(1) on the circle. Window size 3 over <code>[1, 3, 2, 5]</code>, storing indexes.</p>
+<div id="op4"></div>
+<script>
+(() => {
+  const code =
+`for (int i = 0; i < n; i++) {
+    // back: drop smaller values, they can never win
+    while (!dq.isEmpty()
+           && nums[dq.peekLast()] <= nums[i])
+        dq.pollLast();
+    dq.addLast(i);
+    // front: drop the index that left the window
+    if (dq.peekFirst() <= i - k) dq.pollFirst();
+    if (i >= k - 1)
+        ans[i - k + 1] = nums[dq.peekFirst()];
+}`;
+  const L = s => lineOf(code, s);
+  const nums = [1, 3, 2, 5], k = 3;
+  const d = new DequeModel(4), r = Viz.recorder();
+  const ans = [];
+  const dp = (m = {}) => d.panel(m, 'a[] (real array, stores indexes)');
+  const numsP = (i, marks = {}) => ({ type: 'array', id: 'n', label: 'nums', values: nums, pointers: { i }, marks, window: [Math.max(0, i - k + 1), i] });
+  const view = () => ({ type: 'stack', id: 'q', label: 'deque (indexes, front → back)', kind: 'queue', items: d.used().map(j => ({ id: 'x' + d.a[j], val: `${d.a[j]}:${nums[d.a[j]]}` })) });
+  const ansP = () => ({ type: 'vars', id: 'v', vars: { answer: ans.length ? '[' + ans.join(', ') + ']' : '[]' } });
+  for (let i = 0; i < nums.length; i++) {
+    while (d.size && nums[d.a[(d.tail + 3) % 4]] <= nums[i]) {
+      const j = d.a[(d.tail + 3) % 4];
+      r.step([numsP(i, { [i]: 'active', [j]: 'bad' }), dp({ [(d.tail + 3) % 4]: 'bad' }), view(), ansP()], [L('dq.pollLast()')],
+        `nums[${i}] = ${nums[i]} ≥ nums[${j}] = ${nums[j]}: index ${j} can never be a maximum again. <b>pollLast</b>: tail steps back, O(1).`);
+      d.tail = (d.tail + 3) % 4; d.size--;
+    }
+    d.a[d.tail] = i; d.tail = (d.tail + 1) % 4; d.size++;
+    r.step([numsP(i, { [i]: 'active' }), dp({ [(d.tail + 3) % 4]: 'done' }), view(), ansP()], [L('dq.addLast(i)')],
+      `<b>addLast(${i})</b> at the back.`);
+    if (d.a[d.head] <= i - k) {
+      r.step([numsP(i, {}), dp({ [d.head]: 'bad' }), view(), ansP()], [L('dq.pollFirst()')],
+        `Front index ${d.a[d.head]} is outside the window: <b>pollFirst</b>, head steps forward.`);
+      d.head = (d.head + 1) % 4; d.size--;
+    }
+    if (i >= k - 1) {
+      ans.push(nums[d.a[d.head]]);
+      r.step([numsP(i, { [d.a[d.head]]: 'done' }), dp({ [d.head]: 'done' }), view(), ansP()], [L('ans[i - k + 1]')],
+        `Window full: its maximum is the front, nums[${d.a[d.head]}] = <b>${nums[d.a[d.head]]}</b>.`);
+    }
+  }
+  r.step([numsP(3, {}), dp(), view(), ansP()], [], `Answer <b>[${ans.join(', ')}]</b>. Every index entered and left the deque at most once: O(n) total, because every deque operation was O(1).`);
+  Viz.mount('#op4', { frames: r.frames, title: 'Both ends in one loop', code });
+})();
+</script>
+
+<h2>Build it yourself</h2>
+<p>Interviewers ask for this as "Design Circular Queue" (LeetCode 622) or "Design Circular Deque" (641). This version holds <code>int</code>s, keeps a <code>size</code> counter (simplest way to tell "empty" from "full", since both have <code>head == tail</code>) and doubles when full. Tested against <code>java.util.ArrayDeque</code> with 400,000 random operations.</p>
+<pre class="code"><code>import java.util.NoSuchElementException;
+
+<span class="c">// A double-ended queue on a circular array.</span>
+<span class="k">class</span> IntDeque {
+    <span class="k">private int</span>[] a = <span class="k">new int</span>[<span class="n">8</span>];
+    <span class="k">private int</span> head = <span class="n">0</span>;  <span class="c">// index of the first element</span>
+    <span class="k">private int</span> tail = <span class="n">0</span>;  <span class="c">// index AFTER the last element</span>
+    <span class="k">private int</span> size = <span class="n">0</span>;
+
+    <span class="c">// step forward / back around the circle</span>
+    <span class="k">private int</span> next(<span class="k">int</span> i) { <span class="k">return</span> (i + <span class="n">1</span>) % a.length; }
+    <span class="k">private int</span> prev(<span class="k">int</span> i) {
+        <span class="k">return</span> (i - <span class="n">1</span> + a.length) % a.length;
+    }
+
+    <span class="k">void</span> addLast(<span class="k">int</span> x) {          <span class="c">// queue: offer</span>
+        <span class="k">if</span> (size == a.length) grow();
+        a[tail] = x;
+        tail = next(tail);
+        size++;
+    }
+
+    <span class="k">void</span> addFirst(<span class="k">int</span> x) {         <span class="c">// stack: push</span>
+        <span class="k">if</span> (size == a.length) grow();
+        head = prev(head);
+        a[head] = x;
+        size++;
+    }
+
+    <span class="k">int</span> pollFirst() {              <span class="c">// queue: poll, stack: pop</span>
+        <span class="k">if</span> (size == <span class="n">0</span>) <span class="k">throw new</span> NoSuchElementException();
+        <span class="k">int</span> x = a[head];
+        head = next(head);
+        size--;
+        <span class="k">return</span> x;
+    }
+
+    <span class="k">int</span> pollLast() {
+        <span class="k">if</span> (size == <span class="n">0</span>) <span class="k">throw new</span> NoSuchElementException();
+        tail = prev(tail);
+        size--;
+        <span class="k">return</span> a[tail];
+    }
+
+    <span class="k">int</span> peekFirst() {
+        <span class="k">if</span> (size == <span class="n">0</span>) <span class="k">throw new</span> NoSuchElementException();
+        <span class="k">return</span> a[head];
+    }
+
+    <span class="k">int</span> peekLast() {
+        <span class="k">if</span> (size == <span class="n">0</span>) <span class="k">throw new</span> NoSuchElementException();
+        <span class="k">return</span> a[prev(tail)];
+    }
+
+    <span class="k">int</span> size() { <span class="k">return</span> size; }
+    <span class="k">boolean</span> isEmpty() { <span class="k">return</span> size == <span class="n">0</span>; }
+
+    <span class="c">// Full: copy into a twice-as-big array, in order,</span>
+    <span class="c">// so the elements start again at index 0.</span>
+    <span class="k">private void</span> grow() {
+        <span class="k">int</span>[] b = <span class="k">new int</span>[a.length * <span class="n">2</span>];
+        <span class="k">for</span> (<span class="k">int</span> i = <span class="n">0</span>; i &lt; size; i++) {
+            b[i] = a[(head + i) % a.length];
+        }
+        a = b;
+        head = <span class="n">0</span>;
+        tail = size;
+    }
+}</code></pre>
+<p>Why <code>(i - 1 + a.length) % a.length</code> and not <code>(i - 1) % a.length</code>? In Java, <code>-1 % 8</code> is <b>−1</b>, not 7. Adding the length first keeps the number positive.</p>
+
+<h2>The real Java class</h2>
+<ul>
+  <li><b>Fields:</b> <code>Object[] elements</code>, <code>int head</code>, <code>int tail</code>. There is <b>no size field</b>: the size is computed from head and tail. To tell "full" from "empty" the array always keeps at least one slot empty, so the usable capacity is <code>elements.length - 1</code>.</li>
+  <li><b>Default capacity:</b> <code>new ArrayDeque&lt;&gt;()</code> makes an array of 16 + 1 = 17 slots (Java 9+). In Java 8 the length was always a power of two (16) and wrapping used the bit trick <code>(i + 1) &amp; (length - 1)</code> instead of <code>%</code>.</li>
+  <li><b>Growth (Java 9+):</b> if the capacity is under 64 it roughly <b>doubles</b> (+2), otherwise it grows by <b>50%</b>. The copy is done with two <code>System.arraycopy</code> calls (the part after head, then the wrapped part) rather than one element at a time. Java 8 always doubled.</li>
+  <li><b>No nulls.</b> <code>add(null)</code>, <code>push(null)</code>, <code>offer(null)</code> all throw <code>NullPointerException</code>. A free slot is stored as <code>null</code>, and <code>poll()</code>/<code>peek()</code> return <code>null</code> to mean "empty", so a real null element would be impossible to tell apart. Removed slots are set back to <code>null</code> so the garbage collector can free the object.</li>
+  <li><b>Method names:</b> stack: <code>push = addFirst</code>, <code>pop = removeFirst</code>, <code>peek = peekFirst</code>. Queue: <code>offer = offerLast</code>, <code>poll = pollFirst</code>, <code>peek = peekFirst</code>. The <code>remove…/get…/element</code> versions throw on empty; the <code>poll…/peek…</code> versions return <code>null</code>.</li>
+  <li><b>Iteration</b> goes from head to tail: for a stack that is <b>top first</b>. Iterators are fail-fast (modifying while iterating throws <code>ConcurrentModificationException</code> on a best-effort basis).</li>
+  <li><b>Not thread-safe.</b> For threads use <code>ArrayBlockingQueue</code>, <code>LinkedBlockingDeque</code> or <code>ConcurrentLinkedDeque</code>.</li>
+</ul>
+
+<h3>Why not <code>java.util.Stack</code>?</h3>
+<ul>
+  <li><code>Stack extends Vector</code>, and every <code>Vector</code> method is <b><code>synchronized</code></b>. You pay for a lock on every push and pop even with one thread.</li>
+  <li>Because it <i>is</i> a Vector, it exposes <code>get(i)</code>, <code>add(i, x)</code>, <code>remove(i)</code>: anyone can reach into the middle and break "last in, first out".</li>
+  <li>It iterates (and prints) <b>bottom first</b>: push 1, 2, 3 prints <code>[1, 2, 3]</code>, while an ArrayDeque used as a stack prints <code>[3, 2, 1]</code>. Surprising when you debug.</li>
+  <li>The <code>Stack</code> Javadoc itself says: use <code>Deque&lt;Integer&gt; stack = new ArrayDeque&lt;&gt;();</code> instead.</li>
+</ul>
+
+<h3>Why not <code>LinkedList</code> as the queue?</h3>
+<ul>
+  <li>LinkedList also implements <code>Deque</code> with O(1) ends, but every element is a separate <b>Node object</b> (item, next, prev, plus the object header: about 24 to 32 bytes extra per element) created on every add and left to the garbage collector on every remove.</li>
+  <li>The nodes are scattered in memory, so walking them misses the CPU cache. ArrayDeque's elements are side by side in one array. In practice ArrayDeque is usually several times faster.</li>
+  <li>LinkedList does allow <code>null</code> and is a <code>List</code> (index access in O(n)). If you need neither, ArrayDeque wins.</li>
+</ul>
+
+<h2>Cost of every operation</h2>
+<table>
+<tr><th>Operation</th><th>Average</th><th>Worst</th><th>Why</th></tr>
+<tr><td><code>addFirst / addLast / push / offer</code></td><td>O(1)</td><td>O(n)</td><td>Write at head or tail and move one index. Worst case is the one call that grows (copies n); amortized it is O(1).</td></tr>
+<tr><td><code>pollFirst / pollLast / pop / poll</code></td><td>O(1)</td><td>O(1)</td><td>Read, null the slot, move one index. Nothing shifts. The array never shrinks.</td></tr>
+<tr><td><code>peekFirst / peekLast / peek</code></td><td>O(1)</td><td>O(1)</td><td>Direct array read at head or tail − 1.</td></tr>
+<tr><td><code>size / isEmpty</code></td><td>O(1)</td><td>O(1)</td><td>Computed from head and tail.</td></tr>
+<tr><td><code>contains / remove(Object)</code></td><td>O(n)</td><td>O(n)</td><td>Linear scan; removing from the middle also shifts the shorter side.</td></tr>
+<tr><td>get the <i>k</i>-th element</td><td colspan="2">not offered</td><td>The math is easy, but Deque has no <code>get(i)</code>. Use your own circular buffer or an ArrayList if you need it.</td></tr>
+<tr><td>Memory</td><td colspan="2">O(capacity)</td><td>One array of references; up to about half of it can be empty right after growth.</td></tr>
+</table>
+
+<h2>Why and when to use it</h2>
+<ul>
+  <li>Any <b>stack</b>: valid parentheses, monotonic stack, iterative DFS, undo history.</li>
+  <li>Any <b>queue</b>: BFS on trees, grids and graphs, level order traversal, multi-source BFS, Kahn's topological sort.</li>
+  <li>Any <b>deque</b>: sliding window maximum (monotonic deque), 0-1 BFS (cost-0 edges go to the front, cost-1 to the back), palindrome checks from both ends.</li>
+  <li>Declare it by the interface: <code>Deque&lt;Integer&gt; stack = new ArrayDeque&lt;&gt;();</code> and <code>Queue&lt;int[]&gt; q = new ArrayDeque&lt;&gt;();</code>.</li>
+</ul>
+
+<h2>When not to use it</h2>
+<ul>
+  <li>You need <b>the smallest / largest</b> element first, not the oldest or newest: use a <a href="ds-priorityqueue.html">PriorityQueue</a>.</li>
+  <li>You need to store <b>null</b>: use <code>LinkedList</code> (or better, a sentinel value).</li>
+  <li>Several <b>threads</b> share it: <code>ArrayBlockingQueue</code> (bounded, producer/consumer) or <code>ConcurrentLinkedDeque</code>.</li>
+  <li>You need <b>index access</b> or removal from the middle: <a href="ds-array-arraylist.html">ArrayList</a>, or a <a href="ds-treemap.html">TreeMap</a> for sorted removal.</li>
+  <li>Hot loops on primitives where boxing hurts: an <code>int[]</code> with your own head/tail (exactly the class above) avoids <code>Integer</code> objects.</li>
+</ul>
+
+<h2>Used in these patterns</h2>
+<ul>
+  <li><a href="stack-basics.html">Stack basics</a> and <a href="monotonic-stack.html">Monotonic stack</a>: ArrayDeque as the stack.</li>
+  <li><a href="monotonic-deque.html">Monotonic deque</a> and <a href="sliding-window.html">Sliding window</a>: both ends in one loop.</li>
+  <li><a href="tree-bfs.html">Tree BFS</a>, <a href="grid-bfs-dfs.html">Grid BFS / DFS</a>, <a href="multi-source-bfs.html">Multi-source BFS</a>, <a href="graph-basics.html">Graph basics</a>: the BFS queue.</li>
+  <li><a href="topo-sort.html">Topological sort</a>: Kahn's queue of in-degree 0 nodes.</li>
+  <li><a href="shortest-paths-advanced.html">Shortest paths (advanced)</a>: 0-1 BFS with <code>addFirst</code> / <code>addLast</code>.</li>
+  <li><a href="tree-traversals.html">Tree traversals</a>: iterative in-order and pre-order with an explicit stack.</li>
+</ul>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>ArrayDeque = array + head + tail, wrapping with <code>% capacity</code>.</b> Both ends O(1), grows by copying in queue order, no nulls. Stack: push / pop / peek. Queue: offer / poll / peek. Never <code>Stack</code>, rarely <code>LinkedList</code>.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Using <code>add</code> on a deque you think of as a stack: <code>add</code> is <code>addLast</code>, but <code>pop</code> takes from the <b>first</b>. Mix <code>push</code>/<code>pop</code> or <code>offer</code>/<code>poll</code>, never <code>add</code> + <code>pop</code>.</li>
+  <li><code>queue.offer(null)</code> or pushing a <code>null</code> child in tree BFS: <code>NullPointerException</code>. Check <code>if (node.left != null)</code> before offering.</li>
+  <li>Calling <code>pop()</code> / <code>remove()</code> on an empty deque throws <code>NoSuchElementException</code>; <code>poll()</code> returns <code>null</code>, which then crashes when auto-unboxed into an <code>int</code>. Check <code>isEmpty()</code> first.</li>
+  <li>In your own circular buffer, writing <code>(i - 1) % n</code>: Java's <code>%</code> keeps the sign, so it gives −1. Use <code>(i - 1 + n) % n</code>.</li>
+  <li>Telling empty from full with only <code>head == tail</code>: both look the same. Keep a size, or always leave one slot empty (what Java does).</li>
+  <li>Comparing two <code>Integer</code> values taken from the deque with <code>==</code>: works up to 127 (cached), fails above. Use <code>.equals</code> or unbox to <code>int</code>.</li>
+</ul></div>
+
+<h2>Interview questions on the internals</h2>
+<details class="quiz"><summary>How does ArrayDeque get O(1) removal at the front when ArrayList cannot?</summary>
+<p>It never shifts. It keeps a <code>head</code> index and just moves it forward one slot (wrapping around with modulo). ArrayList keeps its first element at index 0, so removing it shifts every element left: O(n).</p></details>
+<details class="quiz"><summary>With head == tail, is the buffer empty or full? How does Java know?</summary>
+<p>Both cases look the same. Either keep a size counter (common in interviews) or always leave one slot unused so <code>head == tail</code> only means empty. Java's ArrayDeque uses the second: capacity is <code>length - 1</code>, and it grows as soon as the last free slot would be used.</p></details>
+<details class="quiz"><summary>Why can't ArrayDeque hold null?</summary>
+<p>A <code>null</code> slot means "free", and <code>poll()</code>/<code>peek()</code> return <code>null</code> to mean "empty". Allowing null elements would make both ambiguous, so <code>add(null)</code> throws <code>NullPointerException</code>.</p></details>
+<details class="quiz"><summary>What happens to the order of elements when it grows?</summary>
+<p>It allocates a bigger array and copies the elements in <b>logical order</b> (from head, around the wrap, up to tail), so in the new array they are contiguous again and nothing wraps. Java does this with two <code>System.arraycopy</code> calls.</p></details>
+<details class="quiz"><summary>Why is java.util.Stack discouraged?</summary>
+<p>It extends <code>Vector</code>: every method is <code>synchronized</code> (lock cost with no benefit on one thread), it exposes index methods that break LIFO, and it iterates bottom first. Its own Javadoc recommends <code>Deque</code>/<code>ArrayDeque</code>.</p></details>
+<details class="quiz"><summary>ArrayDeque or LinkedList for a BFS queue?</summary>
+<p>ArrayDeque. Both are O(1) per operation, but LinkedList allocates a node per element (extra memory, garbage collection) and its nodes are scattered in memory (cache misses). ArrayDeque is one compact array. LinkedList only wins if you need nulls or the List interface.</p></details>
+<details class="quiz"><summary>Which end is the top when you use push/pop?</summary>
+<p>The front (head): <code>push = addFirst</code>, <code>pop = removeFirst</code>, <code>peek = peekFirst</code>. That is why printing the deque shows the top first.</p></details>
+<details class="quiz"><summary>Is add amortized O(1)? Explain.</summary>
+<p>Yes. A grow copies n elements but multiplies the room (doubling, or +50% for big arrays), so the next n or so adds are free. Spread over all adds, copying costs a constant per add.</p></details>
+
+<nav class="pager"><a href="ds-hashmap.html">← HashMap &amp; HashSet</a><a href="ds-priorityqueue.html">PriorityQueue →</a></nav>
+</main>
+</body>
+</html>

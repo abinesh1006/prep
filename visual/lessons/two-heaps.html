@@ -156,6 +156,22 @@ PriorityQueue&lt;Integer&gt; high = <span class="k">new</span> PriorityQueue&lt;
     <span class="k">return</span> low.size() &gt; high.size() ? low.peek() : (low.peek() + high.peek()) / <span class="n">2.0</span>;
 }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-priorityqueue.html">max-heap <code>low</code> + min-heap <code>high</code></a></td><td>295: the smaller half and the larger half; the median is at one or both roots.</td><td>O(log n) add, O(1) median</td>
+<td>A sorted ArrayList needs O(n) inserts; re-sorting each time is O(n log n).</td></tr>
+<tr><td><a href="ds-priorityqueue.html"><code>PriorityQueue&lt;Integer&gt;</code> min-heap of size k</a></td><td>215: the root is the k-th largest.</td><td>O(n log k)</td>
+<td>A max-heap of all n numbers also works but costs O(n) space.</td></tr>
+<tr><td><a href="ds-treemap.html">two <code>TreeSet&lt;Integer&gt;</code> of indexes</a></td><td>480: the window must remove the number that leaves; a TreeSet removes any element in O(log k).</td><td>O(log k) per step</td>
+<td>A PriorityQueue removes a middle element in O(k), or needs lazy deletion with a counter map. Indexes keep equal values distinct.</td></tr>
+<tr><td><a href="ds-priorityqueue.html">min-heap by capital + max-heap by profit</a></td><td>502: <code>locked</code> projects unlock as capital grows and move into <code>ready</code>.</td><td>O(n log n)</td>
+<td>Scanning all projects each round is O(k &middot; n).</td></tr>
+<tr><td><a href="ds-treemap.html"><code>TreeMap&lt;Integer, Integer&gt;</code></a></td><td>436: start &rarr; index, and <code>ceilingEntry(end)</code> finds the right interval.</td><td>O(log n) per query</td>
+<td>A sorted array plus your own binary search also works; checking every interval is O(n²).</td></tr>
+</table>
+<p>Two heaps split the data into halves so the middle sits at the roots; when items must also leave (sliding window), a TreeSet replaces them because it can delete any element.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Small half in a max-heap, big half in a min-heap; the median lives at the doors.</b> Add to low, push low's top to high, give one back if high got bigger.</p></div>
 

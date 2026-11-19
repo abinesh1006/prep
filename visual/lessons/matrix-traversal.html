@@ -235,6 +235,19 @@
 <span class="c">// Staircase: start top-right</span>
 <span class="k">if</span> (v &gt; target) c--; <span class="k">else</span> r++;</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><code>int[][] matrix</code> and index arithmetic (<a href="ds-array-arraylist.html">array</a>)</td><td><code>m[r][c]</code> jumps to any cell; transpose = swap <code>[r][c]</code> and <code>[c][r]</code></td><td>O(1) per cell</td><td>Copying into lists adds nothing — every trick here is index math.</td></tr>
+<tr><td>Four ints <code>top</code>, <code>bot</code>, <code>left</code>, <code>right</code> (54, 59)</td><td>the walls of the unvisited area, moved in by one after each side</td><td>O(1) memory</td><td>A <code>boolean[][] visited</code> with direction turning also works but costs O(mn).</td></tr>
+<tr><td>The matrix itself, in place (48)</td><td>rotate = transpose, then reverse each row</td><td>O(1) extra memory</td><td>A second <code>n × n</code> matrix is the easy way the problem forbids.</td></tr>
+<tr><td>Row 0 and column 0 as markers (73)</td><td>store "this row/column must become zero" inside the matrix; one flag for the first column</td><td>O(1) extra memory</td><td><code>boolean[] rows</code> + <code>boolean[] cols</code> is the simple O(m + n) version — say it first, then optimise.</td></tr>
+<tr><td>Bits inside each cell (289)</td><td>bit 0 = alive now, bit 1 = alive next; shift right at the end</td><td>O(1) extra memory</td><td>A copy of the board is O(mn) memory.</td></tr>
+<tr><td>Start at the top-right corner (240)</td><td>bigger than target → move left, smaller → move down; each move rules out a row or a column</td><td>O(m + n)</td><td>Binary search on every row is O(m log n).</td></tr>
+<tr><td><a href="ds-array-arraylist.html">ArrayList</a> (54), <code>int[]</code> of size rows · cols (498)</td><td>the output in visiting order</td><td>O(1) per add</td><td>When the total is known up front, a plain array is enough.</td></tr>
+</table>
+<p>Matrix problems are about moving indexes, not about structures: the matrix itself — its corners, its first row, the spare bits in each cell — is where the bookkeeping lives.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Spiral = four walls. Rotate = transpose + reverse. Zeroes = remember, then wipe. Sorted grid = start top-right.</b></p></div>
 

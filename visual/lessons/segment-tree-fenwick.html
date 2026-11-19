@@ -247,6 +247,18 @@ void add(int i, int delta) {         // a[i] += delta
 <span class="k">for</span> (; i &gt; <span class="n">0</span>;  i -= i &amp; -i) s += bit[i];       <span class="c">// prefix</span>
 <span class="k">for</span> (; i &lt;= n; i += i &amp; -i) bit[i] += delta;  <span class="c">// update</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><code>int[] tree</code> — 1-based Fenwick (307), this lesson</td><td>prefix sum by climbing <code>i -= i &amp; -i</code>; point update by <code>i += i &amp; -i</code></td><td>O(log n) each</td><td>A prefix-sum array answers in O(1) but every update is O(n).</td></tr>
+<tr><td><code>int[] nums</code> copy (307)</td><td>the current value at each index, so <code>update</code> can add the difference</td><td>O(1)</td><td>Without it you would need a range query just to learn the old value.</td></tr>
+<tr><td><code>int[][] tree</code> — 2D Fenwick (308)</td><td>the same climbing in both dimensions</td><td>O(log m · log n)</td><td>A Fenwick per row makes each query O(m log n).</td></tr>
+<tr><td>Fenwick over values with an <code>OFFSET</code> (315)</td><td>values −10⁴..10⁴ shifted to 1..20001; walking right to left, count already-seen smaller values</td><td>O(n log V)</td><td>Merge sort counting also works in O(n log n), with more index bookkeeping.</td></tr>
+<tr><td><code>long[] sorted</code> + binary search — coordinate compression (493, 327)</td><td>turn huge or negative values into ranks 1..m so they fit as Fenwick indices</td><td>O(n log n)</td><td><code>long</code> because <code>2 * nums[i]</code> and prefix sums overflow int.</td></tr>
+<tr><td>Dynamic segment tree <code>Node</code> with lazy (732)</td><td>range +1 over times 0..10⁹; nodes are created only where bookings land</td><td>O(log range) per booking</td><td>A <code>4n</code> array cannot cover 10⁹; a <a href="ds-treemap.html">TreeMap</a> sweep is O(n) per booking.</td></tr>
+</table>
+<p>A Fenwick array is enough for sums with point updates; reach for a real segment tree once you need range updates or max/min.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Segment tree: outside → 0, inside → take it, partly → split. Fenwick: query subtracts lowbit, update adds lowbit.</b></p></div>
 

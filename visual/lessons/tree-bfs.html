@@ -223,6 +223,17 @@ const kidsOf = id => [BT[id].left, BT[id].right].filter(c => c != null);
     <span class="c">// per-floor work</span>
 }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-arraydeque.html">ArrayDeque</a> as <code>Queue&lt;TreeNode&gt;</code></td><td><code>offer</code> children at the back, <code>poll</code> the next node from the front, and <code>q.size()</code> at the start of a floor = how many nodes that floor has</td><td>O(1) offer/poll; O(w) space, w = widest floor</td><td><code>LinkedList</code> also works but allocates a node object per element; <code>Stack</code> or <code>push</code> is last-in-first-out and silently turns BFS into DFS.</td></tr>
+<tr><td>TreeNode (the input)</td><td>follow <code>left</code> / <code>right</code> from each node popped</td><td>O(1) per child</td><td>There is no parent pointer, so BFS here only ever moves downward, one floor at a time.</td></tr>
+<tr><td><a href="ds-array-arraylist.html">ArrayList</a> per floor (102, 199, 637)</td><td>append the values of one floor in queue order; <code>out.add(level)</code> once the floor ends</td><td>O(1) amortised add</td><td>An <code>int[size]</code> would fit (the size is frozen) but the answer type is <code>List&lt;List&lt;Integer&gt;&gt;</code>, so you would convert anyway.</td></tr>
+<tr><td><a href="ds-linked-list.html">LinkedList</a> as the floor list (103)</td><td>zigzag: <code>addLast</code> on left-to-right floors, <code>addFirst</code> on right-to-left floors</td><td>O(1) at both ends</td><td><code>ArrayList.add(0, x)</code> shifts every element, O(w) per add; reversing the queue instead breaks the order of the next floor.</td></tr>
+<tr><td>Second <a href="ds-arraydeque.html">ArrayDeque</a><code>&lt;Long&gt;</code> of positions (662)</td><td>a position number that travels in lockstep with its node: children get <code>2i</code> and <code>2i + 1</code></td><td>O(1) per node</td><td>A <code>HashMap&lt;TreeNode, Long&gt;</code> adds hashing for nothing; <code>int</code> positions overflow on a deep one-sided tree, hence <code>long</code>.</td></tr>
+</table>
+<p>The whole pattern rests on one property of the queue: first in, first out. Children are always added behind the nodes already waiting, so a floor leaves the queue completely before the next floor starts — that is what makes the frozen <code>size</code> trick correct.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Level → queue → freeze <code>size</code>.</b> First of floor: <code>i == 0</code>. Last of floor (right view): <code>i == size − 1</code>.</p></div>
 

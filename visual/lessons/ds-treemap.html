@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TreeMap Inside</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Data structures</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Data structure · Inside Java</div>
+<h1>TreeMap and TreeSet: a red-black tree</h1>
+<p class="lede">A <code>TreeMap</code> keeps its keys <b>sorted</b> in a binary search tree that repairs itself after every insert and delete, so it never gets taller than about 2 log₂ n. That buys you O(log n) get and put, plus questions a HashMap cannot answer: "what is the largest key ≤ x?", "all keys between a and b", "the smallest key".</p>
+<p class="meta">Time to learn: about 2 hours · Prerequisites: <a href="bst.html">Binary search trees</a>, <a href="ds-hashmap.html">HashMap</a></p>
+
+<div class="box signal"><span class="tag">Use it when you need…</span>
+<ul>
+  <li><b>sorted keys</b> while inserting and deleting: <code>firstKey</code>, <code>lastKey</code>, in-order iteration;</li>
+  <li><b>nearest key</b> queries: <code>floorKey(x)</code> (largest ≤ x), <code>ceilingKey(x)</code> (smallest ≥ x), <code>lowerKey</code>, <code>higherKey</code>, all O(log n);</li>
+  <li><b>ranges</b>: <code>headMap(x)</code>, <code>tailMap(x)</code>, <code>subMap(a, b)</code>;</li>
+  <li>a sorted <b>multiset</b> or a priority queue with fast removal of any element (<code>TreeMap&lt;value, count&gt;</code>).</li>
+</ul></div>
+
+<h2>In plain words</h2>
+<p>A binary search tree keeps every smaller key to the left and every bigger key to the right, so a search goes down one path. The catch: if you insert 1, 2, 3, 4, … in order, every new key goes to the right of the last one and the "tree" is a straight line. Search becomes O(n).</p>
+<p>A <b>red-black tree</b> is a binary search tree with one extra bit per node, a <b>colour</b>, and four rules:</p>
+<ol>
+  <li>Every node is red or black.</li>
+  <li>The root is black.</li>
+  <li>A red node never has a red child (no two reds in a row).</li>
+  <li>Every path from a node down to an empty spot (null) passes through the <b>same number of black nodes</b>.</li>
+</ol>
+<p>Why this keeps it short: by rule 4 every path has the same number of blacks, say <i>b</i>. By rule 3 reds can only sit between blacks, so no path is longer than 2<i>b</i>. The shortest path is at least <i>b</i>, so the longest path is at most <b>twice the shortest</b>. That is enough to prove height ≤ 2 log₂(n + 1): with a million keys, at most about 40 levels.</p>
+<p>After an insert, a rule may break. The tree fixes it locally with two tools: <b>recolouring</b> (flip colours) and <b>rotations</b> (re-hang three nodes so a different one is on top, keeping the left-to-right order). At most <b>two rotations</b> per insert.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A library shelf system where every corridor from the entrance to a dead end must pass the same number of "black" signposts, and two "red" signposts may never stand next to each other. When you add a book and a rule breaks, a librarian either repaints a few signposts or swings one small section of the shelving around a pivot. The books stay in alphabetical order the whole time; only the corridors get shorter.</p></div>
+
+<h2>What it looks like in memory</h2>
+<p>Each node is a <code>TreeMap.Entry</code> object: key, value, left, right, <b>parent</b> and a boolean colour. Below, keys 50, 30, 70, 20, 40, 60, 80, 35, 45 inserted in that order. Dark filled nodes are <b>black</b>, red outlined nodes are <b>red</b>.</p>
+<div id="mem"></div>
+<script>
+window.lineOf = (code, s) => {
+  const i = code.split('\n').findIndex(l => l.includes(s));
+  if (i < 0) throw new Error('line not found: ' + s);
+  return i + 1;
+};
+// JS model of the Java RBTree below (CLRS insert, like java.util.TreeMap); emits events
+window.RB = function (cb) { this.root = null; this.cb = cb || (() => {}); };
+RB.prototype.put = function (key) {
+  let p = null, x = this.root;
+  while (x) { this.cb('walk', { x, key }); p = x; x = key < x.key ? x.left : x.right; }
+  const n = { key, red: true, left: null, right: null, parent: p };
+  if (!p) this.root = n; else if (key < p.key) p.left = n; else p.right = n;
+  this.cb('placed', { x: n, p });
+  this.fix(n);
+};
+RB.prototype.rotate = function (x, left) {
+  const y = left ? x.right : x.left, mid = left ? y.left : y.right;
+  if (left) x.right = mid; else x.left = mid;
+  if (mid) mid.parent = x;
+  y.parent = x.parent;
+  if (!x.parent) this.root = y; else if (x === x.parent.left) x.parent.left = y; else x.parent.right = y;
+  if (left) y.left = x; else y.right = x;
+  x.parent = y;
+};
+RB.prototype.fix = function (x) {
+  while (x !== this.root && x.parent.red) {
+    let p = x.parent; const g = p.parent, pLeft = p === g.left, u = pLeft ? g.right : g.left;
+    if (u && u.red) {
+      this.cb('case1', { x, p, g, u });
+      p.red = false; u.red = false; g.red = true;
+      this.cb('case1done', { x, p, g, u });
+      x = g;
+    } else {
+      if (x === (pLeft ? p.right : p.left)) {
+        this.cb('case2', { x, p, g, u, pLeft });
+        x = p; this.rotate(x, pLeft); p = x.parent;
+        this.cb('case2done', { x, p, g, u, pLeft });
+      }
+      this.cb('case3', { x, p, g, u, pLeft });
+      p.red = false; g.red = true;
+      this.cb('case3color', { x, p, g, u, pLeft });
+      this.rotate(g, !pLeft);
+      this.cb('case3done', { x, p, g, u, pLeft });
+    }
+  }
+  const was = this.root.red; this.root.red = false;
+  this.cb('rootblack', { x: this.root, was });
+};
+RB.prototype.height = function (n = this.root) { return n ? 1 + Math.max(this.height(n.left), this.height(n.right)) : 0; };
+// tree panel: red nodes 'bad', black nodes 'path'; extra marks override
+RB.prototype.panel = function (ptr = {}, over = {}, label = 'red-black tree', colours = true) {
+  const nodes = {}, marks = {};
+  const walk = n => {
+    if (!n) return;
+    const id = 'n' + n.key;
+    nodes[id] = { val: n.key, left: n.left ? 'n' + n.left.key : null, right: n.right ? 'n' + n.right.key : null };
+    if (colours) marks[id] = n.red ? 'bad' : 'path';
+    walk(n.left); walk(n.right);
+  };
+  walk(this.root);
+  Object.assign(marks, over);
+  const pointers = {};
+  for (const [k, v] of Object.entries(ptr)) if (v) pointers[k] = 'n' + v.key;
+  return { type: 'tree', id: 't', label, root: this.root ? 'n' + this.root.key : null, nodes, marks, pointers };
+};
+window.RB_CODE =
+`void put(int key, int val) {
+    Node p = null, x = root;
+    while (x != null) {          // 1. normal BST walk
+        p = x;
+        if (key < x.key) x = x.left;
+        else if (key > x.key) x = x.right;
+        else { x.val = val; return; }   // replace
+    }
+    Node n = new Node(key, val, p);
+    if (p == null) root = n;
+    else if (key < p.key) p.left = n;
+    else p.right = n;
+    fixAfterInsert(n);           // 2. repair colours
+}
+
+private void fixAfterInsert(Node x) {
+    while (x != root && x.parent.color == RED) {
+        Node p = x.parent, g = p.parent;
+        boolean pLeft = (p == g.left);
+        Node uncle = pLeft ? g.right : g.left;
+        if (isRed(uncle)) {      // case 1: recolour
+            p.color = BLACK;
+            uncle.color = BLACK;
+            g.color = RED;
+            x = g;               // problem moves up
+        } else {
+            if (x == (pLeft ? p.right : p.left)) {
+                x = p;           // case 2: triangle
+                rotate(x, pLeft);   // -> make a line
+                p = x.parent;
+            }
+            p.color = BLACK;     // case 3: line
+            g.color = RED;
+            rotate(g, !pLeft);
+        }
+    }
+    root.color = BLACK;          // root is always black
+}`;
+// record an insert animation for a list of keys
+window.recordInserts = function (r, t, keys, intro) {
+  const L = s => lineOf(RB_CODE, s);
+  const st = { key: null };
+  const V = (extra = {}) => ({ type: 'vars', id: 'v', vars: { put: st.key, ...extra } });
+  const side = pLeft => pLeft ? 'left' : 'right';
+  t.cb = (kind, i) => {
+    const k = st.key;
+    if (kind === 'walk') {
+      const left = k < i.x.key;
+      r.step([t.panel({ x: i.x }), V({ compare: `${k} ${left ? '<' : '>'} ${i.x.key}` })], [L(left ? 'if (key < x.key) x = x.left' : 'else if (key > x.key)')],
+        `put(${k}): ordinary BST search. ${k} ${left ? '&lt;' : '&gt;'} ${i.x.key}, go <b>${left ? 'left' : 'right'}</b>.`);
+    } else if (kind === 'placed') {
+      const msg = !i.p ? `The tree was empty: ${k} becomes the root (new nodes start <b>red</b>).`
+        : `Empty spot found: hang <b>${k}</b> as the ${k < i.p.key ? 'left' : 'right'} child of ${i.p.key}. New nodes are always <b>red</b>, because a red node does not change any path's black count (rule 4 stays true).`
+          + (i.p.red ? ` But its parent ${i.p.key} is red too: <b>two reds in a row</b> breaks rule 3.` : ` Its parent ${i.p.key} is black, so no rule is broken: done.`);
+      r.step([t.panel({ x: i.x, p: i.p }), V()], [L('Node n = new Node'), L(!i.p ? 'if (p == null) root = n' : k < i.p.key ? 'else if (key < p.key) p.left = n' : 'else p.right = n')], msg);
+    } else if (kind === 'case1') {
+      r.step([t.panel({ x: i.x, p: i.p, g: i.g, uncle: i.u }), V({ uncle: 'red', fix: 'recolour' })], [L('if (isRed(uncle))')],
+        `Parent ${i.p.key} is red and the <b>uncle ${i.u.key}</b> (the parent's sibling) is red too. Case 1: <b>recolour</b>, no rotation needed.`);
+    } else if (kind === 'case1done') {
+      r.step([t.panel({ x: i.g }), V({ fix: 'recolour' })], [L('p.color = BLACK;'), L('uncle.color = BLACK'), L('g.color = RED'), L('x = g;')],
+        `Parent ${i.p.key} and uncle ${i.u.key} turn black, grandparent ${i.g.key} turns red. Every path through ${i.g.key} still has the same number of blacks. Now ${i.g.key} might clash with <i>its</i> parent, so the check <b>moves up</b> to x = ${i.g.key}.`);
+    } else if (kind === 'case2') {
+      r.step([t.panel({ x: i.x, p: i.p, g: i.g, uncle: i.u }), V({ uncle: 'black (null)', shape: 'triangle' })], [L('if (x == (pLeft ? p.right : p.left))')],
+        `Parent ${i.p.key} is red, uncle is ${i.u ? i.u.key + ', black' : 'null (counts as black)'}. ${i.x.key} is the <b>inner</b> child (${side(!i.pLeft)} child of a ${side(i.pLeft)} child): a <b>triangle</b>. Case 2: first rotate the parent to turn it into a straight line.`);
+    } else if (kind === 'case2done') {
+      r.step([t.panel({ x: i.x, p: i.p, g: i.g }), V({ shape: 'line' })], [L('x = p;'), L('rotate(x, pLeft)'), L('p = x.parent;')],
+        `Rotated ${side(i.pLeft)} around ${i.x.key}: ${i.p.key} moved up, ${i.x.key} moved down. Still sorted left to right. Now ${i.x.key}, ${i.p.key}, ${i.g.key} form a <b>line</b>; the red-red problem is between ${i.x.key} and ${i.p.key}.`);
+    } else if (kind === 'case3') {
+      r.step([t.panel({ x: i.x, p: i.p, g: i.g }), V({ uncle: 'black', shape: 'line' })], [L('p.color = BLACK;     // case 3')],
+        `Case 3: a <b>line</b> (${i.x.key} is the ${side(i.pLeft)} child of a ${side(i.pLeft)} child) with a black uncle. Recolour the parent black and the grandparent red, then rotate the grandparent.`);
+    } else if (kind === 'case3color') {
+      r.step([t.panel({ x: i.x, p: i.p, g: i.g }), V({ fix: 'recolour' })], [L('p.color = BLACK;     // case 3'), L('p.color = BLACK;     // case 3') + 1],
+        `${i.p.key} is now black, ${i.g.key} is red. The path through ${i.g.key} now has one black too few on one side: the rotation fixes that.`);
+    } else if (kind === 'case3done') {
+      r.step([t.panel({ p: i.p }), V({ fix: `rotate ${side(!i.pLeft)}` })], [L('rotate(g, !pLeft)')],
+        `Rotate <b>${side(!i.pLeft)}</b> around ${i.g.key}: ${i.p.key} lifts up into its place with ${i.x.key} and ${i.g.key} as children. Black ${i.p.key} on top, two reds below: all rules hold, and the subtree is one level shorter.`);
+    } else if (kind === 'rootblack') {
+      if (i.was) r.step([t.panel({ root: i.x }), V()], [L('root.color = BLACK')],
+        `The root ${i.x.key} became red; simply paint it <b>black</b> (rule 2). This adds one black to every path equally, so rule 4 still holds.`);
+    }
+  };
+  if (intro) r.step([t.panel(), { type: 'vars', id: 'v', vars: { put: '-' } }], [], intro);
+  for (const k of keys) {
+    st.key = k; t.put(k);
+    r.step([t.panel(), { type: 'vars', id: 'v', vars: { put: k, height: t.height() } }], [L('root.color = BLACK')], `put(${k}) done. Height ${t.height()}.`);
+  }
+};
+(() => {
+  const t = new RB();
+  [50, 30, 70, 20, 40, 60, 80, 35, 45].forEach(k => t.put(k));
+  const r = Viz.recorder();
+  const blacksTo = keys => {
+    let n = t.root, c = 0, path = [];
+    for (const k of keys) { if (!n || n.key !== k) break; path.push(n); if (!n.red) c++; n = k === keys[keys.length - 1] ? null : (keys[keys.indexOf(k) + 1] < n.key ? n.left : n.right); }
+    return { c, ids: path.map(n => 'n' + n.key) };
+  };
+  const mark = (ids, cls) => Object.fromEntries(ids.map(i => [i, cls]));
+  r.step([t.panel(), { type: 'vars', id: 'v', vars: { n: 9, height: t.height() } }], [],
+    `Nine keys, height ${t.height()}. Smaller keys are always to the left, so an in-order walk gives 20, 30, 35, 40, 45, 50, 60, 70, 80. The root is black (rule 2).`);
+  const a = blacksTo([50, 30, 20]);
+  r.step([t.panel({}, mark(a.ids, 'active')), { type: 'vars', id: 'v', vars: { 'path 50→30→20→null': `${a.c} black` } }], [],
+    `Rule 4: walk 50 → 30 → 20 → null and count the black nodes: <b>${a.c}</b>.`);
+  const b = blacksTo([50, 30, 40, 35]);
+  r.step([t.panel({}, mark(b.ids, 'active')), { type: 'vars', id: 'v', vars: { 'path 50→30→40→35→null': `${b.c} black` } }], [],
+    `A longer path, 50 → 30 → 40 → 35 → null: still <b>${b.c}</b> black nodes. The extra length comes only from red nodes, and reds can never be next to each other (rule 3), so no path can be more than twice as long as another.`);
+  const c = blacksTo([50, 70, 80]);
+  r.step([t.panel({}, mark(c.ids, 'active')), { type: 'vars', id: 'v', vars: { 'path 50→70→80→null': `${c.c} black` } }], [],
+    `Right side, 50 → 70 → 80 → null: <b>${c.c}</b> again. Every path agrees. That equal "black height" is what keeps the tree balanced.`);
+  Viz.mount('#mem', { frames: r.frames, title: 'Red-black rules', code:
+`// java.util.TreeMap
+private transient Entry<K,V> root;
+private transient int size = 0;
+private final Comparator<? super K> comparator;
+
+static final class Entry<K,V> {
+    K key;
+    V value;
+    Entry<K,V> left, right, parent;
+    boolean color = BLACK;   // RED = false, BLACK = true
+}` });
+})();
+</script>
+<p>One node costs about 40 bytes plus your key and value objects: key, value, three child/parent references and the colour flag. A HashMap node is similar in size, but a TreeMap needs no table array.</p>
+
+<h2>Watch the operations</h2>
+
+<h3>1. Insert in sorted order: one rotation saves the day</h3>
+<p>Put 10, 20, 30. A plain BST would become a line 10 → 20 → 30. The red-black tree sees "two reds in a row on a straight line" and rotates.</p>
+<div id="op1"></div>
+<script>
+(() => {
+  const r = Viz.recorder(), t = new RB();
+  recordInserts(r, t, [10, 20, 30], 'Empty tree. Dark filled = black, red outline = red. Watch the colours and the <b>x / p / g / uncle</b> labels (node, parent, grandparent, uncle).');
+  r.step([t.panel(), { type: 'vars', id: 'v', vars: { height: 2, 'plain BST height': 3 } }], [],
+    'Balanced: 20 on top, 10 and 30 below. Without the rotation this would already be a linked list.');
+  Viz.mount('#op1', { frames: r.frames, title: 'Insert 10, 20, 30', code: RB_CODE });
+})();
+</script>
+
+<h3>2. Red uncle: just recolour, and push the problem up</h3>
+<p>Continue with put 5. Its parent 10 is red, and so is its uncle 30. No rotation: flip three colours. The grandparent becomes red, which here is the root, so it is painted back to black.</p>
+<div id="op2"></div>
+<script>
+(() => {
+  const r = Viz.recorder(), t = new RB();
+  [10, 20, 30].forEach(k => t.put(k));
+  recordInserts(r, t, [5], 'The tree after 10, 20, 30: black 20 with red children 10 and 30.');
+  r.step([t.panel(), { type: 'vars', id: 'v', vars: { 'blacks on every path': 2 } }], [],
+    'Every path from 20 to a null now passes 2 black nodes (20, then 10 or 30). Recolouring costs O(1) per level; in the worst case it climbs to the root, O(log n), but usually stops after a level or two.');
+  Viz.mount('#op2', { frames: r.frames, title: 'Insert 5: recolour', code: RB_CODE });
+})();
+</script>
+
+<h3>3. Triangle: two rotations</h3>
+<p>Now put 7. It goes right of 5, which is left of 10: a zig-zag ("triangle"). One rotation turns it into a line, a second rotation lifts the middle key, 7, to the top of that little subtree.</p>
+<div id="op3"></div>
+<script>
+(() => {
+  const r = Viz.recorder(), t = new RB();
+  [10, 20, 30, 5].forEach(k => t.put(k));
+  recordInserts(r, t, [7], 'The tree after 10, 20, 30, 5.');
+  r.step([t.panel(), { type: 'vars', id: 'v', vars: { rotations: 2, 'keys in order': '5 7 10 20 30' } }], [],
+    'Done with two rotations, the most any insert ever needs. 7, the middle value of 5, 7, 10, ended up as their parent. In-order is still 5, 7, 10, 20, 30.');
+  Viz.mount('#op3', { frames: r.frames, title: 'Insert 7: double rotation', code: RB_CODE });
+})();
+</script>
+
+<h3>4. The payoff: ten sorted inserts</h3>
+<p>The worst input for a plain BST is sorted input. Put 1, 2, …, 10 and watch the height stay near log₂ n while a plain BST would be 10 levels tall.</p>
+<div id="op4"></div>
+<script>
+(() => {
+  const r = Viz.recorder(), t = new RB();
+  const L = s => lineOf(RB_CODE, s);
+  let rec = 0, rot = 0;
+  t.cb = kind => { if (kind === 'case1') rec++; if (kind === 'case2') rot++; if (kind === 'case3') rot++; };
+  r.step([t.panel(), { type: 'vars', id: 'v', vars: { n: 0 } }], [], 'Empty tree. One frame per put; the counters show how much fixing each insert needed.');
+  for (let k = 1; k <= 10; k++) {
+    rec = 0; rot = 0;
+    t.put(k);
+    r.step([t.panel({ new: t.root && (function f(n) { return n.key === k ? n : f(k < n.key ? n.left : n.right); })(t.root) }), { type: 'vars', id: 'v', vars: { n: k, height: t.height(), 'plain BST height': k, recolours: rec, rotations: rot } }],
+      [L('fixAfterInsert(n)')],
+      `put(${k}): ${rec || rot ? `fixed with ${rec} recolour step${rec === 1 ? '' : 's'} and ${rot} rotation${rot === 1 ? '' : 's'}` : 'no fixing needed'}. Height <b>${t.height()}</b> vs ${k} for a plain BST.`);
+  }
+  r.step([t.panel(), { type: 'vars', id: 'v', vars: { n: 10, height: t.height(), '2·log2(11)': '6.9' } }], [],
+    `Height ${t.height()}, inside the guarantee 2·log₂(n + 1) ≈ 6.9. With 1,000,000 sorted keys the height is about 37 (we measured it with the Java class below), a plain BST would be 1,000,000.`);
+  Viz.mount('#op4', { frames: r.frames, title: 'Sorted inserts stay balanced', code: RB_CODE });
+})();
+</script>
+
+<h3>5. floorKey, ceilingKey and headMap: walk one path, remember the best</h3>
+<p>On the tree from the memory section, ask <code>floorKey(42)</code> (largest key ≤ 42) and <code>ceilingKey(42)</code> (smallest key ≥ 42). Each step goes left or right exactly like a search, and remembers the best candidate seen so far.</p>
+<div id="op5"></div>
+<script>
+(() => {
+  const code =
+`// largest key <= k, or null
+Integer floorKey(int k) {
+    Integer best = null;
+    for (Node x = root; x != null; ) {
+        if (x.key == k) return k;
+        if (x.key < k) { best = x.key; x = x.right; }
+        else x = x.left;
+    }
+    return best;
+}
+
+// smallest key >= k, or null
+Integer ceilingKey(int k) {
+    Integer best = null;
+    for (Node x = root; x != null; ) {
+        if (x.key == k) return k;
+        if (x.key > k) { best = x.key; x = x.left; }
+        else x = x.right;
+    }
+    return best;
+}
+
+// keys < 40, as a live sorted view
+SortedMap<Integer, V> h = map.headMap(40);`;
+  const L = s => lineOf(code, s);
+  const t = new RB(); [50, 30, 70, 20, 40, 60, 80, 35, 45].forEach(k => t.put(k));
+  const r = Viz.recorder();
+  const P = (ptr, marks, vars) => [t.panel(ptr, marks, 'TreeMap keys (colours hidden)', false), { type: 'vars', id: 'v', vars }];
+  const walk = (k, floor) => {
+    let best = null, x = t.root; const seen = {};
+    r.step(P({ x }, {}, { query: `${floor ? 'floor' : 'ceiling'}Key(${k})`, best: 'null' }), [L(floor ? 'Integer floorKey' : 'Integer ceilingKey')],
+      `${floor ? 'floorKey' : 'ceilingKey'}(${k}): start at the root with <b>best = null</b>.`);
+    while (x) {
+      const id = 'n' + x.key;
+      let say, line;
+      if (floor ? x.key < k : x.key > k) {
+        best = x.key;
+        say = `${x.key} ${floor ? '&lt;' : '&gt;'} ${k}: it is a candidate, <b>best = ${x.key}</b>. A closer one can only be to the ${floor ? 'right (bigger)' : 'left (smaller)'}.`;
+        line = L(floor ? 'if (x.key < k) { best' : 'if (x.key > k) { best');
+        seen[id] = 'done';
+      } else {
+        say = `${x.key} ${floor ? '&gt;' : '&lt;'} ${k}: too ${floor ? 'big' : 'small'}, cannot be the answer. Go ${floor ? 'left' : 'right'}.`;
+        line = L(floor ? 'else x = x.left' : 'else x = x.right');
+        seen[id] = 'visited';
+      }
+      const marks = Object.fromEntries(Object.entries(seen).map(([a, b]) => [a, b === 'done' ? 'visited' : b]));
+      marks['n' + best] = 'done'; marks[id] = marks[id] === 'done' ? 'done' : 'active';
+      r.step(P({ x }, marks, { query: `${floor ? 'floor' : 'ceiling'}Key(${k})`, best: best ?? 'null' }), [line], say);
+      x = (floor ? x.key < k : x.key > k) ? (floor ? x.right : x.left) : (floor ? x.left : x.right);
+    }
+    r.step(P({}, { ['n' + best]: 'done' }, { query: `${floor ? 'floor' : 'ceiling'}Key(${k})`, answer: best }), [L('return best')],
+      `Fell off the tree: the answer is <b>${best}</b>. One root-to-leaf path, so O(log n).`);
+  };
+  walk(42, true);
+  walk(42, false);
+  const less = {}; (function f(n) { if (!n) return; if (n.key < 40) less['n' + n.key] = 'done'; else less['n' + n.key] = 'dim'; f(n.left); f(n.right); })(t.root);
+  r.step(P({}, less, { 'headMap(40)': '{20, 30, 35}' }), [L('headMap(40)')],
+    '<code>headMap(40)</code> is every key <b>strictly less</b> than 40: 20, 30, 35. It is a <b>view</b>, not a copy: creating it is O(1), and walking it in order costs O(log n + k) for k keys. <code>tailMap(40)</code> is ≥ 40; <code>subMap(30, 60)</code> is 30 ≤ key &lt; 60.');
+  Viz.mount('#op5', { frames: r.frames, title: 'floor, ceiling, headMap', code });
+})();
+</script>
+
+<h2>Build it yourself</h2>
+<p>Interviewers rarely ask for a full red-black tree, but they do ask "how does TreeMap stay balanced?" and sometimes "write insert with rotations". This is the textbook (CLRS) insert, the same algorithm as <code>TreeMap.fixAfterInsertion</code>, plus <code>get</code>, <code>floorKey</code> and <code>ceilingKey</code>. Delete is left out (it has six cases; nobody writes it in 45 minutes). Tested against <code>java.util.TreeMap</code>: 200 random and sorted runs up to 2,000 keys, checking every rule, the height bound and every floor/ceiling answer.</p>
+<!--RBTREE-->
+<p>The direction trick: <code>rotate(x, true)</code> is a left rotation (the right child moves up), <code>rotate(x, false)</code> a right rotation. The mirror cases (parent is a right child) then share the same code by passing <code>pLeft</code> or <code>!pLeft</code>.</p>
+
+<h2>The real Java class</h2>
+<ul>
+  <li><b>Algorithm:</b> <code>TreeMap</code> is a red-black tree "adapted from Cormen, Leiserson and Rivest" (its Javadoc). <code>put</code> does a BST walk, links a new <code>Entry</code>, then <code>fixAfterInsertion</code>: the same three cases as above. <code>remove</code> uses <code>deleteEntry</code> + <code>fixAfterDeletion</code> (at most three rotations).</li>
+  <li><b>Entry:</b> key, value, left, right, <b>parent</b>, <code>boolean color</code>. In the JDK source <code>RED = false</code> and <code>BLACK = true</code>. The parent link lets iterators find the next key (successor) without a stack.</li>
+  <li><b>Ordering:</b> the <code>Comparator</code> you pass, or the keys' <code>compareTo</code> (natural order). It never calls <code>hashCode</code> or <code>equals</code>: two keys are "the same" when <code>compare</code> returns 0.</li>
+  <li><b>Nulls:</b> with natural ordering a <code>null</code> key throws <code>NullPointerException</code>. Null <b>values</b> are fine.</li>
+  <li><b>Navigation (NavigableMap):</b> <code>firstKey/lastKey</code>, <code>floorKey/ceilingKey</code> (≤ / ≥), <code>lowerKey/higherKey</code> (&lt; / &gt;), the <code>…Entry</code> versions, <code>pollFirstEntry/pollLastEntry</code> (remove and return min / max), <code>descendingMap()</code>. Since Java 21 TreeMap is also a <code>SequencedMap</code> (<code>firstEntry</code>, <code>reversed()</code>; <code>putFirst</code> throws because the order is decided by the keys).</li>
+  <li><b>Range views:</b> <code>headMap(to)</code> excludes <code>to</code>, <code>tailMap(from)</code> includes <code>from</code>, <code>subMap(from, to)</code> is [from, to). Overloads with booleans choose inclusive or exclusive. Views are <b>live</b>: changes show through both ways, and putting a key outside the view's range throws.</li>
+  <li><b>TreeSet</b> is a thin wrapper around a <code>TreeMap&lt;E, Object&gt;</code>; every element is a key mapped to one shared dummy value <code>PRESENT</code>. Same costs, methods <code>first</code>, <code>last</code>, <code>floor</code>, <code>ceiling</code>, <code>lower</code>, <code>higher</code>, <code>pollFirst</code>, <code>headSet</code>, <code>tailSet</code>, <code>subSet</code>.</li>
+  <li><b>Not thread-safe.</b> The concurrent sorted map is <code>ConcurrentSkipListMap</code> (a skip list, not a tree). <code>size()</code> is O(1) (a counter); <code>containsValue</code> is O(n).</li>
+</ul>
+
+<h2>Cost of every operation</h2>
+<table>
+<tr><th>Operation</th><th>Average</th><th>Worst</th><th>Why</th></tr>
+<tr><td><code>get / containsKey</code></td><td>O(log n)</td><td>O(log n)</td><td>One path from the root; height ≤ 2 log₂(n + 1).</td></tr>
+<tr><td><code>put</code></td><td>O(log n)</td><td>O(log n)</td><td>Walk down, then fix-up: recolouring may climb O(log n) levels, at most 2 rotations.</td></tr>
+<tr><td><code>remove</code></td><td>O(log n)</td><td>O(log n)</td><td>Find, swap with successor if it has two children, then fix-up with at most 3 rotations.</td></tr>
+<tr><td><code>firstKey / lastKey</code></td><td>O(log n)</td><td>O(log n)</td><td>Walk all the way left (or right). Not O(1)!</td></tr>
+<tr><td><code>floorKey / ceilingKey / lowerKey / higherKey</code></td><td>O(log n)</td><td>O(log n)</td><td>A search that remembers the best candidate.</td></tr>
+<tr><td><code>pollFirstEntry / pollLastEntry</code></td><td>O(log n)</td><td>O(log n)</td><td>Find the end, then delete.</td></tr>
+<tr><td><code>headMap / tailMap / subMap</code></td><td>O(1) to create</td><td>O(log n + k) to walk</td><td>A view object holding bounds; iterating finds the first key, then follows successors.</td></tr>
+<tr><td>full in-order iteration</td><td>O(n)</td><td>O(n)</td><td>Each successor step is O(1) amortized via parent links.</td></tr>
+<tr><td><code>containsValue</code></td><td>O(n)</td><td>O(n)</td><td>Values are not ordered: full scan.</td></tr>
+</table>
+
+<h2>Why and when to use it</h2>
+<p><b>TreeMap beats HashMap when the question involves order.</b> A HashMap answers "is 42 here?" in O(1) but has no idea which key is <i>closest</i> to 42; you would scan all n keys. A TreeMap answers both in O(log n). Typical cases:</p>
+<ul>
+  <li><b>Nearest key:</b> "the booking that starts at or before time t" (<code>floorEntry</code>), My Calendar, "closest value in a stream", stock price at a timestamp (Time Based Key-Value Store).</li>
+  <li><b>Sorted multiset with removal:</b> <code>TreeMap&lt;Integer, Integer&gt;</code> of value → count: sliding window max/min/median of arbitrary elements, "contains duplicate III" (any value within t), merge of intervals as they arrive.</li>
+  <li><b>Min and max at once with deletion</b>, which a single heap cannot do: <code>firstKey()</code> and <code>lastKey()</code>.</li>
+  <li><b>Sorted output</b> after many updates: iterate in key order without sorting.</li>
+  <li><b>Guaranteed worst case</b>: always O(log n), no bad hash functions or resize pauses.</li>
+</ul>
+
+<h2>When not to use it</h2>
+<ul>
+  <li>Only exact lookups (count, seen-before, two-sum): <a href="ds-hashmap.html">HashMap / HashSet</a>, O(1) average and about 2 to 5 times faster in practice.</li>
+  <li>Only the minimum, repeatedly, and no arbitrary removals: <a href="ds-priorityqueue.html">PriorityQueue</a> (O(1) peek, compact array, smaller constant).</li>
+  <li>Keys are known up front and never change: sort an array once and use <a href="binary-search.html">binary search</a> (cache friendly, no node objects).</li>
+  <li>Need the k-th smallest or "how many keys &lt; x" fast: TreeMap cannot do it in O(log n) (no subtree sizes). Use a <a href="segment-tree-fenwick.html">Fenwick / segment tree</a> over compressed values.</li>
+  <li>Keys are small integers in a known range: a plain array or a bucket array is O(1).</li>
+</ul>
+
+<h2>Used in these patterns</h2>
+<ul>
+  <li><a href="bst.html">Binary search trees</a>: the plain BST this structure balances; floor and ceiling by hand.</li>
+  <li><a href="intervals.html">Intervals</a>: My Calendar and merging intervals as they arrive with <code>floorKey</code> / <code>ceilingKey</code>.</li>
+  <li><a href="sliding-window.html">Sliding window</a>: a <code>TreeMap&lt;value, count&gt;</code> for window min, max or "any value within t".</li>
+  <li><a href="two-heaps.html">Two heaps</a>: sliding window median, where two TreeSets / TreeMaps allow removing the leaving element in O(log n).</li>
+  <li><a href="design-patterns-dsa.html">Design problems</a>: Time Based Key-Value Store, leaderboards, stock price tracking.</li>
+  <li><a href="greedy.html">Greedy</a> and <a href="binary-search.html">Binary search</a>: "smallest available item ≥ x" (assign tasks, hand of straights).</li>
+</ul>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>TreeMap = red-black BST: sorted keys, everything O(log n).</b> Four rules (root black, no red-red, equal black count per path) keep height ≤ 2 log₂(n + 1). Insert fix: red uncle → recolour and move up; black uncle → rotate (triangle: two rotations, line: one). Reach for it when the question says <i>closest</i>, <i>range</i>, <i>smallest/largest with deletion</i> or <i>sorted</i>.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>A comparator that returns 0 for different objects: TreeMap/TreeSet treat them as the <b>same key</b> and silently drop one. <code>new TreeSet&lt;String&gt;(Comparator.comparingInt(String::length))</code> keeps only one word per length. Add a tie-breaker.</li>
+  <li><code>floorKey</code> returns <code>Integer</code> and can be <code>null</code>. <code>int f = map.floorKey(x);</code> throws <code>NullPointerException</code> when nothing is ≤ x. Store it in an <code>Integer</code> and check.</li>
+  <li>Mixing up the four: floor ≤, ceiling ≥, lower &lt;, higher &gt;. And <code>headMap(x)</code> excludes x while <code>tailMap(x)</code> includes it.</li>
+  <li>Believing <code>firstKey()</code> is O(1). It walks to the leftmost node: O(log n). Still fast, but not a heap's peek.</li>
+  <li>Using a multiset as <code>TreeSet</code>: duplicates vanish. Use <code>TreeMap&lt;value, count&gt;</code> and remove the key when its count hits 0.</li>
+  <li>Changing a key object's fields after putting it in: the tree order is now wrong and lookups fail. Keys must be effectively immutable.</li>
+  <li>Using <code>(a, b) -&gt; a - b</code> as the comparator: same overflow trap as in <a href="ds-priorityqueue.html">PriorityQueue</a>.</li>
+</ul></div>
+
+<h2>Interview questions on the internals</h2>
+<details class="quiz"><summary>What data structure is behind TreeMap, and what are its rules?</summary>
+<p>A red-black tree: a BST where every node is red or black, the root is black, a red node has no red child, and every root-to-null path has the same number of black nodes.</p></details>
+<details class="quiz"><summary>Why do those rules bound the height?</summary>
+<p>All paths have the same black count b, and reds cannot be adjacent, so every path has between b and 2b nodes. A tree with black height b has at least 2<sup>b</sup> − 1 nodes, so b ≤ log₂(n + 1) and the height ≤ 2 log₂(n + 1).</p></details>
+<details class="quiz"><summary>Why is a newly inserted node coloured red?</summary>
+<p>A red node does not change any path's black count, so rule 4 stays true. Only rule 3 (no red-red) can break, and that is fixable locally by recolouring and rotations.</p></details>
+<details class="quiz"><summary>Walk through the insert fix-up cases.</summary>
+<p>If the parent is black, nothing to do. If the parent and the uncle are red: recolour parent and uncle black, grandparent red, and continue from the grandparent. If the uncle is black: if the node is an inner child (triangle) rotate the parent to make a line; then recolour parent black, grandparent red, and rotate the grandparent the other way. Finally paint the root black.</p></details>
+<details class="quiz"><summary>What does a rotation do, and does it change the sorted order?</summary>
+<p>It re-hangs a parent and child so the child goes up and the parent goes down, moving the child's inner subtree across. The in-order (sorted) sequence is unchanged; only depths change. It is O(1): a few pointer updates.</p></details>
+<details class="quiz"><summary>How many rotations can an insert do? A delete?</summary>
+<p>Insert: at most 2. Delete: at most 3. Recolouring can climb up to O(log n) levels, but it is just colour flips.</p></details>
+<details class="quiz"><summary>When would you pick TreeMap over HashMap?</summary>
+<p>When you need order: floor/ceiling (nearest key), ranges, min/max with deletion, sorted iteration, or a guaranteed O(log n) worst case. For pure lookups HashMap is faster.</p></details>
+<details class="quiz"><summary>How does TreeSet store elements, and how does it decide duplicates?</summary>
+<p>It wraps a TreeMap where each element is a key with a dummy value. Duplicates are decided by <code>compare(a, b) == 0</code>, not by <code>equals</code>, so the comparator must be consistent with equals or elements disappear.</p></details>
+<details class="quiz"><summary>Is <code>headMap</code> a copy?</summary>
+<p>No, it is a live view backed by the same tree, created in O(1). Iterating it costs O(log n + k). Writes through the view change the map, and keys outside its range are rejected.</p></details>
+
+<nav class="pager"><a href="ds-priorityqueue.html">← PriorityQueue</a><a href="ds-string-stringbuilder.html">String &amp; StringBuilder →</a></nav>
+</main>
+</body>
+</html>

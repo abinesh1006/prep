@@ -235,6 +235,17 @@ q.add(start); seen[start] = <span class="k">true</span>;
 }
 <span class="c">// 3. count groups: loop over all nodes, start a walk from each unseen one</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td>Adjacency list <code>List&lt;List&lt;Integer&gt;&gt;</code> (<a href="ds-array-arraylist.html">ArrayList</a> of lists)</td><td>all neighbours of <code>u</code> in one <code>adj.get(u)</code>; built once from <code>int[][] edges</code>, both directions for undirected</td><td>O(V + E) memory; O(deg u) to list neighbours</td><td>An adjacency matrix costs O(V²) memory and O(V) per neighbour scan; 547 is already given as a matrix, so it is used as is.</td></tr>
+<tr><td><code>boolean[] seen</code> (<a href="ds-array-arraylist.html">array</a>)</td><td>nodes are numbered 0..n−1, so the id is the index: "have I visited u?"</td><td>O(1) read/write</td><td>A <code>HashSet&lt;Integer&gt;</code> boxes every int and hashes for no gain; use a set only when nodes are not small numbers.</td></tr>
+<tr><td><a href="ds-arraydeque.html">ArrayDeque</a> as queue (1971, 133) or stack (841)</td><td>the frontier of nodes still to explore</td><td>O(1) at both ends</td><td><code>Stack</code> is a legacy synchronized class; for 1971/841 any order works, BFS is needed only when the number of steps matters.</td></tr>
+<tr><td><a href="ds-array-arraylist.html">ArrayList</a> <code>path</code> (797)</td><td>add the node going in, remove it coming back; copy with <code>new ArrayList&lt;&gt;(path)</code> at the target</td><td>O(1) add/remove at the end</td><td>No <code>seen</code> array: the graph is a DAG, so a path can never loop — and a node may lie on many paths.</td></tr>
+<tr><td><a href="ds-hashmap.html">HashMap</a><code>&lt;Node, Node&gt;</code> copies (133)</td><td>original → its clone; also doubles as the visited set</td><td>O(1) average</td><td>Without the map, a cycle would make you clone the same node forever.</td></tr>
+</table>
+<p>Every graph problem starts by choosing a representation. The adjacency list is the default because a walk only ever asks "who are u's neighbours?", and a boolean array answers "seen?" in O(1) when nodes are numbered.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Edge list → adjacency list → walk with a visited set.</b> Stack = deep (DFS, reachability, groups). Queue = wide (BFS, fewest steps).</p></div>
 

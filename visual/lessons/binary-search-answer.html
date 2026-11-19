@@ -143,6 +143,20 @@ boolean canFinish(int[] piles, int k, int h) {
 <span class="k">return</span> lo;
 <span class="c">// "maximize": flip it — find the last x that works</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td>the answer range (two ints / longs)</td><td><code>lo..hi</code> of possible answers: speeds, capacities, days, distances. No array of answers is ever built.</td><td>O(log range) rounds</td>
+<td>Trying every answer one by one is O(range &middot; n).</td></tr>
+<tr><td><a href="ds-array-arraylist.html">the input <code>int[]</code></a></td><td><code>feasible(mid)</code> walks piles, weights or bloom days once.</td><td>O(n) per check, O(n log range) total</td>
+<td>There is nothing to precompute; the check itself is the cheap part.</td></tr>
+<tr><td><a href="ds-array-arraylist.html">sorted <code>int[] position</code></a></td><td>1552: sort once so balls can be placed greedily left to right.</td><td>O(n log n) once</td>
+<td>Without sorting, the greedy feasibility check is wrong.</td></tr>
+<tr><td><code>long</code> counters</td><td>875: total hours, 69: <code>mid * mid</code>; both overflow <code>int</code>.</td><td>O(1)</td>
+<td>An <code>int</code> silently wraps negative and the search goes the wrong way.</td></tr>
+</table>
+<p>Here the "structure" being searched is not an array but a range of numbers; the only stored data is the input, scanned once per guess.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>"Minimum x such that possible" → binary search x, write <code>feasible(x)</code>.</b> Range = [smallest sensible, largest sensible].</p></div>
 

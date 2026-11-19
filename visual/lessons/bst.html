@@ -301,6 +301,16 @@ const sub = (T, id) => id == null ? [] : [id, ...sub(T, T[id].left), ...sub(T, T
     || (lo &lt; node.val &amp;&amp; node.val &lt; hi
         &amp;&amp; ok(node.left, lo, node.val) &amp;&amp; ok(node.right, node.val, hi));</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td>TreeNode with the BST order (left &lt; node &lt; right)</td><td>one comparison decides which side can hold the value, so search, insert and delete walk a single path</td><td>O(h): O(log n) balanced, O(n) skewed</td><td>A sorted <a href="ds-array-arraylist.html">array</a> also searches in O(log n), but insert and delete shift elements, O(n).</td></tr>
+<tr><td>The sorted <code>int[] nums</code> (108)</td><td>jump straight to the middle index to make it the root, then recurse on both halves</td><td>O(1) per index; O(n) total</td><td>A sorted linked list needs O(n) just to reach the middle, giving O(n log n).</td></tr>
+<tr><td><code>long</code> bounds <code>lo</code> / <code>hi</code> (98)</td><td>the open range every value in this subtree must fall in</td><td>O(1)</td><td><code>int</code> bounds break when a node holds <code>Integer.MIN_VALUE</code> or <code>MAX_VALUE</code>; comparing only with the parent misses deeper violations.</td></tr>
+<tr><td><a href="ds-arraydeque.html">ArrayDeque</a> as a stack (230, 173)</td><td>push the left spine; each <code>pop</code> is the next value in sorted order</td><td>O(1) push/pop, O(h) space; <code>next()</code> is O(1) amortised</td><td>Collecting the whole in-order list into an <a href="ds-array-arraylist.html">ArrayList</a> costs O(n) memory and wastes work when k is small.</td></tr>
+</table>
+<p>The BST property is the data structure: it turns a tree walk into a binary search. The only extra structure, the explicit stack, exists so you can stop an in-order walk part way through.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Left &lt; me &lt; right, for whole subtrees.</b> Search/insert/delete = one path, O(h). In-order = sorted. Validate with (lo, hi). Delete with two children = copy the successor.</p></div>
 

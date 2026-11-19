@@ -261,6 +261,18 @@ win[s[i]]++;  <span class="k">if</span> (i &gt;= m) win[s[i - m]]--;
 <span class="k">while</span> (len &gt; <span class="n">0</span> &amp;&amp; c != p[len]) len = lps[len - <span class="n">1</span>];
 <span class="k">if</span> (c == p[len]) len++;</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><code>int[26]</code> counts (242, 438, 567)</td><td>letter <code>c</code> → <code>count[c - 'a']</code>; add when a letter enters the window, subtract when it leaves</td><td>O(1) per update; <code>Arrays.equals</code> on 26 cells is O(1)</td><td>A <a href="ds-hashmap.html">HashMap</a><code>&lt;Character, Integer&gt;</code> boxes every letter; sorting both strings is O(n log n).</td></tr>
+<tr><td><code>String.charAt</code> + two indexes (5, 647)</td><td>expand outward from each of the 2n − 1 centres while the ends match</td><td>O(1) per step; O(n²) total</td><td>Checking every substring separately is O(n³).</td></tr>
+<tr><td><code>int[]{l, r}</code> returned by <code>grow</code> (5)</td><td>the widest palindrome found from one centre</td><td>O(1)</td><td>Building <code>substring</code>s inside the loop copies O(n) each time; cut once at the end.</td></tr>
+<tr><td><code>int[] lps</code> — KMP (28, 214)</td><td>for each prefix of the pattern, its longest proper prefix that is also a suffix: where to fall back on a mismatch</td><td>O(m) to build; O(n + m) to search</td><td>Restarting the match one letter later is O(n · m) in the worst case.</td></tr>
+<tr><td><a href="ds-string-stringbuilder.html">StringBuilder</a> <code>reverse</code> (214)</td><td>build <code>s + "#" + reverse(s)</code>; its last <code>lps</code> value is the longest palindromic prefix</td><td>O(n)</td><td>Trying every prefix as a palindrome is O(n²).</td></tr>
+<tr><td><a href="ds-hashmap.html">HashMap</a><code>&lt;Long, List&lt;Integer&gt;&gt;</code> (1044)</td><td>rolling hash → starting indices; on a match, compare the real substrings to rule out a collision</td><td>O(1) average per window</td><td>A <code>HashSet&lt;String&gt;</code> of substrings costs O(L) per insert to hash and store each copy.</td></tr>
+</table>
+<p>Most string problems need no special structure: a 26-cell array for counts, two indexes into the string, and, for pattern matching, the one KMP fallback array.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Palindrome → grow from 2n−1 middles. Anagram → compare counts in a sliding window. Pattern search → KMP's lps "never re-read". Many substrings → rolling hash, but verify on equal hashes.</b></p></div>
 

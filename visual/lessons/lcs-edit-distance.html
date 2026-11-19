@@ -173,6 +173,17 @@
         <span class="k">if</span> (a.charAt(i-<span class="n">1</span>) == b.charAt(j-<span class="n">1</span>)) dp[i][j] = f(dp[i-<span class="n">1</span>][j-<span class="n">1</span>]);      <span class="c">// ↖</span>
         <span class="k">else</span> dp[i][j] = g(dp[i-<span class="n">1</span>][j-<span class="n">1</span>], dp[i-<span class="n">1</span>][j], dp[i][j-<span class="n">1</span>]); <span class="c">// ↖ ↑ ←</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><code>int[][] dp</code> of size (m + 1) × (n + 1)</td><td><code>dp[i][j]</code> = answer for the first i letters of a and first j of b; row 0 and column 0 are the empty prefix</td><td>O(1) per cell; O(m · n) time and memory</td><td>Plain recursion is O(3^(m+n)); memo with a <a href="ds-hashmap.html">HashMap</a> keyed by "i,j" is the same table, slower.</td></tr>
+<tr><td><code>String.charAt</code> (<a href="ds-string-stringbuilder.html">String</a>)</td><td>compare <code>a.charAt(i - 1)</code> with <code>b.charAt(j - 1)</code> — the −1 because of the empty row</td><td>O(1)</td><td><code>toCharArray()</code> first is equally fine; <code>substring</code> in the recursion copies strings.</td></tr>
+<tr><td><code>boolean[][] ok</code> (97)</td><td>"can the first i of s1 and j of s2 form the first i + j of s3?"</td><td>O(m · n)</td><td>A count is not needed, only yes or no.</td></tr>
+<tr><td><code>long[][] dp</code> (115)</td><td>number of ways, which can exceed int in the middle of the table</td><td>O(m · n)</td><td><code>int</code> overflows on long inputs even when the final answer fits.</td></tr>
+<tr><td><a href="ds-string-stringbuilder.html">StringBuilder</a> <code>reverse</code> (516)</td><td>longest palindromic subsequence = LCS of s and its reverse</td><td>O(n) to build</td><td>Interval DP on <code>dp[l][r]</code> is the direct alternative, same O(n²).</td></tr>
+</table>
+<p>Two-string DP is one 2D table whose extra row and column stand for the empty string. Only the previous row is ever read, so it can shrink to two 1D arrays.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Two strings → (m+1) × (n+1) table, look at the last letters.</b> ↖ match/replace, ↑ delete, ← insert.</p></div>
 

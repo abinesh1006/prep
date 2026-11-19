@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HashMap and HashSet</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Data structures</span><span class="sp"></span>
+  <a href="../index.html#lessons">All structures</a>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Data structure · Inside Java</div>
+<h1>HashMap &amp; HashSet</h1>
+<p class="lede">A HashMap turns a key into an array index with a little arithmetic, so it can find a value in about one step instead of searching. It is an array of buckets; each bucket holds the few entries whose keys landed there.</p>
+<p class="meta">Time to learn: about 2.5 hours · Prerequisites: <a href="ds-array-arraylist.html">Array &amp; ArrayList</a>, <a href="ds-linked-list.html">Linked list</a></p>
+
+<div class="box signal"><span class="tag">Use it when you need…</span>
+<ul>
+  <li><b>"Have I seen this before?"</b> — <code>set.contains(x)</code> in O(1) average.</li>
+  <li><b>"Where / how many times did I see it?"</b> — <code>map.get(x)</code>, <code>map.merge(x, 1, Integer::sum)</code> in O(1) average.</li>
+  <li>To group things by a key (anagrams by sorted letters, nodes by level).</li>
+  <li>To remember results you already computed (memoization).</li>
+</ul></div>
+
+<h2>In plain words</h2>
+<p>Keys can be anything — strings, numbers, lists — but arrays only understand integer positions. A HashMap bridges the gap in two steps. First, every Java object can produce an int called its <b>hash code</b> (<code>key.hashCode()</code>). Second, the map squeezes that int into the range of its array: with 16 buckets, keep only the last 4 bits, giving an index from 0 to 15. The entry is stored in that <b>bucket</b>.</p>
+<p>Different keys sometimes land in the same bucket — a <b>collision</b>. That is normal. Java keeps every entry of a bucket in a small linked chain and, to find a key, walks that chain comparing with <code>equals</code>. As long as the chains stay short, every operation is about one step. To keep them short, the map <b>doubles</b> its array whenever it is 75% full and redistributes the entries.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A cloakroom with numbered hooks. The attendant does not search all the coats: she looks at your ticket, does a quick calculation, and walks straight to hook 7. If two coats ended up on hook 7, she checks the two name tags and hands over the right one. When the hooks get crowded, the club installs twice as many hooks and re-hangs every coat on its new number.</p></div>
+
+<h2>What it looks like in memory</h2>
+<div id="mem"></div>
+<script>
+// ---- shared helpers: real Java hashCode in JS, and a bucket table drawn as a grid ----
+function jhash(k) {
+  if (typeof k === 'number') return k | 0;                       // Integer.hashCode
+  if (typeof k === 'string') { let h = 0; for (const ch of k) h = (Math.imul(31, h) + ch.charCodeAt(0)) | 0; return h; }
+  if (Array.isArray(k)) { let h = 1; for (const e of k) h = (Math.imul(31, h) + jhash(e)) | 0; return h; } // List.hashCode
+  return 0;
+}
+const spread = h => (h ^ (h >>> 16)) | 0;                         // HashMap.hash
+const fmtKey = k => Array.isArray(k) ? `[${k.join(',')}]` : String(k);
+function bucketGrid(table, o = {}) {
+  const cols = o.cols || 3;
+  const fmt = o.fmt || (e => `${fmtKey(e.k)}=${e.v}`);
+  const cells = table.map(ch => Array.from({ length: cols }, (_, c) => c < ch.length ? fmt(ch[c]) : ''));
+  const marks = {};
+  table.forEach((ch, r) => { for (let c = Math.max(ch.length, 1); c < cols; c++) marks[`${r},${c}`] = 'dim'; });
+  const arrows = [];
+  table.forEach((ch, r) => { for (let c = 0; c + 1 < ch.length; c++) arrows.push([r, c, r, c + 1, 'plain']); });
+  return { type: 'grid', id: o.id || 'g', label: o.label, cells, rowLabels: table.map((_, i) => `[${i}]`), marks: { ...marks, ...(o.marks || {}) }, arrows, cell: o.cell || 62 };
+}
+(() => {
+  const cap = 8, table = Array.from({ length: cap }, () => []);
+  [['cat', 1], ['dog', 2], ['ant', 3], ['owl', 4]].forEach(([k, v]) => { const h = spread(jhash(k)); table[h & (cap - 1)].push({ k, v, h }); });
+  const r = Viz.recorder();
+  r.step([bucketGrid(table, { label: 'table = Node[8]: one row per bucket, chain grows to the right' })], [],
+    'A HashMap is an <b>array of buckets</b> (rows [0]…[7]). Each non-empty bucket points to a chain of <b>Node</b> objects. Here "dog" and "owl" both landed in bucket 5, so they share a chain. Empty buckets are just <b>null</b>.');
+  const dog = table[5][0];
+  r.step([bucketGrid(table, { label: 'table = Node[8]', marks: { '5,0': 'active' } }),
+    { type: 'vars', id: 'v', vars: { hash: dog.h, key: '"dog"', value: 2, next: '→ owl' }, marks: { hash: 'compare' } }], [],
+    'One <b>Node</b> holds four fields: the key\'s <b>hash</b> (cached so it is never recomputed), the <b>key</b>, the <b>value</b>, and <b>next</b> — the next node in the same bucket.');
+  Viz.mount('#mem', { frames: r.frames, title: 'HashMap memory layout' });
+})();
+</script>
+
+<h2>Watch the operations</h2>
+
+<h3>1. From key to bucket: hashCode → spread → index</h3>
+<p>Real Java numbers: these are the actual <code>String.hashCode()</code> values, computed by the same formula in the page.</p>
+<div id="op-hash"></div>
+<script>
+(() => {
+  const table = Array(16).fill('');
+  const r = Viz.recorder();
+  const T = (marks = {}) => ({ type: 'array', id: 't', label: 'table = Node[16] (bucket index above each box)', values: table, marks, cell: 44 });
+  const V = (vars, marks) => ({ type: 'vars', id: 'v', vars, marks });
+  const bits = x => (x >>> 0).toString(2).slice(-8).padStart(8, '0');
+  ['cat', 'dog', 'ant', 'owl', 'bee'].forEach((k, n) => {
+    const h = jhash(k), s = spread(h), i = s & 15;
+    if (n === 0) {
+      r.step([T(), V({ key: '"cat"', hashCode: h }, { hashCode: 'active' })], [2],
+        `"cat".hashCode() = <b>${h}</b>. String's formula: s[0]·31² + s[1]·31 + s[2] = 99·961 + 97·31 + 116.`);
+      r.step([T(), V({ hashCode: h, 'h >>> 16': h >>> 16, 'h ^ (h >>> 16)': s }, { 'h ^ (h >>> 16)': 'active' })], [3],
+        `<b>Spread</b>: XOR the top 16 bits into the bottom 16. Here h >>> 16 = ${h >>> 16}, so ${h} becomes ${s}. A small table only looks at the low bits; this lets the high bits have a say too.`);
+      r.step([T({ [i]: 'compare' }), V({ 'last 8 bits': bits(s), '& 15 (0b1111)': i }, { '& 15 (0b1111)': 'active' })], [8],
+        `index = h &amp; (16 − 1) keeps only the last 4 bits: ${bits(s)} → <b>${i}</b>. Because 16 is a power of two, &amp; 15 gives the same as % 16 — but it is one fast instruction and never negative.`);
+      table[i] = k;
+      r.step([T({ [i]: 'done' }), V({ key: '"cat"', index: i })], [8], `A Node for "cat" goes into bucket ${i}.`);
+    } else {
+      table[i] = k;
+      r.step([T({ [i]: 'done' }), V({ key: `"${k}"`, hashCode: h, spread: s, index: i })], [2, 3, 8], `"${k}": hashCode ${h} → spread ${s} → &amp; 15 → bucket <b>${i}</b>.`);
+    }
+  });
+  const ha = jhash('Aa'); table[ha & 15] = 'Aa';
+  r.step([T({ [ha & 15]: 'done' }), V({ key: '"Aa"', hashCode: ha, index: ha & 15 })], [2, 3, 8], `"Aa": hashCode = 65·31 + 97 = ${ha} → bucket ${ha & 15}.`);
+  const hb = jhash('BB');
+  r.step([T({ [hb & 15]: 'bad' }), V({ key: '"BB"', hashCode: hb, index: hb & 15 }, { hashCode: 'bad' })], [2, 3, 8],
+    `"BB": 66·31 + 66 = <b>${hb}</b> — the <b>same hash code</b> as "Aa"! Different keys, same bucket: a <b>collision</b>. Collisions are unavoidable (4 billion ints, endless strings), so the map must handle them.`);
+  Viz.mount('#op-hash', { frames: r.frames, title: 'Key to bucket index', code:
+`static int hash(Object key) {
+    int h = key == null ? 0 : key.hashCode();
+    return h ^ (h >>> 16);        // mix high bits in
+}
+
+public V put(K key, V val) {
+    int h = hash(key);
+    int i = h & (table.length - 1);  // = h % 16
+    // ... then go to bucket i
+}` });
+})();
+</script>
+
+<h3>2. Collisions, chaining, replace and get</h3>
+<p>A table of 8 buckets with <code>Integer</code> keys (an Integer's hash code is the number itself). 3, 11 and 19 all end in binary <code>011</code>, so all land in bucket 3.</p>
+<div id="op-chain"></div>
+<script>
+(() => {
+  const cap = 8, table = Array.from({ length: cap }, () => []);
+  const r = Viz.recorder();
+  const G = marks => bucketGrid(table, { label: 'table = Node[8]', marks });
+  const V = (vars, marks) => ({ type: 'vars', id: 'v', vars, marks });
+  function put(k, v) {
+    const h = spread(jhash(k)), i = h & (cap - 1), ch = table[i];
+    r.step([G({ [`${i},0`]: ch.length ? 'compare' : 'active' }), V({ call: `put(${k}, "${v}")`, index: `${h} & 7 = ${i}` })], [2, 3],
+      `put(${k}, "${v}"): index = ${h} &amp; 7 = <b>${i}</b>. ` + (ch.length ? `Bucket ${i} is not empty — walk its chain to check whether ${k} is already there.` : `Bucket ${i} is empty.`));
+    for (let c = 0; c < ch.length; c++) {
+      const e = ch[c];
+      if (e.h === h && e.k === k) {
+        const old = e.v; e.v = v;
+        r.step([G({ [`${i},${c}`]: 'done' }), V({ call: `put(${k}, "${v}")`, returns: `"${old}"` }, { returns: 'done' })], [5, 6, 7],
+          `Node ${k}: same hash <b>and</b> equals → it is the same key. <b>Replace</b> the value "${old}" with "${v}" and return the old one. Size does not change.`);
+        return;
+      }
+      r.step([G({ [`${i},${c}`]: 'compare' }), V({ call: `put(${k}, "${v}")`, compare: `hash ${e.h} vs ${h}` }, { compare: 'bad' })], [5, 9],
+        `Node ${e.k}: hash ${e.h} ≠ ${h}, so it cannot be the same key — skip <b>equals</b> entirely (comparing cached ints is cheap). Move to next.`);
+    }
+    ch.push({ k, v, h });
+    r.step([G({ [`${i},${ch.length - 1}`]: 'done' }), V({ call: `put(${k}, "${v}")`, size: table.flat().length })], ch.length === 1 ? [11, 12] : [11, 13],
+      ch.length === 1 ? `Store the new Node as the first in bucket ${i}.` : `Not found → <b>append</b> a new Node at the end of the chain (Java 8+ appends at the tail).`);
+  }
+  function get(k) {
+    const h = spread(jhash(k)), i = h & (cap - 1), ch = table[i];
+    r.step([G({ [`${i},0`]: 'compare' }), V({ call: `get(${k})`, index: `${h} & 7 = ${i}` })], [19], `get(${k}): the same arithmetic → bucket <b>${i}</b>. We never look at any other bucket.`);
+    for (let c = 0; c < ch.length; c++) {
+      if (ch[c].h === h && ch[c].k === k) {
+        r.step([G({ [`${i},${c}`]: 'done' }), V({ call: `get(${k})`, returns: `"${ch[c].v}"`, steps: c + 1 }, { returns: 'done' })], [21, 22], `Node ${k} matches → return "<b>${ch[c].v}</b>". Cost = position in the chain (${c + 1}), not the size of the map.`);
+        return;
+      }
+      r.step([G({ [`${i},${c}`]: 'compare' }), V({ call: `get(${k})`, compare: `${ch[c].k} ≠ ${k}` }, { compare: 'bad' })], [20, 21], `Node ${ch[c].k} is not ${k}, follow next.`);
+    }
+    r.step([G({}), V({ call: `get(${k})`, returns: 'null' }, { returns: 'bad' })], [23], `End of the chain → <b>null</b>: ${k} is not in the map.`);
+  }
+  put(3, 'a'); put(11, 'b'); put(19, 'c'); put(6, 'd'); put(11, 'B'); get(19); get(27);
+  Viz.mount('#op-chain', { frames: r.frames, title: 'Collisions and chaining', code:
+`public V put(K key, V val) {
+    int h = hash(key);
+    int i = h & (table.length - 1);
+    for (Node<K, V> e = table[i]; e != null; ) {
+        if (e.hash == h && Objects.equals(e.key, key)) {
+            V old = e.val; e.val = val; // same key:
+            return old;                 // replace
+        }
+        last = e; e = e.next;           // keep walking
+    }
+    Node<K, V> n = new Node<>(h, key, val);
+    if (last == null) table[i] = n;     // empty bucket
+    else last.next = n;                 // append to chain
+    if (++size > table.length * 3 / 4) resize();
+    return null;
+}
+
+public V get(Object key) {
+    int h = hash(key), i = h & (table.length - 1);
+    for (Node<K, V> e = table[i]; e != null; e = e.next)
+        if (e.hash == h && Objects.equals(e.key, key))
+            return e.val;
+    return null;
+}` });
+})();
+</script>
+
+<h3>3. Resize and rehash — doubling the table</h3>
+<p><code>new HashMap&lt;&gt;(4)</code>: 4 buckets, so the threshold is 4 × 0.75 = 3 entries. Keys 1, 5 and 9 all end in binary <code>01</code> and pile up in bucket 1. The 4th put pushes size past the threshold.</p>
+<div id="op-resize"></div>
+<script>
+(() => {
+  let old = Array.from({ length: 4 }, () => []);
+  const nw = Array.from({ length: 8 }, () => []);
+  const r = Viz.recorder();
+  const V = (vars, marks) => ({ type: 'vars', id: 'v', vars, marks });
+  const bin = (x, w) => x.toString(2).padStart(w, '0');
+  const OLD = marks => bucketGrid(old, { id: 'old', label: 'old table = Node[4]', marks, cols: 3 });
+  const NEW = marks => bucketGrid(nw, { id: 'new', label: 'new table = Node[8]', marks, cols: 3 });
+  let size = 0;
+  for (const [k, v] of [[1, 'a'], [5, 'b'], [9, 'c'], [2, 'd']]) {
+    const h = spread(jhash(k)), i = h & 3;
+    old[i].push({ k, v, h }); size++;
+    const over = size > 3;
+    r.step([OLD({ [`${i},${old[i].length - 1}`]: over ? 'bad' : 'done' }), V({ call: `put(${k})`, [`${k} in binary`]: bin(k, 4), index: `${h} & 3 = ${i}`, size, threshold: 3 }, { size: over ? 'bad' : '' })], over ? [1] : [],
+      over ? `put(2) → bucket 2. Now size = 4 &gt; threshold 3: the table is "too full" and chains will grow. Time to <b>resize</b>.`
+           : `put(${k}) → ${k} = ${bin(k, 4)} in binary; the last 2 bits are ${bin(i, 2)} → bucket <b>${i}</b>.`);
+  }
+  r.step([OLD({}), NEW({}), V({ 'old n': 4, 'new n': 8, 'new threshold': 6 })], [3, 4, 5],
+    'resize(): allocate a table <b>twice as big</b> (8 buckets, threshold 6). Every node must be placed again, because the index uses one more bit now: h &amp; 7 instead of h &amp; 3.');
+  for (let i = 0; i < 4; i++) for (let c = 0; c < old[i].length; c++) {
+    const e = old[i][c], stay = (e.h & 4) === 0, j = stay ? i : i + 4;
+    nw[j].push(e);
+    r.step([OLD({ [`${i},${c}`]: 'compare' }), NEW({ [`${j},${nw[j].length - 1}`]: 'done' }), V({ key: e.k, binary: bin(e.k, 4), 'hash & 4': e.h & 4 }, { 'hash & 4': stay ? 'done' : 'active' })], stay ? [7, 8] : [7, 9],
+      `Key ${e.k} = ${bin(e.k, 4)}: the new bit (value 4) is <b>${stay ? 0 : 1}</b> → ${stay ? `<b>stays</b> in bucket ${i}` : `<b>moves</b> to bucket ${i} + 4 = ${j}`}. No need to call hashCode again: the cached hash is enough.`);
+  }
+  r.step([NEW({}), V({ size: 4, capacity: 8, 'longest chain': 2 }, { 'longest chain': 'done' })], [10],
+    'Done. The chain of 3 in bucket 1 split into [1] ← 1, 9 and [5] ← 5. One resize is O(n), but it happens only when size doubles, so put stays <b>O(1) amortized</b> — the same argument as ArrayList growth.');
+  Viz.mount('#op-resize', { frames: r.frames, title: 'Resize and rehash', code:
+`// in put: if (++size > table.length * 3 / 4) resize();
+private void resize() {
+    int n = old.length;              // 4
+    table = newTable(n * 2);         // 8 buckets
+    for (int i = 0; i < n; i++)      // split each chain:
+        for (Node e = old[i]; e != null; e = e.next)
+            if ((e.hash & n) == 0)
+                lo.add(e);           // stay at i
+            else hi.add(e);          // move to i + n
+    // table[i] = lo; table[i + n] = hi;
+}` });
+})();
+</script>
+
+<h3>4. LinkedHashMap in access order — an LRU cache in ten lines</h3>
+<p><code>LinkedHashMap</code> is a HashMap whose entries are also threaded on a doubly linked list. With <code>accessOrder = true</code>, every <code>get</code> moves the entry to the end, so the front is always the least recently used. Capacity 3:</p>
+<div id="op-lru"></div>
+<script>
+(() => {
+  let order = [];
+  const vals = {};
+  const r = Viz.recorder();
+  const L = marks => ({ type: 'list', id: 'l', label: 'entry order: least recently used → most recently used',
+    nodes: order.map(k => ({ id: 'k' + k, val: `${k}=${vals[k]}` })),
+    next: Object.fromEntries(order.map((k, i) => ['k' + k, i + 1 < order.length ? 'k' + order[i + 1] : null])),
+    pointers: order.length ? { eldest: 'k' + order[0] } : {}, marks: Object.fromEntries(Object.entries(marks || {}).map(([k, c]) => ['k' + k, c])) });
+  const V = (vars, marks) => ({ type: 'vars', id: 'v', vars: { ...vars, size: order.length, capacity: 3 }, marks });
+  for (const [k, v] of [[1, 'a'], [2, 'b'], [3, 'c']]) {
+    order.push(k); vals[k] = v;
+    r.step([L({ [k]: 'done' }), V({ call: `put(${k}, "${v}")` })], [], `put(${k}, "${v}"): a new entry is linked at the <b>end</b> (most recent). removeEldestEntry: ${order.length} &gt; 3? No.`);
+  }
+  r.step([L({ 1: 'compare' }), V({ call: 'get(1)' })], [4], 'get(1): found through the hash table in O(1)…');
+  order = [...order.filter(k => k !== 1), 1];
+  r.step([L({ 1: 'active' }), V({ call: 'get(1)' })], [4], '…and because of <b>access order</b>, entry 1 is unlinked and re-linked at the end: four pointer writes, O(1). Now 2 is the least recently used.');
+  order.push(4); vals[4] = 'd';
+  r.step([L({ 4: 'done', 2: 'bad' }), V({ call: 'put(4, "d")' }, { size: 'bad' })], [8, 9], 'put(4, "d") links 4 at the end. Now size 4 &gt; 3, so <b>removeEldestEntry</b> returns true…');
+  order = order.filter(k => k !== 2);
+  r.step([L({ 4: 'done' }), V({ call: 'put(4, "d")' })], [9], '…and the map removes the <b>eldest</b> entry, 2 — from both the list and its bucket. Order now 3, 1, 4. A complete LRU cache, every operation O(1).');
+  Viz.mount('#op-lru', { frames: r.frames, title: 'LinkedHashMap LRU', code:
+`class LRU<K, V> extends LinkedHashMap<K, V> {
+    private final int cap;
+    LRU(int cap) {
+        super(16, 0.75f, true);   // true = access order
+        this.cap = cap;
+    }
+    @Override
+    protected boolean removeEldestEntry(Map.Entry<K, V> e) {
+        return size() > cap;      // evict least recent
+    }
+}` });
+})();
+</script>
+
+<h3>5. The mutable-key trap — changing a key after put loses the entry</h3>
+<div id="op-mut"></div>
+<script>
+(() => {
+  const cap = 4, table = Array.from({ length: cap }, () => []);
+  const key = [1, 2];
+  const r = Viz.recorder();
+  const G = marks => bucketGrid(table, { label: 'table = Node[4]', marks, cols: 1, cell: 84, fmt: e => fmtKey(e.k) });
+  const V = (vars, marks) => ({ type: 'vars', id: 'v', vars, marks });
+  const h1 = spread(jhash(key)), i1 = h1 & 3;
+  table[i1].push({ k: key, v: 'found', h: h1 });
+  r.step([G({ [`${i1},0`]: 'done' }), V({ 'key.hashCode()': h1, index: `${h1} & 3 = ${i1}`, 'stored hash': h1 })], [3],
+    `put([1, 2], "found"): List.hashCode = 31·(31·1 + 1) + 2 = ${h1} → bucket <b>${i1}</b>. The node caches hash ${h1}.`);
+  key.push(3);
+  const h2 = spread(jhash(key)), i2 = h2 & 3;
+  r.step([G({ [`${i1},0`]: 'bad' }), V({ 'key.hashCode()': h2, 'stored hash': h1 }, { 'key.hashCode()': 'bad' })], [4],
+    `key.add(3): the map holds a <b>reference</b> to the same list, so the key inside the map changed too. Its hash code is now ${h2}, but the node still sits in bucket ${i1} with the old hash ${h1}. Nobody told the map.`);
+  r.step([G({ [`${i2},0`]: 'compare' }), V({ call: 'get(key)', index: `${h2} & 3 = ${i2}`, returns: 'null' }, { returns: 'bad' })], [5],
+    `get(key): hash ${h2} → bucket <b>${i2}</b>, which is empty → <b>null</b>. The entry is in the map, but we are looking in the wrong bucket.`);
+  r.step([G({ [`${i1},0`]: 'compare' }), V({ call: 'get(List.of(1, 2))', index: `${h1} & 3 = ${i1}`, equals: '[1,2] vs [1,2,3]', returns: 'null' }, { equals: 'bad', returns: 'bad' })], [6],
+    `get(List.of(1, 2)): right bucket and same hash, but equals([1, 2], [1, 2, 3]) is false → <b>null</b>. The entry is now unreachable by any key: a memory leak. <b>Never mutate a key after putting it.</b>`);
+  Viz.mount('#op-mut', { frames: r.frames, title: 'Mutable key trap', code:
+`List<Integer> key = new ArrayList<>(List.of(1, 2));
+Map<List<Integer>, String> map = new HashMap<>();
+map.put(key, "found");    // bucket of hash 994
+key.add(3);               // hashCode is now 30817
+map.get(key);             // wrong bucket -> null
+map.get(List.of(1, 2));   // equals fails -> null` });
+})();
+</script>
+
+<h2>Build it yourself</h2>
+<p>Separate chaining with a power-of-two table, the same hash spreading and the same lo/hi split on resize as the JDK. Tested against <code>java.util.HashMap</code> with 50,000 random put/get/remove operations, including a <code>null</code> key.</p>
+<pre class="code"><code>import java.util.Objects;
+
+// Hash map with separate chaining, like java.util.HashMap.
+public class MyHashMap&lt;K, V&gt; {
+    private static class Node&lt;K, V&gt; {
+        final int hash;   // cached, never recomputed
+        final K key;
+        V val;
+        Node&lt;K, V&gt; next;  // next node in the same bucket
+        Node(int hash, K key, V val) {
+            this.hash = hash; this.key = key; this.val = val;
+        }
+    }
+
+    private Node&lt;K, V&gt;[] table = newTable(16); // power of 2
+    private int size = 0;
+
+    // Mix the high bits into the low bits.
+    static int hash(Object key) {
+        int h = key == null ? 0 : key.hashCode();
+        return h ^ (h &gt;&gt;&gt; 16);
+    }
+
+    public V get(Object key) {
+        int h = hash(key);
+        int i = h &amp; (table.length - 1);   // = h % length
+        for (Node&lt;K, V&gt; e = table[i]; e != null; e = e.next)
+            if (e.hash == h &amp;&amp; Objects.equals(e.key, key))
+                return e.val;
+        return null;                      // not found
+    }
+
+    public V put(K key, V val) {
+        int h = hash(key);
+        int i = h &amp; (table.length - 1);
+        Node&lt;K, V&gt; e = table[i], last = null;
+        while (e != null) {               // walk the chain
+            if (e.hash == h &amp;&amp; Objects.equals(e.key, key)) {
+                V old = e.val;            // same key:
+                e.val = val;              // replace value
+                return old;
+            }
+            last = e;
+            e = e.next;
+        }
+        Node&lt;K, V&gt; n = new Node&lt;&gt;(h, key, val);
+        if (last == null) table[i] = n;   // empty bucket
+        else last.next = n;               // append to chain
+        if (++size &gt; table.length * 3 / 4) resize();
+        return null;
+    }
+
+    public V remove(Object key) {
+        int h = hash(key);
+        int i = h &amp; (table.length - 1);
+        Node&lt;K, V&gt; e = table[i], prev = null;
+        while (e != null) {
+            if (e.hash == h &amp;&amp; Objects.equals(e.key, key)) {
+                if (prev == null) table[i] = e.next;
+                else prev.next = e.next;  // skip over e
+                size--;
+                return e.val;
+            }
+            prev = e;
+            e = e.next;
+        }
+        return null;
+    }
+
+    public int size() { return size; }
+
+    // Double the table. Each node stays at i or moves to i+n.
+    private void resize() {
+        Node&lt;K, V&gt;[] old = table;
+        int n = old.length;
+        table = newTable(n * 2);
+        for (int i = 0; i &lt; n; i++) {
+            Node&lt;K, V&gt; loH = null, loT = null;
+            Node&lt;K, V&gt; hiH = null, hiT = null;
+            for (Node&lt;K, V&gt; e = old[i]; e != null; e = e.next) {
+                if ((e.hash &amp; n) == 0) {      // new bit 0: stay
+                    if (loT == null) loH = e; else loT.next = e;
+                    loT = e;
+                } else {                      // new bit 1: move
+                    if (hiT == null) hiH = e; else hiT.next = e;
+                    hiT = e;
+                }
+            }
+            if (loT != null) { loT.next = null; table[i] = loH; }
+            if (hiT != null) { hiT.next = null; table[i + n] = hiH; }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static &lt;K, V&gt; Node&lt;K, V&gt;[] newTable(int cap) {
+        return (Node&lt;K, V&gt;[]) new Node[cap];
+    }
+}</code></pre>
+<p>In the resize loop, <code>loT.next = e</code> changes the <i>previous</i> node's next, never <code>e.next</code>, so the walk over the old chain is not disturbed. The final <code>loT.next = null</code> cuts off whatever followed in the old chain.</p>
+
+<h2>The real Java class</h2>
+<ul>
+  <li><b>Fields</b>: <code>Node&lt;K,V&gt;[] table</code>, <code>int size</code>, <code>int threshold</code> (= capacity × load factor), <code>float loadFactor</code>, <code>modCount</code>. Node is <code>{ final int hash; final K key; V value; Node next; }</code>.</li>
+  <li><b>Lazy table</b>: <code>new HashMap&lt;&gt;()</code> allocates nothing; the first <code>put</code> creates 16 buckets. Default <b>load factor 0.75</b> → first resize when the 13th entry arrives.</li>
+  <li><b>Power-of-two capacity</b>: <code>new HashMap&lt;&gt;(100)</code> rounds up to 128 (<code>tableSizeFor</code>), so <code>index = hash &amp; (n − 1)</code> works. That only uses the low bits, hence the spreading <code>hash ^ (hash &gt;&gt;&gt; 16)</code>.</li>
+  <li><b>Resize</b> doubles the table and splits each bucket into a "lo" list (stays at i) and a "hi" list (moves to i + oldCap), keeping the order — decided by one bit, <code>(hash &amp; oldCap) == 0</code>.</li>
+  <li><b>Java 7 vs 8</b>: Java 7 inserted at the <i>head</i> of a chain; a resize racing with another thread could link a chain into a cycle and hang <code>get</code> forever. Java 8 appends at the <i>tail</i> and splits in order. HashMap is still <b>not thread-safe</b> — use <code>ConcurrentHashMap</code>.</li>
+  <li><b>Treeify</b> (Java 8+): when one bucket's chain grows beyond <b>8</b> nodes (<code>TREEIFY_THRESHOLD</code>) <i>and</i> the table has at least <b>64</b> buckets (<code>MIN_TREEIFY_CAPACITY</code>), the chain becomes a red-black tree of <code>TreeNode</code>s; with a smaller table it just resizes instead. When a resize shrinks a tree bin to <b>6</b> or fewer (<code>UNTREEIFY_THRESHOLD</code>), it turns back into a chain. Tree nodes are ordered by hash, then by <code>compareTo</code> if the keys are <code>Comparable</code>. This caps a bucket's worst case at O(log n) — protection against bad hash codes or deliberate attacks.</li>
+  <li><b>null</b>: one <code>null</code> key is allowed (hash 0, bucket 0) and any number of <code>null</code> values. <code>ConcurrentHashMap</code> and <code>Hashtable</code> allow neither.</li>
+  <li><b>Iteration order</b> is unspecified and changes after a resize. <code>LinkedHashMap</code> = insertion order (or access order); <code>TreeMap</code> = sorted.</li>
+  <li><b>Sizing</b>: <code>new HashMap&lt;&gt;(n)</code> means capacity n, not "n entries without resizing". Java 19+ has <code>HashMap.newHashMap(n)</code>, which sizes for n entries.</li>
+  <li><b>Handy methods</b>: <code>getOrDefault</code>, <code>putIfAbsent</code>, <code>merge(k, 1, Integer::sum)</code> for counting, <code>computeIfAbsent(k, x -&gt; new ArrayList&lt;&gt;()).add(v)</code> for grouping.</li>
+</ul>
+<p>Below: a bucket where every key has the same hash code (a terrible <code>hashCode()</code>), before and after treeify.</p>
+<div id="tree"></div>
+<script>
+(() => {
+  const keys = ['k1', 'k2', 'k3', 'k4', 'k5', 'k6', 'k7', 'k8', 'k9'];
+  const r = Viz.recorder();
+  const chain = n => ({ type: 'grid', id: 'c', label: `bucket 5: a chain of ${n} nodes (every key's hashCode() returns 42)`, cells: [keys.slice(0, n)],
+    rowLabels: ['[5]'], arrows: keys.slice(0, n - 1).map((_, c) => [0, c, 0, c + 1, 'plain']), marks: n === 9 ? { '0,8': 'bad' } : {}, cell: 58 });
+  r.step([chain(8)], [], 'Eight nodes in one bucket: get walks up to 8 nodes. Still acceptable.');
+  r.step([chain(9)], [], 'A 9th node arrives: the chain has passed <b>TREEIFY_THRESHOLD = 8</b>. If the table has fewer than 64 buckets, Java simply <b>resizes</b> (keys with different hashes would spread out). Our keys share one hash, so that cannot help.');
+  const nodes = {};
+  (function build(lo, hi) { if (lo > hi) return null; const m = (lo + hi) >> 1; nodes[keys[m]] = { val: keys[m], left: build(lo, m - 1), right: build(m + 1, hi) }; return keys[m]; })(0, 8);
+  r.step([{ type: 'tree', id: 't', label: 'bucket 5 after treeify: a red-black tree of TreeNodes (red outline = red node)', root: 'k5', nodes, marks: { k4: 'bad', k9: 'bad' } }], [],
+    'With 64+ buckets, the bin becomes a <b>red-black tree</b>, ordered by hash and then by <b>compareTo</b> (String is Comparable). A lookup now takes about log₂ 9 ≈ 3 steps instead of 9: worst case <b>O(log n)</b> instead of O(n).');
+  Viz.mount('#tree', { frames: r.frames, title: 'Treeify a bucket' });
+})();
+</script>
+
+<h3>hashCode and equals — the contract</h3>
+<ul>
+  <li>If <code>a.equals(b)</code> then <code>a.hashCode() == b.hashCode()</code>. <b>Must</b> hold, or equal keys land in different buckets and <code>get</code> misses.</li>
+  <li>Equal hash codes do <b>not</b> require equal objects ("Aa" and "BB"). Collisions are legal, only slower.</li>
+  <li>Both must be stable while the object is a key: build them from fields that never change (see the mutable-key trap).</li>
+  <li>Override both or neither. Overriding only <code>equals</code> → two "equal" keys get identity hash codes from <code>Object</code> → duplicates in a HashSet.</li>
+  <li>Java 16+ <code>record</code>s generate correct <code>equals</code>/<code>hashCode</code> from their fields — the easiest safe key: <code>record Point(int r, int c) {}</code>. Otherwise <code>Objects.hash(a, b, c)</code>.</li>
+  <li>Arrays use identity: <code>int[]</code> as a key compares references, not contents. Use <code>List&lt;Integer&gt;</code>, a <code>String</code> like <code>"3,5"</code>, a record, or <code>Arrays.hashCode</code>/<code>Arrays.equals</code> in a wrapper.</li>
+</ul>
+<h3>HashSet is a HashMap</h3>
+<p><code>HashSet&lt;E&gt;</code> contains a <code>HashMap&lt;E, Object&gt;</code> and stores every element as a key with the same dummy value <code>PRESENT</code>. <code>set.add(x)</code> is <code>map.put(x, PRESENT) == null</code> — true if x was new. So everything on this page (buckets, resize, treeify, the hashCode/equals contract) applies to HashSet too. <code>LinkedHashSet</code> wraps a <code>LinkedHashMap</code> in the same way.</p>
+
+<h2>Cost of every operation</h2>
+<table>
+<tr><th>Operation</th><th>Average</th><th>Worst</th><th>Why</th></tr>
+<tr><td><code>get</code>, <code>containsKey</code>, <code>set.contains</code></td><td>O(1)</td><td>O(log n) (Java 8+), O(n) before</td><td>One hash + a short chain; a huge bucket is a tree.</td></tr>
+<tr><td><code>put</code>, <code>set.add</code></td><td>O(1) amortized</td><td>O(n) on the resize</td><td>Resize rehashes all n, but only when size doubles.</td></tr>
+<tr><td><code>remove</code></td><td>O(1)</td><td>O(log n)</td><td>Find it in its bucket, unlink it.</td></tr>
+<tr><td><code>containsValue</code></td><td>O(n + capacity)</td><td>O(n + capacity)</td><td>Values are not hashed: scans every bucket.</td></tr>
+<tr><td>Iterate all</td><td>O(n + capacity)</td><td>O(n + capacity)</td><td>Visits every bucket, even empty ones. LinkedHashMap: O(n).</td></tr>
+<tr><td><code>hashCode()</code> of a String key</td><td>O(length) once</td><td>O(length)</td><td>String caches its hash after the first call.</td></tr>
+<tr><td>Memory</td><td colspan="2">~32–48 B per entry + table</td><td>A Node object per entry plus the bucket array.</td></tr>
+</table>
+<p>"O(1)" assumes a reasonable <code>hashCode()</code> and counts the hash itself as constant. Hashing a list or a long string key is O(length of the key).</p>
+
+<h2>Why and when to use it</h2>
+<ul>
+  <li>Membership tests and de-duplication: <code>HashSet</code>.</li>
+  <li>Counting: <code>map.merge(x, 1, Integer::sum)</code> — or a plain <code>int[26]</code> when keys are small letters (faster still).</li>
+  <li>"Complement seen before?" in one pass: Two Sum stores value → index.</li>
+  <li>Prefix-sum counts (<code>map.get(sum - k)</code>), grouping (anagrams), graph adjacency for arbitrary node labels, memoization keys.</li>
+  <li>Index for another structure: key → node in an LRU cache, key → heap entry.</li>
+</ul>
+
+<h2>When not to use it</h2>
+<ul>
+  <li>You need keys in <b>sorted order</b>, or floor/ceiling/range queries → <a href="ds-treemap.html"><code>TreeMap</code>/<code>TreeSet</code></a> (O(log n)).</li>
+  <li>Keys are small dense integers (0..n, letters) → an <a href="ds-array-arraylist.html">array</a>: no hashing, no boxing, no nodes.</li>
+  <li>You need insertion order → <code>LinkedHashMap</code>; access order for eviction → <code>LinkedHashMap(…, true)</code>.</li>
+  <li>Shared between threads → <code>ConcurrentHashMap</code> (never a plain HashMap).</li>
+  <li>Need the min or max repeatedly → <a href="ds-priorityqueue.html"><code>PriorityQueue</code></a>.</li>
+</ul>
+
+<h2>Used in these patterns</h2>
+<ul>
+  <li><a href="arrays-hashing.html">Arrays &amp; hashing</a> — Two Sum, group anagrams, contains duplicate.</li>
+  <li><a href="prefix-sum.html">Prefix sum</a> — count of earlier prefix sums; <a href="sliding-window.html">Sliding window</a> — character counts in the window.</li>
+  <li><a href="lru-cache.html">LRU cache</a> and <a href="design-patterns-dsa.html">Design problems</a> — key → node.</li>
+  <li><a href="graph-basics.html">Graph basics</a>, <a href="grid-bfs-dfs.html">Grid BFS/DFS</a>, <a href="topo-sort.html">Topological sort</a>, <a href="advanced-graphs.html">Advanced graphs</a> — adjacency maps and visited sets.</li>
+  <li><a href="dp-intro.html">DP intro</a>, <a href="dp-advanced.html">Advanced DP</a>, <a href="recursion.html">Recursion</a> — memo maps.</li>
+  <li><a href="top-k.html">Top-k</a> — count with a map, then a heap; <a href="trie.html">Trie</a> — children maps; <a href="strings-palindromes.html">Strings &amp; palindromes</a>.</li>
+  <li><a href="union-find.html">Union-find</a> — parent map when nodes are not 0..n−1.</li>
+</ul>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>hashCode → spread (h ^ h&gt;&gt;&gt;16) → index (h &amp; n−1) → walk the bucket with equals.</b> Table is a power of two, doubles at 75% full, nodes stay at i or move to i + n. Chains over 8 in a table of 64+ become red-black trees. Equal objects must have equal hash codes; never mutate a key. HashSet = HashMap with dummy values.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li>Overriding <code>equals</code> without <code>hashCode</code> (or the reverse) on a key class.</li>
+  <li>Using <code>int[]</code> or <code>char[]</code> as a key — compared by reference. Convert to <code>String</code> (<code>new String(chars)</code>) or a <code>List</code>.</li>
+  <li>Mutating a key (a <code>List</code>, a mutable object) after <code>put</code>.</li>
+  <li><code>map.get(k) + 1</code> when k is absent → unboxing <code>null</code> → NullPointerException. Use <code>getOrDefault(k, 0)</code> or <code>merge</code>.</li>
+  <li>Comparing <code>Integer</code> values from a map with <code>==</code> (fails above 127). Use <code>.equals</code> or unbox.</li>
+  <li>Relying on iteration order of a HashMap — it is not insertion order and changes with resizes.</li>
+  <li>Modifying the map while iterating over <code>keySet()</code> → ConcurrentModificationException. Use <code>iterator.remove()</code> or <code>entrySet().removeIf(...)</code>.</li>
+  <li>Saying "HashMap is always O(1)" in an interview without the words <i>average</i> and <i>good hash function</i>.</li>
+</ul></div>
+
+<h2>Interview questions on the internals</h2>
+<details class="quiz"><summary>Walk me through what happens in map.put(k, v).</summary>
+<p>Compute <code>h = k.hashCode() ^ (h &gt;&gt;&gt; 16)</code>; index <code>i = h &amp; (n − 1)</code>; if bucket i is empty, place a new Node. Otherwise walk the chain (or tree): if a node has the same hash and <code>equals</code> the key, replace its value and return the old one; else append a new node. Then <code>++size</code>; if it exceeds capacity × 0.75, resize. If the chain passed 8 nodes, treeify (or resize if the table is under 64).</p></details>
+<details class="quiz"><summary>Why is the capacity always a power of two?</summary>
+<p>So the index is <code>hash &amp; (n − 1)</code> — a single AND instead of a slower modulo, never negative — and so resize can split each bucket with one bit test: a node stays at i or moves to i + oldCap.</p></details>
+<details class="quiz"><summary>Why does HashMap do h ^ (h >>> 16)?</summary>
+<p>With a power-of-two table only the low bits pick the bucket. Hash codes that differ only in their high bits (common for floats, some IDs) would all collide. XOR-ing the top half into the bottom half lets every bit influence the index, cheaply.</p></details>
+<details class="quiz"><summary>What is the load factor, and what happens if you change it?</summary>
+<p>The fill ratio that triggers a resize (default 0.75). Lower → fewer collisions but more memory and more resizes; higher → less memory but longer chains. 0.75 is a good time/space balance.</p></details>
+<details class="quiz"><summary>What is treeification and when does it happen?</summary>
+<p>Since Java 8, a bucket whose chain exceeds 8 nodes is converted into a red-black tree — but only if the table has at least 64 buckets; otherwise the map resizes instead. Trees shrink back to chains at 6 or fewer nodes during a resize split. It makes the worst case O(log n) per bucket.</p></details>
+<details class="quiz"><summary>What breaks if two equal objects have different hash codes?</summary>
+<p>They usually go to different buckets, so <code>get</code> with an equal key looks in the wrong bucket and returns null, and a HashSet can hold both "duplicates".</p></details>
+<details class="quiz"><summary>Why should HashMap keys be immutable?</summary>
+<p>The bucket is chosen from the hash at insert time and the hash is cached in the node. If the key's fields change, its new hash points to a different bucket and its equals may no longer match — the entry becomes unreachable.</p></details>
+<details class="quiz"><summary>How is HashSet implemented?</summary>
+<p>As a HashMap whose keys are the set elements and whose values are one shared dummy object, <code>PRESENT</code>. <code>add</code> returns whether <code>put</code> returned null.</p></details>
+<details class="quiz"><summary>How do you build an LRU cache with LinkedHashMap?</summary>
+<p>Extend it with the constructor <code>super(cap, 0.75f, true)</code> for access order and override <code>removeEldestEntry</code> to return <code>size() &gt; cap</code>. <code>get</code> moves an entry to the end; inserts past capacity evict the head.</p></details>
+<details class="quiz"><summary>HashMap vs Hashtable vs ConcurrentHashMap?</summary>
+<p>HashMap: not thread-safe, allows one null key and null values. Hashtable: legacy, every method synchronized on one lock, no nulls. ConcurrentHashMap: thread-safe with fine-grained locking/CAS per bucket, no nulls, the right choice for shared maps.</p></details>
+
+<nav class="pager"><a href="ds-linked-list.html">← Linked list</a><a href="ds-arraydeque.html">ArrayDeque →</a></nav>
+</main>
+</body>
+</html>

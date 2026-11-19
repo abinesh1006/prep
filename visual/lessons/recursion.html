@@ -188,6 +188,20 @@
 }</code></pre>
 <p>Before writing any recursive function, say these three lines out loud: "What is the smallest input and its answer? How do I make the input smaller? Given the smaller answer, how do I build mine?"</p>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td>call stack</td><td>Every call waits on the stack until its smaller call returns.</td><td>O(depth) space</td>
+<td>You could manage an <code>ArrayDeque</code> by hand, but recursion keeps the code close to the definition.</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[] memo</code></a></td><td>509: <code>memo[n]</code> stores F(n) the first time, so each value is computed once.</td><td>O(n) time, O(n) space</td>
+<td>Plain recursion repeats sub-calls, O(2<sup>n</sup>). A <code>HashMap&lt;Integer, Integer&gt;</code> works but an array is faster when keys are 0..n.</td></tr>
+<tr><td><a href="ds-linked-list.html"><code>ListNode</code></a></td><td>206, 21: "trust the call" on <code>head.next</code>, then fix one link.</td><td>O(n) stack</td>
+<td>The iterative loop is O(1) space; mention it as the follow-up.</td></tr>
+<tr><td>just numbers (<code>long</code>, <code>double</code>)</td><td>50: halve n each call, O(log n). 231, 779: the input number itself shrinks.</td><td>O(log n) depth</td>
+<td>Multiplying x n times is O(n); use <code>long</code> so <code>-Integer.MIN_VALUE</code> does not overflow.</td></tr>
+</table>
+<p>The hidden data structure of recursion is the call stack; its depth is the space cost, and adding a memo array is the first step towards dynamic programming.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Base case first. Shrink the problem. Trust the call.</b> The stack goes down to the base case, then answers come back up in reverse order.</p></div>
 

@@ -231,6 +231,24 @@ Deque&lt;T&gt; q = <span class="k">new</span> ArrayDeque&lt;&gt;();
 q.offer(start);
 <span class="k">while</span> (!q.isEmpty()) { T x = q.poll(); <span class="c">/* ... q.offer(next) */</span> }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-arraydeque.html"><code>ArrayDeque&lt;Character&gt;</code> as a stack</a></td><td>20: the most recent unmatched opener is on top.</td><td>O(1) <code>push</code> / <code>pop</code> / <code>peek</code></td>
+<td><code>java.util.Stack</code> is synchronized and legacy; a counter only works for one bracket type.</td></tr>
+<tr><td><a href="ds-arraydeque.html">two <code>ArrayDeque&lt;Integer&gt;</code> (in / out)</a></td><td>232: pour <code>in</code> into <code>out</code> only when <code>out</code> is empty.</td><td>O(1) amortised per operation</td>
+<td>Pouring back and forth on every call is O(n) per operation.</td></tr>
+<tr><td><a href="ds-string-stringbuilder.html"><code>StringBuilder</code> as a stack</a></td><td>844: append a char, <code>deleteCharAt(sb.length() - 1)</code> for <code>#</code>.</td><td>O(1) per char</td>
+<td>A <code>Deque&lt;Character&gt;</code> works but boxes each char and needs a join at the end.</td></tr>
+<tr><td><a href="ds-arraydeque.html"><code>ArrayDeque&lt;int[]&gt;</code> <code>{val, minSoFar}</code></a></td><td>155: every entry remembers the minimum at that moment.</td><td>O(1) for all four operations</td>
+<td>A single <code>min</code> variable is lost after popping the minimum; rescanning is O(n).</td></tr>
+<tr><td><a href="ds-arraydeque.html"><code>ArrayDeque&lt;Integer&gt;</code></a></td><td>150: operands. 735: surviving asteroids. 224: saved results and signs at each <code>(</code>.</td><td>O(1) per token</td>
+<td>Recursion works for 224 too but the stack is the same thing, made explicit.</td></tr>
+<tr><td><a href="ds-arraydeque.html"><code>Deque&lt;Integer&gt;</code> + <code>Deque&lt;StringBuilder&gt;</code></a></td><td>394: repeat counts and the text built before each <code>[</code>.</td><td>O(1) per bracket</td>
+<td>Building <code>String</code>s with <code>+</code> copies every time, O(n²).</td></tr>
+</table>
+<p>Every problem here deals with the newest unfinished thing first, which is a stack; ArrayDeque is the Java class for it (and for queues), and a StringBuilder doubles as a stack of characters.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Plates → stack → newest first. Shop line → queue → oldest first.</b> "Matching / nested / undo" means stack; "in order / level by level" means queue.</p></div>
 

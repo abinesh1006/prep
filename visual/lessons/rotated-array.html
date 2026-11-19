@@ -151,6 +151,18 @@
     <span class="k">if</span> (nums[mid] &lt; t &amp;&amp; t &lt;= nums[hi]) lo = mid + <span class="n">1</span>; <span class="k">else</span> hi = mid - <span class="n">1</span>;
 }</code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-array-arraylist.html">rotated sorted <code>int[]</code></a></td><td>O(1) access to <code>nums[lo]</code>, <code>nums[mid]</code>, <code>nums[hi]</code>; comparing them says which half is sorted.</td><td>O(log n)</td>
+<td>A linear scan is O(n). Finding the pivot first and then a normal binary search is correct but two passes and more code.</td></tr>
+<tr><td>three ints (<code>lo</code>, <code>mid</code>, <code>hi</code>)</td><td>The whole state of the search.</td><td>O(1) extra</td>
+<td>Copying and un-rotating the array costs O(n).</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[]</code> with duplicates</a></td><td>81, 154: when <code>nums[mid] == nums[hi]</code>, shrink with <code>hi--</code>.</td><td>O(log n) usually, O(n) worst</td>
+<td>No structure fixes the worst case: <code>[1,1,1,1,0,1]</code> hides the drop from every comparison.</td></tr>
+</table>
+<p>Nothing extra is stored: the trick is entirely in reading three cells of the array and deciding which half is still sorted.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>One half is always sorted. Find it, ask "is the target in its range?", go there or go to the other half.</b></p></div>
 

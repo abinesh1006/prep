@@ -278,6 +278,19 @@ back edge:  low[u] = min(low[u], disc[v]);
 <span class="k">while</span> (stack not empty) { top has edge ? push(next) : route.addFirst(pop()); }
 <span class="c">// SCC (Kosaraju): finish order → reverse edges → DFS in reverse finish order</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><code>int[] color</code> + <a href="ds-arraydeque.html">ArrayDeque</a> BFS (785, 886)</td><td>0 = not coloured, 1 / −1 = the two sides; each neighbour gets the opposite colour</td><td>O(V + E)</td><td><a href="union-find.html">Union-find</a> also works: union each node's neighbours together, conflict if a node joins its neighbour.</td></tr>
+<tr><td><code>int[] disc</code>, <code>int[] low</code> + adjacency list (1192)</td><td>when each node was discovered and the earliest node its subtree can reach back to</td><td>O(V + E)</td><td>Removing each edge and checking connectivity is O(E · (V + E)).</td></tr>
+<tr><td><a href="ds-hashmap.html">HashMap</a><code>&lt;String, PriorityQueue&lt;String&gt;&gt;</code> (332)</td><td>each airport's remaining tickets, smallest destination first</td><td>O(log d) per poll</td><td>A sorted list with <code>remove(0)</code> costs O(d) per ticket.</td></tr>
+<tr><td><a href="ds-linked-list.html">LinkedList</a> <code>route</code> with <code>addFirst</code> (332)</td><td>Hierholzer writes the itinerary backwards as dead ends are reached</td><td>O(1)</td><td>An <a href="ds-array-arraylist.html">ArrayList</a> + one <code>reverse</code> at the end is equally good.</td></tr>
+<tr><td><code>Map&lt;Integer, Deque&lt;Integer&gt;&gt;</code> + degree map + explicit stack (2097)</td><td>out-edges per node, out − in to find the start, and an iterative Hierholzer</td><td>O(V + E)</td><td>Recursion 10⁵ edges deep overflows the stack; the <a href="ds-arraydeque.html">ArrayDeque</a> stack does not.</td></tr>
+<tr><td><a href="ds-string-stringbuilder.html">StringBuilder</a> + <a href="ds-hashmap.html">HashSet</a><code>&lt;String&gt;</code> (753)</td><td>the growing answer, and which n-digit codes were already used</td><td>O(1) average per check</td><td>Trying sequences by brute force is kⁿ choices per position.</td></tr>
+<tr><td><code>int[] state</code> 0/1/2 (802)</td><td>not visited / on the current path / proven safe — a node met while "on the path" is in a cycle</td><td>O(V + E)</td><td>The reverse-graph topo sort (see topo-sort) is the alternative.</td></tr>
+</table>
+<p>Advanced graph algorithms are ordinary DFS or BFS plus one or two int arrays that record a fact per node — a colour, a discovery time, a state.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>Two colours fail only on odd cycles. Bridge: low[child] &gt; disc[parent]. Itinerary: walk until stuck, stuck city goes to the front. SCC: two DFS passes, the second on reversed edges.</b></p></div>
 

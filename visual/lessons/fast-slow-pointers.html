@@ -173,6 +173,20 @@
 <span class="c">// no cycle: slow is the middle</span>
 <span class="c">// n-th from end: fast goes n (+1 with dummy) ahead, then both step 1</span></code></pre>
 
+<h2>Data structures used — and why</h2>
+<table>
+<tr><th>Structure</th><th>What we need from it</th><th>Cost</th><th>Why not the alternative</th></tr>
+<tr><td><a href="ds-linked-list.html"><code>ListNode</code> slow / fast</a></td><td>876, 141, 142: fast moves 2, slow moves 1; they meet inside a cycle, or fast hits the end at the middle.</td><td>O(n) time, O(1) extra</td>
+<td>A <code>HashSet&lt;ListNode&gt;</code> of visited nodes also detects cycles, but O(n) space.</td></tr>
+<tr><td><a href="ds-linked-list.html">dummy <code>ListNode(0, head)</code></a></td><td>19: removing the head needs a node before it.</td><td>O(1)</td>
+<td>Otherwise "remove the first node" is a special case.</td></tr>
+<tr><td>an <code>int</code> as a node</td><td>202: next(n) = sum of squared digits; the sequence either reaches 1 or cycles.</td><td>O(1) extra</td>
+<td>A <code>HashSet&lt;Integer&gt;</code> of seen numbers works but stores them all.</td></tr>
+<tr><td><a href="ds-array-arraylist.html"><code>int[]</code> as a linked list</a></td><td>287: index i points to <code>nums[i]</code>; the duplicate is where the cycle starts.</td><td>O(n) time, O(1) extra</td>
+<td>A HashSet uses O(n) space and sorting changes the array; the problem forbids both.</td></tr>
+</table>
+<p>Two pointers moving at different speeds replace the visited set: no structure grows with n, which is the whole reason this pattern exists.</p>
+
 <div class="box remember"><span class="tag">Remember</span>
 <p><b>1 step and 2 steps:</b> middle, cycle. <b>Meet → restart one at head, both 1 step:</b> cycle start. <b>Fixed gap:</b> n-th from the end.</p></div>
 
