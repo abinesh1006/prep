@@ -160,14 +160,14 @@ public V put(K key, V val) {
   put(3, 'a'); put(11, 'b'); put(19, 'c'); put(6, 'd'); put(11, 'B'); get(19); get(27);
   Viz.mount('#op-chain', { frames: r.frames, title: 'Collisions and chaining', code:
 `public V put(K key, V val) {
-    int h = hash(key);
-    int i = h & (table.length - 1);
-    for (Node<K, V> e = table[i]; e != null; ) {
+    int h = hash(key), i = h & (table.length - 1);
+    Node<K, V> e = table[i], last = null;
+    while (e != null) {                 // walk the chain
         if (e.hash == h && Objects.equals(e.key, key)) {
             V old = e.val; e.val = val; // same key:
             return old;                 // replace
         }
-        last = e; e = e.next;           // keep walking
+        last = e; e = e.next;
     }
     Node<K, V> n = new Node<>(h, key, val);
     if (last == null) table[i] = n;     // empty bucket
@@ -196,8 +196,8 @@ public V get(Object key) {
   const r = Viz.recorder();
   const V = (vars, marks) => ({ type: 'vars', id: 'v', vars, marks });
   const bin = (x, w) => x.toString(2).padStart(w, '0');
-  const OLD = marks => bucketGrid(old, { id: 'old', label: 'old table = Node[4]', marks, cols: 3 });
-  const NEW = marks => bucketGrid(nw, { id: 'new', label: 'new table = Node[8]', marks, cols: 3 });
+  const OLD = marks => bucketGrid(old, { id: 'old', label: 'old table = Node[4]', marks, cols: 3, cell: 54 });
+  const NEW = marks => bucketGrid(nw, { id: 'new', label: 'new table = Node[8]', marks, cols: 3, cell: 54 });
   let size = 0;
   for (const [k, v] of [[1, 'a'], [5, 'b'], [9, 'c'], [2, 'd']]) {
     const h = spread(jhash(k)), i = h & 3;
@@ -215,14 +215,14 @@ public V get(Object key) {
     r.step([OLD({ [`${i},${c}`]: 'compare' }), NEW({ [`${j},${nw[j].length - 1}`]: 'done' }), V({ key: e.k, binary: bin(e.k, 4), 'hash & 4': e.h & 4 }, { 'hash & 4': stay ? 'done' : 'active' })], stay ? [7, 8] : [7, 9],
       `Key ${e.k} = ${bin(e.k, 4)}: the new bit (value 4) is <b>${stay ? 0 : 1}</b> → ${stay ? `<b>stays</b> in bucket ${i}` : `<b>moves</b> to bucket ${i} + 4 = ${j}`}. No need to call hashCode again: the cached hash is enough.`);
   }
-  r.step([NEW({}), V({ size: 4, capacity: 8, 'longest chain': 2 }, { 'longest chain': 'done' })], [10],
+  r.step([OLD(Object.fromEntries(old.flatMap((ch, i) => ch.map((_, c) => [`${i},${c}`, 'dim'])))), NEW({}), V({ size: 4, capacity: 8, 'longest chain': 2 }, { 'longest chain': 'done' })], [10],
     'Done. The chain of 3 in bucket 1 split into [1] ← 1, 9 and [5] ← 5. One resize is O(n), but it happens only when size doubles, so put stays <b>O(1) amortized</b> — the same argument as ArrayList growth.');
   Viz.mount('#op-resize', { frames: r.frames, title: 'Resize and rehash', code:
-`// in put: if (++size > table.length * 3 / 4) resize();
+`// put calls this when size > 3/4 of n
 private void resize() {
     int n = old.length;              // 4
     table = newTable(n * 2);         // 8 buckets
-    for (int i = 0; i < n; i++)      // split each chain:
+    for (int i = 0; i < n; i++)      // split chain i
         for (Node e = old[i]; e != null; e = e.next)
             if ((e.hash & n) == 0)
                 lo.add(e);           // stay at i
@@ -253,19 +253,20 @@ private void resize() {
   order = [...order.filter(k => k !== 1), 1];
   r.step([L({ 1: 'active' }), V({ call: 'get(1)' })], [4], '…and because of <b>access order</b>, entry 1 is unlinked and re-linked at the end: four pointer writes, O(1). Now 2 is the least recently used.');
   order.push(4); vals[4] = 'd';
-  r.step([L({ 4: 'done', 2: 'bad' }), V({ call: 'put(4, "d")' }, { size: 'bad' })], [8, 9], 'put(4, "d") links 4 at the end. Now size 4 &gt; 3, so <b>removeEldestEntry</b> returns true…');
+  r.step([L({ 4: 'done', 2: 'bad' }), V({ call: 'put(4, "d")' }, { size: 'bad' })], [8, 9, 10], 'put(4, "d") links 4 at the end. Now size 4 &gt; 3, so <b>removeEldestEntry</b> returns true…');
   order = order.filter(k => k !== 2);
-  r.step([L({ 4: 'done' }), V({ call: 'put(4, "d")' })], [9], '…and the map removes the <b>eldest</b> entry, 2 — from both the list and its bucket. Order now 3, 1, 4. A complete LRU cache, every operation O(1).');
+  r.step([L({ 4: 'done' }), V({ call: 'put(4, "d")' })], [10], '…and the map removes the <b>eldest</b> entry, 2 — from both the list and its bucket. Order now 3, 1, 4. A complete LRU cache, every operation O(1).');
   Viz.mount('#op-lru', { frames: r.frames, title: 'LinkedHashMap LRU', code:
 `class LRU<K, V> extends LinkedHashMap<K, V> {
     private final int cap;
     LRU(int cap) {
-        super(16, 0.75f, true);   // true = access order
+        super(16, 0.75f, true); // access order
         this.cap = cap;
     }
     @Override
-    protected boolean removeEldestEntry(Map.Entry<K, V> e) {
-        return size() > cap;      // evict least recent
+    protected boolean removeEldestEntry(
+            Map.Entry<K, V> e) {
+        return size() > cap;    // evict eldest
     }
 }` });
 })();

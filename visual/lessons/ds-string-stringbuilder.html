@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head><script>try{if(localStorage.getItem('rp_study')!=='a19de6eeff93c117d724e7d4ea590ccb84bca2190402b4e3d2408af19d9a8cd4')location.replace('../../index.html')}catch(e){location.replace('../../index.html')}</script><meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>String Inside</title>
+<link rel="stylesheet" href="../visual.css">
+<script src="../engine.js"></script>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="home" href="../index.html">DSA Visual</a><span>Data structures</span><span class="sp"></span>
+  <a href="../index.html#roadmap">Roadmap</a>
+</div></header>
+<main>
+<div class="kicker">Data structure · Inside Java</div>
+<h1>String and StringBuilder</h1>
+<p class="lede">A Java <code>String</code> is an array of characters that can never change. Every "change" builds a brand new string by copying. That is why <code>s += c</code> in a loop is secretly O(n²), and why <code>StringBuilder</code>, a growable char array you are allowed to change, exists.</p>
+<p class="meta">Time to learn: about 1.5 hours · Prerequisites: <a href="ds-array-arraylist.html">Array &amp; ArrayList</a>, <a href="big-o.html">Big-O</a></p>
+
+<div class="box signal"><span class="tag">Use it when you need…</span>
+<ul>
+  <li><b>String</b>: a fixed piece of text to read, compare, hash, use as a map key: <code>charAt</code> O(1), <code>length</code> O(1), <code>hashCode</code> cached;</li>
+  <li><b>StringBuilder</b>: to <b>build</b> text piece by piece: <code>append</code> amortized O(1), <code>setLength</code> O(1) to undo in backtracking, <code>reverse</code> O(n);</li>
+  <li><b>char[]</b>: to <b>edit</b> text in place: swap, overwrite, sort letters, two pointers.</li>
+</ul></div>
+
+<h2>In plain words</h2>
+<p>When you write <code>String s = "cat";</code> Java creates an object holding the letters c, a, t in a private array, and <code>s</code> points at it. Nobody can ever change those letters: the array is private and no method writes to it. Methods like <code>toUpperCase</code>, <code>replace</code>, <code>substring</code> and <code>+</code> all return a <b>new</b> String and leave the old one alone.</p>
+<p>Why make it unchangeable (<b>immutable</b>)? Because then a String can be shared freely: many variables, many threads and many HashMap keys can point at the same object with no risk that someone edits it underneath them. Its hash code can be computed once and cached. And identical string literals in your code can share one object in the <b>string pool</b>.</p>
+<p>The price: building a string by repeated <code>+</code> copies everything built so far, every single time. <code>StringBuilder</code> keeps a char array with spare room at the end, so adding a character usually just writes one slot.</p>
+
+<div class="box analogy"><span class="tag">Analogy</span>
+<p>A String is a printed page: to fix one word you must reprint the whole page. A StringBuilder is a whiteboard with empty space on the right: you just keep writing. When the board is full you fetch one about twice as big and copy everything over once, which happens rarely. The string pool is a shared photocopy shelf: everyone who asks for the same printed text gets the same sheet.</p></div>
+
+<h2>What it looks like in memory</h2>
+<p>A variable never holds the text itself, only a <b>reference</b> (an arrow) to a String object. The object holds the characters and a cached hash. Literals written in your code live in the string pool; <code>new String(...)</code> always makes a separate object.</p>
+<div id="mem"></div>
+<script>
+window.lineOf = (code, s) => {
+  const i = code.split('\n').findIndex(l => l.includes(s));
+  if (i < 0) throw new Error('line not found: ' + s);
+  return i + 1;
+};
+(() => {
+  const r = Viz.recorder();
+  const obj = (marks = {}) => ({ type: 'array', id: 'val', label: 'byte[] value inside the object (1 byte per char)', values: ['c', 'a', 't'], marks });
+  const fields = (extra = {}) => ({ type: 'vars', id: 'f', vars: { coder: 'LATIN1', hash: 0, length: 3, ...extra } });
+  r.step([{ type: 'graph', id: 'g', label: 'references', h: 90, nodes: [{ id: 's', x: 180, y: 30 }, { id: 'O', x: 520, y: 30, label: 'cat' }], edges: [{ a: 's', b: 'O', dir: true }], badges: { O: 'String' } }, obj(), fields()], [1],
+    '<code>String s = "cat";</code> The variable <b>s</b> holds an arrow to a String object. Inside: an array with the characters, a <code>coder</code> flag and a <code>hash</code> field.');
+  r.step([{ type: 'graph', id: 'g', label: 'references', h: 90, nodes: [{ id: 's', x: 180, y: 30 }, { id: 'O', x: 520, y: 30, label: 'cat' }], edges: [{ a: 's', b: 'O', dir: true }], badges: { O: 'String' } }, obj({ 0: 'active' }), fields()], [2],
+    '<code>s.charAt(0)</code> reads index 0 of the array: O(1). <code>s.length()</code> is the array length: O(1).');
+  r.step([{ type: 'graph', id: 'g', label: 'references', h: 90, nodes: [{ id: 's', x: 180, y: 30 }, { id: 'O', x: 520, y: 30, label: 'cat' }], edges: [{ a: 's', b: 'O', dir: true }], badges: { O: 'String' } }, obj({ 0: 'done', 1: 'done', 2: 'done' }), fields({ hash: 98262 })], [3],
+    'The first <code>hashCode()</code> walks all 3 chars (31·h + c) and <b>stores</b> the result, 98262, in the object. Later calls return it in O(1). Safe only because the letters can never change.');
+  r.step([{ type: 'graph', id: 'g', label: 'references', h: 90, nodes: [{ id: 's', x: 180, y: 30 }, { id: 'O', x: 520, y: 30, label: 'cat' }], edges: [{ a: 's', b: 'O', dir: true }], badges: { O: 'String' } }, obj({ 0: 'bad' }), fields({ hash: 98262 })], [4],
+    'There is <b>no method</b> that writes into this array. <code>s[0] = \'b\'</code> does not compile, and <code>s.replace(\'c\', \'b\')</code> returns a <b>new</b> String "bat". The object above stays "cat" forever.');
+  Viz.mount('#mem', { frames: r.frames, title: 'Inside a String', code:
+`String s = "cat";
+char c = s.charAt(0);      // 'c', O(1)
+int h = s.hashCode();      // computed once, cached
+String t = s.replace('c', 'b');  // NEW object "bat"` });
+})();
+</script>
+
+<h2>Watch the operations</h2>
+
+<h3>1. Immutability: "changing" a string makes a new object</h3>
+<p>Two variables share one String. Then one of them is "changed" with <code>+=</code>. Watch what really happens to the arrows.</p>
+<div id="op1"></div>
+<script>
+(() => {
+  const code =
+`String s = "cat";
+String t = s;          // copy the arrow, not the text
+s += "s";              // s = s + "s"
+System.out.println(t); // cat
+System.out.println(s); // cats`;
+  const r = Viz.recorder();
+  const G = (nodes, edges, marks = {}, edgeMarks = {}) => ({ type: 'graph', id: 'g', h: 200, nodes, edges, marks, edgeMarks, badges: Object.fromEntries(nodes.filter(n => n.obj).map(n => [n.id, n.obj])) });
+  const S = { id: 's', x: 160, y: 40 }, T = { id: 't', x: 160, y: 150 };
+  const CAT = { id: 'C', x: 500, y: 40, label: 'cat', obj: 'pool' }, CATS = { id: 'D', x: 500, y: 150, label: 'cats', obj: 'new' };
+  r.step([G([S, CAT], [{ a: 's', b: 'C', dir: true }], { C: 'done' })], [1], '<code>String s = "cat";</code> s points to a "cat" object (a literal, so it lives in the string pool).');
+  r.step([G([S, T, CAT], [{ a: 's', b: 'C', dir: true }, { a: 't', b: 'C', dir: true }], { C: 'done', t: 'active' }, { 't-C': 'active' })], [2],
+    '<code>String t = s;</code> copies the <b>arrow</b>. Now two variables point at the <b>same</b> object. Sharing is safe because nobody can change it.');
+  r.step([G([S, T, CAT, CATS], [{ a: 's', b: 'C', dir: true }, { a: 't', b: 'C', dir: true }], { C: 'compare', D: 'active' })], [3],
+    '<code>s += "s"</code>: Java allocates a <b>new</b> 4-char object and copies "cat" into it, then adds "s". The original "cat" is not touched.');
+  r.step([G([S, T, CAT, CATS], [{ a: 's', b: 'D', dir: true }, { a: 't', b: 'C', dir: true }], { D: 'done', C: 'done' }, { 's-D': 'active' })], [3, 4, 5],
+    'Only the <b>arrow in s</b> moves to the new object. <b>t still sees "cat"</b>. This is why passing a String to a method can never change the caller\'s text.');
+  Viz.mount('#op1', { frames: r.frames, title: 'Immutable strings', code });
+})();
+</script>
+
+<h3>2. The string pool, <code>==</code> and <code>equals</code></h3>
+<p><code>==</code> on objects asks "<b>same object</b>?" (same arrow). <code>equals</code> asks "<b>same characters</b>?". The pool makes <code>==</code> work by accident for literals, which is exactly why people get burnt by it.</p>
+<div id="op2"></div>
+<script>
+(() => {
+  const code =
+`String a = "hi";
+String b = "hi";              // same literal: pool
+String c = new String("hi");  // always a new object
+String x = "i";
+String d = "h" + x;           // built at run time
+a == b        // true:  same pool object
+a == c        // false: different objects
+a.equals(c)   // true:  same characters
+a == d        // false
+a == d.intern()   // true: the pool copy`;
+  const L = s => lineOf(code, s);
+  const r = Viz.recorder();
+  const A = { id: 'a', x: 110, y: 30 }, Bv = { id: 'b', x: 110, y: 100 }, C = { id: 'c', x: 110, y: 170 }, D = { id: 'd', x: 110, y: 240 };
+  const P = { id: 'P', x: 470, y: 65, label: 'hi' }, H1 = { id: 'H1', x: 470, y: 170, label: 'hi' }, H2 = { id: 'H2', x: 470, y: 240, label: 'hi' };
+  const badges = { P: 'pool', H1: 'heap', H2: 'heap' };
+  const G = (nodes, edges, marks = {}, edgeMarks = {}) => ({ type: 'graph', id: 'g', h: 280, nodes, edges: edges.map(([p, q]) => ({ a: p, b: q, dir: true })), marks, edgeMarks, badges: Object.fromEntries(Object.entries(badges).filter(([k]) => nodes.some(n => n.id === k))) });
+  const V = (k, v, cls) => ({ type: 'vars', id: 'v', vars: { [k]: v }, marks: { [k]: cls } });
+  r.step([G([A, P], [['a', 'P']]), V('pool', '{"hi"}', 'done')], [L('String a = "hi"')],
+    '<code>"hi"</code> is a literal. When the class loads, Java puts one "hi" object in the <b>string pool</b> (a table of unique strings inside the heap). a points to it.');
+  r.step([G([A, Bv, P], [['a', 'P'], ['b', 'P']], {}, { 'b-P': 'active' }), V('pool', '{"hi"}', 'done')], [L('String b = "hi"')],
+    'Another literal "hi": the pool already has it, so b gets the <b>same</b> object. No new memory.');
+  r.step([G([A, Bv, C, P, H1], [['a', 'P'], ['b', 'P'], ['c', 'H1']], { H1: 'active' }, { 'c-H1': 'active' }), V('new String', 'separate object', 'active')], [L('new String("hi")')],
+    '<code>new String("hi")</code> <b>always</b> creates a fresh object in the normal heap, even though the text is equal. (It is almost never what you want.)');
+  r.step([G([A, Bv, C, D, P, H1, H2], [['a', 'P'], ['b', 'P'], ['c', 'H1'], ['d', 'H2']], { H2: 'active' }, { 'd-H2': 'active' }), V('"h" + x', 'run time', 'active')], [L('String d = "h" + x')],
+    '<code>"h" + x</code> where x is a variable is computed <b>at run time</b>, so it is a new heap object too. (<code>"h" + "i"</code>, two literals, would be folded by the compiler into the pooled "hi".)');
+  r.step([G([A, Bv, C, D, P, H1, H2], [['a', 'P'], ['b', 'P'], ['c', 'H1'], ['d', 'H2']], { a: 'done', b: 'done', P: 'done' }, { 'a-P': 'done', 'b-P': 'done' }), V('a == b', 'true', 'done')], [L('a == b')],
+    '<code>a == b</code> compares the arrows: both point at the pool object, so <b>true</b>.');
+  r.step([G([A, Bv, C, D, P, H1, H2], [['a', 'P'], ['b', 'P'], ['c', 'H1'], ['d', 'H2']], { a: 'bad', c: 'bad' }, { 'a-P': 'bad', 'c-H1': 'bad' }), V('a == c', 'false', 'bad')], [L('a == c')],
+    '<code>a == c</code>: different objects, so <b>false</b>, even though both say "hi". This is the classic bug.');
+  r.step([G([A, Bv, C, D, P, H1, H2], [['a', 'P'], ['b', 'P'], ['c', 'H1'], ['d', 'H2']], { P: 'done', H1: 'done' }), V('a.equals(c)', 'true', 'done')], [L('a.equals(c)')],
+    '<code>a.equals(c)</code> compares <b>characters</b> one by one (after checking the lengths): true. Always compare strings with <code>equals</code>. O(n) in the worst case.');
+  r.step([G([A, Bv, C, D, P, H1, H2], [['a', 'P'], ['b', 'P'], ['c', 'H1'], ['d', 'H2']], { P: 'done', H2: 'compare' }, { 'd-H2': 'compare' }), V('d.intern()', 'pool "hi"', 'done')], [L('d.intern()')],
+    '<code>d.intern()</code> looks "hi" up in the pool and returns the pooled object, so <code>a == d.intern()</code> is true. Useful to save memory with many duplicate strings; never needed for correctness.');
+  Viz.mount('#op2', { frames: r.frames, title: 'Pool, == and equals', code });
+})();
+</script>
+
+<h3>3. Why <code>s += c</code> in a loop is O(n²)</h3>
+<p>Build "abcdef" one character at a time. Each <code>+=</code> creates a new string and copies <b>all</b> the characters so far. Count the copies.</p>
+<div id="op3"></div>
+<script>
+(() => {
+  const code =
+`String s = "";
+for (char c : letters) {
+    s += c;   // really: s = new String(old s + c)
+}
+
+// the fix
+StringBuilder sb = new StringBuilder();
+for (char c : letters) {
+    sb.append(c);   // write one slot
+}
+String result = sb.toString();   // one final copy`;
+  const L = s => lineOf(code, s);
+  const letters = ['a', 'b', 'c', 'd', 'e', 'f'];
+  const r = Viz.recorder();
+  let s = [], total = 0;
+  r.step([{ type: 'array', id: 'old', label: 'old s', values: ['""'], marks: { 0: 'dim' } }, { type: 'vars', id: 'v', vars: { copied: 0, total: 0 } }], [L('String s = ""')], 'Start with the empty string.');
+  for (const c of letters) {
+    const old = [...s];
+    s = [...s, c];
+    total += s.length;
+    const marks = {}; old.forEach((_, i) => marks[i] = 'compare'); marks[old.length] = 'active';
+    r.step([{ type: 'array', id: 'old', label: 'old s (thrown away)', values: old.length ? old : ['""'], marks: old.length ? Object.fromEntries(old.map((_, i) => [i, 'dim'])) : { 0: 'dim' } },
+      { type: 'array', id: 'new', label: `new s: ${s.length} chars written`, values: s, marks },
+      { type: 'vars', id: 'v', vars: { 'copied now': s.length, total }, marks: { total: 'bad' } }], [L('s += c')],
+      old.length ? `s += '${c}': allocate a ${s.length}-char string, <b>copy all ${old.length} old chars</b> (blue) and add '${c}'. The old string is garbage.` : `s += '${c}': a new 1-char string.`);
+  }
+  r.step([{ type: 'array', id: 'new', label: 's', values: s, marks: {} }, { type: 'vars', id: 'v', vars: { total: '1+2+…+6 = 21', 'n = 100,000': '≈ 5 billion' }, marks: { total: 'bad' } }], [L('s += c')],
+    'Total chars copied: 1 + 2 + … + n = <b>n(n + 1)/2</b>, which is O(n²). For n = 100,000 that is about 5 billion char copies. (In the Java test below, 20,000 appends took about 100 ms with += and 1 ms with StringBuilder.)');
+  const cap = 16, buf = Array(cap).fill('');
+  const sbP = (marks = {}) => { const m = {}; buf.forEach((v, i) => { if (v === '') m[i] = 'dim'; }); Object.assign(m, marks); return { type: 'array', id: 'sb', label: 'StringBuilder char buffer (capacity 16)', values: [...buf], marks: m, cell: 42 }; };
+  r.step([sbP(), { type: 'vars', id: 'v', vars: { copied: 0 } }], [L('new StringBuilder()')], 'The fix: a StringBuilder starts with a 16-slot buffer and a <b>count</b> of used slots.');
+  let n = 0;
+  letters.forEach((c, i) => {
+    buf[i] = c; n++;
+    r.step([sbP({ [i]: 'active' }), { type: 'vars', id: 'v', vars: { count: n, copied: n } }], [L('sb.append(c)')], `append('${c}'): write slot ${i}, count = ${n}. <b>One</b> char written, nothing copied.`);
+  });
+  r.step([sbP(Object.fromEntries(letters.map((_, i) => [i, 'done']))), { type: 'vars', id: 'v', vars: { appends: 6, 'toString copy': 6, total: 12 }, marks: { total: 'done' } }], [L('sb.toString()')],
+    '<code>toString()</code> copies the used part once into a new String. Total work 6 + 6 = 12 instead of 21; for n chars it is O(n), not O(n²).');
+  Viz.mount('#op3', { frames: r.frames, title: 'The += trap', code });
+})();
+</script>
+
+<h3>4. StringBuilder growth: double + 2</h3>
+<p><code>new StringBuilder(4)</code>, then append 11 letters. When the buffer is full Java allocates <code>2 × capacity + 2</code> and copies once, the same amortized trick as ArrayList.</p>
+<div id="op4"></div>
+<script>
+(() => {
+  const code =
+`MyStringBuilder append(char c) {
+    ensure(len + 1);
+    buf[len++] = c;
+    return this;                 // chaining
+}
+
+// Grow like Java: double + 2, or more if needed.
+private void ensure(int need) {
+    if (need <= buf.length) return;
+    int cap = Math.max(buf.length * 2 + 2, need);
+    buf = Arrays.copyOf(buf, cap);
+}`;
+  const L = s => lineOf(code, s);
+  const r = Viz.recorder();
+  let buf = Array(4).fill(''), len = 0, copies = 0;
+  const P = (marks = {}) => { const m = {}; buf.forEach((v, i) => { if (i >= len) m[i] = 'dim'; }); Object.assign(m, marks); return { type: 'array', id: 'b', label: `buf (capacity ${buf.length}, len ${len})`, values: [...buf], marks: m, pointers: { len }, cell: 32 }; };
+  const V = () => ({ type: 'vars', id: 'v', vars: { capacity: buf.length, len, 'chars copied by growth': copies } });
+  r.step([P(), V()], [], '<code>new StringBuilder(4)</code>: room for 4 chars, none used.');
+  for (const c of 'abcdefghijk') {
+    if (len + 1 > buf.length) {
+      r.step([P(), V()], [L('if (need <= buf.length)')], `append('${c}'): need ${len + 1} slots but capacity is ${buf.length}. <b>Grow</b>.`);
+      const cap = buf.length * 2 + 2;
+      copies += len;
+      buf = [...buf, ...Array(cap - buf.length).fill('')];
+      r.step([P(Object.fromEntries([...Array(len).keys()].map(i => [i, 'compare']))), V()], [L('int cap = Math.max'), L('Arrays.copyOf')],
+        `New capacity ${buf.length / 2 - 1} × 2 + 2 = <b>${cap}</b>. Copy the ${len} existing chars (blue) once. Total growth copies so far: ${copies}.`);
+    }
+    buf[len++] = c;
+    r.step([P({ [len - 1]: 'active' }), V()], [L('buf[len++] = c')], `append('${c}') writes slot ${len - 1}.`);
+  }
+  r.step([P(), V()], [], `11 appends, only ${copies} chars copied by growth: less than n. Capacity grows geometrically, so append is <b>amortized O(1)</b>. If you know the final length, <code>new StringBuilder(n)</code> skips growth entirely.`);
+  Viz.mount('#op4', { frames: r.frames, title: 'StringBuilder growth', code });
+})();
+</script>
+
+<h3>5. char[] trick: edit in place, convert once</h3>
+<p>Strings cannot be edited, so for "reverse", "swap", "sort the letters" convert once to a <code>char[]</code>, work in place with two pointers, and build one String at the end.</p>
+<div id="op5"></div>
+<script>
+(() => {
+  const code =
+`static String reverse(String s) {
+    char[] c = s.toCharArray();      // one copy, O(n)
+    for (int i = 0, j = c.length - 1; i < j; i++, j--) {
+        char t = c[i]; c[i] = c[j]; c[j] = t;
+    }
+    return new String(c);            // one more copy
+}`;
+  const L = s => lineOf(code, s);
+  const r = Viz.recorder();
+  const c = [...'stream'];
+  const P = (i, j, marks = {}) => ({ type: 'array', id: 'c', label: 'char[] c', values: [...c], keys: c.map((_, k) => k), pointers: i < j ? { i, j } : {}, marks });
+  r.step([{ type: 'text', id: 's', text: 's = "stream" (cannot change)' }, P(-5, -5)], [L('toCharArray')], '<code>s.toCharArray()</code> copies the 6 chars into a new array that we <b>are</b> allowed to edit.');
+  for (let i = 0, j = c.length - 1; i < j; i++, j--) {
+    r.step([{ type: 'text', id: 's', text: 's = "stream" (cannot change)' }, P(i, j, { [i]: 'compare', [j]: 'compare' })], [L('for (int i = 0')], `Swap c[${i}] = '${c[i]}' and c[${j}] = '${c[j]}'.`);
+    [c[i], c[j]] = [c[j], c[i]];
+    r.step([{ type: 'text', id: 's', text: 's = "stream" (cannot change)' }, P(i, j, { [i]: 'done', [j]: 'done' })], [L('char t = c[i]')], `Swapped in place: O(1), no new objects.`);
+  }
+  r.step([{ type: 'text', id: 's', text: 'result = "maerts"' }, P(-5, -5, Object.fromEntries(c.map((_, k) => [k, 'done'])))], [L('return new String(c)')],
+    '<code>new String(c)</code>: one final copy. Total O(n) with 2 copies; doing the same with <code>s.substring</code> and <code>+</code> would make a new string at every step.');
+  Viz.mount('#op5', { frames: r.frames, title: 'Reverse with char[]', code });
+})();
+</script>
+
+<h2>Build it yourself</h2>
+<p>Interviewers sometimes ask "how does StringBuilder work?" or "implement a dynamic string buffer". The core is a char array, a length and a growth rule. Tested against <code>java.util.StringBuilder</code> with 90,000 random operations; the capacities match Java's exactly (16, 34, 70, 142, 286).</p>
+<pre class="code"><code><span class="k">import</span> java.util.Arrays;
+
+<span class="c">// A growable char buffer, the core of StringBuilder.</span>
+<span class="k">class</span> MyStringBuilder {
+    <span class="k">private</span> <span class="k">char</span>[] buf = <span class="k">new</span> <span class="k">char</span>[<span <span class="k">class</span>="n">16</span>];   <span class="c">// Java's default</span>
+    <span class="k">private</span> <span class="k">int</span> len = <span <span class="k">class</span>="n">0</span>;                 <span class="c">// chars in use</span>
+
+    MyStringBuilder append(<span class="k">char</span> c) {
+        ensure(len + <span <span class="k">class</span>="n">1</span>);
+        buf[len++] = c;
+        <span class="k">return</span> <span class="k">this</span>;                 <span class="c">// chaining</span>
+    }
+
+    MyStringBuilder append(<span class="k">String</span> s) {
+        ensure(len + s.length());
+        s.getChars(<span <span class="k">class</span>="n">0</span>, s.length(), buf, len);  <span class="c">// bulk copy</span>
+        len += s.length();
+        <span class="k">return</span> <span class="k">this</span>;
+    }
+
+    <span class="c">// Grow like Java: double + 2, or more if needed.</span>
+    <span class="k">private</span> <span class="k">void</span> ensure(<span class="k">int</span> need) {
+        <span class="k">if</span> (need &lt;= buf.length) <span class="k">return</span>;
+        <span class="k">int</span> cap = Math.max(buf.length * <span <span class="k">class</span>="n">2</span> + <span <span class="k">class</span>="n">2</span>, need);
+        buf = Arrays.copyOf(buf, cap);
+    }
+
+    <span class="k">int</span> length() { <span class="k">return</span> len; }
+    <span class="k">char</span> charAt(<span class="k">int</span> i) { <span class="k">return</span> buf[i]; }
+    <span class="k">void</span> setCharAt(<span class="k">int</span> i, <span class="k">char</span> c) { buf[i] = c; }
+
+    <span class="k">void</span> setLength(<span class="k">int</span> n) {          <span class="c">// n &lt;= len: cut the end</span>
+        len = n;                 <span class="c">// O(1): backtracking undo</span>
+    }
+
+    MyStringBuilder reverse() {
+        <span class="k">for</span> (<span class="k">int</span> i = <span <span class="k">class</span>="n">0</span>, j = len - <span <span class="k">class</span>="n">1</span>; i &lt; j; i++, j--) {
+            <span class="k">char</span> t = buf[i]; buf[i] = buf[j]; buf[j] = t;
+        }
+        <span class="k">return</span> <span class="k">this</span>;
+    }
+
+    <span class="k">int</span> capacity() { <span class="k">return</span> buf.length; }
+
+    @Override <span class="k">public</span> <span class="k">String</span> toString() {
+        <span class="k">return</span> <span class="k">new</span> <span class="k">String</span>(buf, <span <span class="k">class</span>="n">0</span>, len);   <span class="c">// one copy</span>
+    }
+}</code></pre>
+<p>The two char tricks used everywhere, tested too:</p>
+<pre class="code"><code><span class="k">class</span> CharTricks {
+    <span class="c">// reverse: String -&gt; char[] -&gt; swap -&gt; String</span>
+    <span class="k">static</span> <span class="k">String</span> reverse(<span class="k">String</span> s) {
+        <span class="k">char</span>[] c = s.toCharArray();      <span class="c">// one copy, O(n)</span>
+        <span class="k">for</span> (<span class="k">int</span> i = <span <span class="k">class</span>="n">0</span>, j = c.length - <span <span class="k">class</span>="n">1</span>; i &lt; j; i++, j--) {
+            <span class="k">char</span> t = c[i]; c[i] = c[j]; c[j] = t;
+        }
+        <span class="k">return</span> <span class="k">new</span> <span class="k">String</span>(c);            <span class="c">// one more copy</span>
+    }
+
+    <span class="c">// anagram: count letters in an int[26]</span>
+    <span class="k">static</span> <span class="k">boolean</span> isAnagram(<span class="k">String</span> a, <span class="k">String</span> b) {
+        <span class="k">if</span> (a.length() != b.length()) <span class="k">return</span> <span class="k">false</span>;
+        <span class="k">int</span>[] cnt = <span class="k">new</span> <span class="k">int</span>[<span <span class="k">class</span>="n">26</span>];
+        <span class="k">for</span> (<span class="k">int</span> i = <span <span class="k">class</span>="n">0</span>; i &lt; a.length(); i++) {
+            cnt[a.charAt(i) - 'a']++;     <span class="c">// 'c' - 'a' = 2</span>
+            cnt[b.charAt(i) - 'a']--;
+        }
+        <span class="k">for</span> (<span class="k">int</span> x : cnt) <span class="k">if</span> (x != <span <span class="k">class</span>="n">0</span>) <span class="k">return</span> <span class="k">false</span>;
+        <span class="k">return</span> <span class="k">true</span>;
+    }
+}</code></pre>
+
+<h2>The real Java classes</h2>
+<ul>
+  <li><b>String fields (Java 9+):</b> <code>private final byte[] value</code>, <code>byte coder</code> (LATIN1 = 1 byte per char, UTF16 = 2 bytes per char), <code>int hash</code> (cached, 0 until first used) and <code>boolean hashIsZero</code>. This is "<b>compact strings</b>" (JEP 254): plain English text uses half the memory of Java 8, which stored a <code>char[]</code>. The class is <code>final</code>, so nobody can subclass it and break immutability.</li>
+  <li><b>hashCode</b> = <code>s[0]·31^(n−1) + … + s[n−1]</code>, computed on first call and cached. That makes Strings fast HashMap keys.</li>
+  <li><b>String pool:</b> literals and compile-time constants are interned automatically. It lives in the normal heap since Java 7 (it used to be in PermGen) and is garbage collected. <code>intern()</code> adds or finds a string in it.</li>
+  <li><b>Concatenation:</b> <code>a + b + c</code> in one expression is compiled (Java 9+) to a single <code>invokedynamic</code> call (<code>StringConcatFactory</code>) that sizes the result once; before Java 9 it became <code>new StringBuilder().append(a).append(b).append(c).toString()</code>. Either way, <b>one expression is fine</b>; the problem is <code>+=</code> <b>inside a loop</b>, where each iteration copies everything again. The compiler does not fix that for you.</li>
+  <li><b>substring</b> (since Java 7u6) <b>copies</b> the characters: O(k) time and memory for a k-char result. Before that it shared the parent's array in O(1), which caused memory leaks (a tiny substring kept a huge array alive). So <code>s.substring(i)</code> inside a loop over i is O(n²).</li>
+  <li><b>StringBuilder</b> extends <code>AbstractStringBuilder</code>: <code>byte[] value</code> (also compact), <code>coder</code>, <code>int count</code>. Default capacity 16; <code>new StringBuilder(str)</code> starts at <code>str.length() + 16</code>. Growth: <code>2 × old + 2</code>, or the needed size if bigger. It never shrinks (<code>trimToSize()</code> if you care).</li>
+  <li><b>StringBuffer</b> is the same thing with every method <code>synchronized</code>: the legacy thread-safe version. Like <code>Vector</code> and <code>Stack</code>, do not use it in new code.</li>
+  <li><b>Other costs:</b> <code>equals</code> checks the reference, then the length, then compares bytes (vectorized). <code>compareTo</code> is lexicographic. <code>toCharArray</code>, <code>split</code>, <code>toUpperCase</code>, <code>replace</code>, <code>trim</code> and <code>strip</code> all return new objects (O(n)). <code>String.join</code>, <code>repeat</code> (Java 11) and text blocks (Java 15) exist.</li>
+</ul>
+
+<h2>Cost of every operation</h2>
+<table>
+<tr><th>Operation</th><th>Average</th><th>Worst</th><th>Why</th></tr>
+<tr><td><code>s.charAt(i)</code>, <code>s.length()</code></td><td>O(1)</td><td>O(1)</td><td>Array read / array length.</td></tr>
+<tr><td><code>s.hashCode()</code></td><td>O(1)</td><td>O(n)</td><td>O(n) the first time, then cached.</td></tr>
+<tr><td><code>s.equals(t)</code></td><td>O(n)</td><td>O(n)</td><td>Same reference or different length: O(1). Otherwise compares chars.</td></tr>
+<tr><td><code>s == t</code></td><td>O(1)</td><td>O(1)</td><td>Compares arrows only. Wrong tool for text.</td></tr>
+<tr><td><code>s + t</code>, <code>s.concat(t)</code></td><td>O(n + m)</td><td>O(n + m)</td><td>New string, copies both.</td></tr>
+<tr><td><code>s += c</code> in a loop of n</td><td>O(n²)</td><td>O(n²)</td><td>1 + 2 + … + n copies.</td></tr>
+<tr><td><code>s.substring(i, j)</code></td><td>O(j − i)</td><td>O(j − i)</td><td>Copies the range (Java 7u6+).</td></tr>
+<tr><td><code>s.indexOf(t)</code>, <code>contains</code></td><td>O(n·m)</td><td>O(n·m)</td><td>Simple scan; fast in practice for short patterns. KMP is O(n + m) if you need a guarantee.</td></tr>
+<tr><td><code>toCharArray()</code>, <code>new String(char[])</code></td><td>O(n)</td><td>O(n)</td><td>One copy each.</td></tr>
+<tr><td><code>sb.append(x)</code></td><td>O(1)*</td><td>O(n)</td><td>*Amortized per char; the rare grow copies everything.</td></tr>
+<tr><td><code>sb.insert(0, x)</code>, <code>sb.deleteCharAt(0)</code></td><td>O(n)</td><td>O(n)</td><td>Shifts the rest of the buffer, like ArrayList.</td></tr>
+<tr><td><code>sb.setLength(k)</code> (shorter), <code>sb.deleteCharAt(sb.length() - 1)</code></td><td>O(1)</td><td>O(1)</td><td>Just moves the count: the backtracking "undo".</td></tr>
+<tr><td><code>sb.reverse()</code>, <code>sb.toString()</code></td><td>O(n)</td><td>O(n)</td><td>Two pointers / one copy.</td></tr>
+</table>
+
+<h2>Why and when to use it</h2>
+<ul>
+  <li><b>String</b> for keys, comparisons, read-only scanning (<code>charAt</code> in a loop is fine and allocates nothing).</li>
+  <li><b>StringBuilder</b> whenever you build output piece by piece: joining results, building paths in DFS / backtracking (append, recurse, <code>setLength</code> back), decoding strings, "remove adjacent duplicates" (use it as a stack of chars).</li>
+  <li><b>char[]</b> when you edit by index: reverse, swap, in-place compression, sorting letters for an anagram key (<code>Arrays.sort(c); new String(c)</code>).</li>
+  <li><b>int[26] / int[128]</b> instead of a HashMap&lt;Character, Integer&gt; for letter counts: O(1) with no boxing. <code>c - 'a'</code> turns a letter into an index.</li>
+</ul>
+
+<h2>When not to use it</h2>
+<ul>
+  <li>Do not use <code>+=</code> on a String inside a loop: StringBuilder.</li>
+  <li>Do not use <code>==</code> to compare text: <code>equals</code> (or <code>Objects.equals(a, b)</code> if either can be null; <code>"abc".equals(s)</code> is null-safe).</li>
+  <li>Do not call <code>substring</code> repeatedly to "move forward" in a string: keep an index into the original instead (O(1) per step).</li>
+  <li>Do not use <code>StringBuffer</code> or <code>new String("literal")</code>: legacy synchronized class and a pointless extra object.</li>
+  <li>Do not keep passwords in a String: it stays in memory until garbage collected and cannot be wiped. Use a <code>char[]</code> and overwrite it.</li>
+  <li>Many prefix queries over many words: a <a href="trie.html">trie</a> beats repeated <code>startsWith</code>.</li>
+</ul>
+
+<h2>Used in these patterns</h2>
+<ul>
+  <li><a href="strings-palindromes.html">Strings &amp; palindromes</a> and <a href="two-pointers.html">Two pointers</a>: <code>charAt</code> from both ends, char[] reversal.</li>
+  <li><a href="sliding-window.html">Sliding window</a> and <a href="arrays-hashing.html">Arrays &amp; hashing</a>: <code>int[26]</code> / <code>int[128]</code> counts, anagram keys.</li>
+  <li><a href="backtracking.html">Backtracking</a> and <a href="permutations.html">Permutations</a>: StringBuilder append, recurse, <code>setLength</code> to undo.</li>
+  <li><a href="stack-basics.html">Stack basics</a>: StringBuilder as a char stack (remove duplicates, decode string).</li>
+  <li><a href="trie.html">Trie</a>: building words character by character.</li>
+  <li><a href="lcs-edit-distance.html">LCS &amp; edit distance</a>: <code>charAt</code> lookups into a DP table, rebuilding the answer with StringBuilder.</li>
+</ul>
+
+<div class="box remember"><span class="tag">Remember</span>
+<p><b>String is immutable: every change is a new object and a full copy.</b> Compare with <code>equals</code>, never <code>==</code>. <code>+=</code> in a loop is O(n²): use StringBuilder (amortized O(1) append, capacity 2×+2). <code>substring</code> copies, O(k). Need to edit by index? <code>toCharArray()</code>, work, <code>new String(c)</code>.</p></div>
+
+<div class="box trap"><span class="tag">Common mistakes</span>
+<ul>
+  <li><code>if (s == "yes")</code>: works in a quick test with literals (pooled), fails with input read at run time. Use <code>"yes".equals(s)</code>.</li>
+  <li><code>s.replace('a', 'b');</code> on its own line does nothing: the result is thrown away. Write <code>s = s.replace(...)</code>.</li>
+  <li><code>sb.append(c + 1)</code> where c is a char appends a <b>number</b> (char + int = int). Use <code>(char) (c + 1)</code>.</li>
+  <li><code>"" + a + b</code> with chars a, b gives text, but <code>a + b + ""</code> first adds their codes as ints. Order matters.</li>
+  <li><code>sb.toString()</code> inside a loop just to check something: each call copies O(n). Check <code>sb.charAt</code> / <code>sb.length</code> instead.</li>
+  <li>Comparing a StringBuilder with <code>equals</code>: StringBuilder does not override it (reference check). Use <code>sb.toString().equals(...)</code> or <code>sb.compareTo(other) == 0</code> (Java 11+).</li>
+  <li><code>s.split(".")</code> or <code>split("|")</code>: split takes a <b>regex</b>, so these split on every character. Escape: <code>split("\\.")</code>.</li>
+</ul></div>
+
+<h2>Interview questions on the internals</h2>
+<details class="quiz"><summary>Why is String immutable in Java?</summary>
+<p>Safe sharing (pool, threads, method arguments) with no defensive copies, a hash code that can be cached so Strings are fast map keys, and security (a checked file name or URL cannot be changed after the check). The class is final and its array private and never written after construction.</p></details>
+<details class="quiz"><summary>What is the string pool?</summary>
+<p>A table of unique String objects in the heap. Literals and compile-time constants are added automatically, so equal literals share one object. <code>intern()</code> returns the pooled copy of any string. It is garbage collected since Java 7.</p></details>
+<details class="quiz"><summary>How many objects does <code>new String("hi")</code> create?</summary>
+<p>Up to two: the "hi" literal in the pool (if not already there, created when the class loads) plus one new String in the heap every time the line runs. That is why it is pointless.</p></details>
+<details class="quiz"><summary><code>==</code> vs <code>equals</code> for Strings?</summary>
+<p><code>==</code> compares references (same object). <code>equals</code> compares the characters. Literals often share a pooled object so <code>==</code> may look right in tests, but strings built at run time are different objects.</p></details>
+<details class="quiz"><summary>Why is <code>s += c</code> in a loop O(n²), and does the compiler fix it?</summary>
+<p>Each <code>+=</code> creates a new string and copies all existing characters: 1 + 2 + … + n = O(n²). The compiler optimizes a single expression (StringBuilder or invokedynamic), but it creates a fresh builder per iteration, so the copy of the whole string still happens every time. Use one StringBuilder outside the loop.</p></details>
+<details class="quiz"><summary>How does StringBuilder grow, and what does append cost?</summary>
+<p>Default capacity 16; when full, new capacity = 2 × old + 2 (or the needed size if bigger), then one array copy. Geometric growth makes append amortized O(1).</p></details>
+<details class="quiz"><summary>What does <code>substring</code> cost?</summary>
+<p>O(k) for a k-char result: it copies the characters (since Java 7u6). Older Java shared the original array in O(1) but leaked memory. So avoid substring in tight loops; pass indexes instead.</p></details>
+<details class="quiz"><summary>StringBuilder vs StringBuffer?</summary>
+<p>Same API; StringBuffer has synchronized methods (thread-safe, slower). In single-threaded code, which is almost always, use StringBuilder.</p></details>
+<details class="quiz"><summary>How does Java store "hello" in memory since Java 9?</summary>
+<p>Compact strings: a <code>byte[]</code> plus a coder flag. If every char fits in Latin-1 it uses one byte per char, otherwise UTF-16 with two bytes per char. Java 8 always used a <code>char[]</code> (two bytes per char).</p></details>
+<details class="quiz"><summary>Why prefer <code>char[]</code> for a password?</summary>
+<p>A String cannot be wiped and may stay in memory (or the pool) until garbage collected, visible in a heap dump. A char[] can be overwritten with zeros right after use.</p></details>
+
+<nav class="pager"><a href="ds-treemap.html">← TreeMap &amp; TreeSet</a><a href="../index.html#lessons">All lessons →</a></nav>
+</main>
+</body>
+</html>

@@ -147,7 +147,7 @@ private void fixAfterInsert(Node x) {
             rotate(g, !pLeft);
         }
     }
-    root.color = BLACK;          // root is always black
+    root.color = BLACK;          // rule 2
 }`;
 // record an insert animation for a list of keys
 window.recordInserts = function (r, t, keys, intro) {
@@ -207,17 +207,18 @@ window.recordInserts = function (r, t, keys, intro) {
     for (const k of keys) { if (!n || n.key !== k) break; path.push(n); if (!n.red) c++; n = k === keys[keys.length - 1] ? null : (keys[keys.indexOf(k) + 1] < n.key ? n.left : n.right); }
     return { c, ids: path.map(n => 'n' + n.key) };
   };
-  const mark = (ids, cls) => Object.fromEntries(ids.map(i => [i, cls]));
+  // keep colours on the path, dim every other node
+  const mark = ids => Object.fromEntries([50, 30, 70, 20, 40, 60, 80, 35, 45].map(k => 'n' + k).filter(i => !ids.includes(i)).map(i => [i, 'dim']));
   r.step([t.panel(), { type: 'vars', id: 'v', vars: { n: 9, height: t.height() } }], [],
     `Nine keys, height ${t.height()}. Smaller keys are always to the left, so an in-order walk gives 20, 30, 35, 40, 45, 50, 60, 70, 80. The root is black (rule 2).`);
   const a = blacksTo([50, 30, 20]);
-  r.step([t.panel({}, mark(a.ids, 'active')), { type: 'vars', id: 'v', vars: { 'path 50→30→20→null': `${a.c} black` } }], [],
+  r.step([t.panel({}, mark(a.ids)), { type: 'vars', id: 'v', vars: { 'path 50→30→20→null': `${a.c} black` } }], [],
     `Rule 4: walk 50 → 30 → 20 → null and count the black nodes: <b>${a.c}</b>.`);
   const b = blacksTo([50, 30, 40, 35]);
-  r.step([t.panel({}, mark(b.ids, 'active')), { type: 'vars', id: 'v', vars: { 'path 50→30→40→35→null': `${b.c} black` } }], [],
+  r.step([t.panel({}, mark(b.ids)), { type: 'vars', id: 'v', vars: { 'path 50→30→40→35→null': `${b.c} black` } }], [],
     `A longer path, 50 → 30 → 40 → 35 → null: still <b>${b.c}</b> black nodes. The extra length comes only from red nodes, and reds can never be next to each other (rule 3), so no path can be more than twice as long as another.`);
   const c = blacksTo([50, 70, 80]);
-  r.step([t.panel({}, mark(c.ids, 'active')), { type: 'vars', id: 'v', vars: { 'path 50→70→80→null': `${c.c} black` } }], [],
+  r.step([t.panel({}, mark(c.ids)), { type: 'vars', id: 'v', vars: { 'path 50→70→80→null': `${c.c} black` } }], [],
     `Right side, 50 → 70 → 80 → null: <b>${c.c}</b> again. Every path agrees. That equal "black height" is what keeps the tree balanced.`);
   Viz.mount('#mem', { frames: r.frames, title: 'Red-black rules', code:
 `// java.util.TreeMap
@@ -229,7 +230,7 @@ static final class Entry<K,V> {
     K key;
     V value;
     Entry<K,V> left, right, parent;
-    boolean color = BLACK;   // RED = false, BLACK = true
+    boolean color = BLACK;  // BLACK = true
 }` });
 })();
 </script>
@@ -371,7 +372,111 @@ SortedMap<Integer, V> h = map.headMap(40);`;
 
 <h2>Build it yourself</h2>
 <p>Interviewers rarely ask for a full red-black tree, but they do ask "how does TreeMap stay balanced?" and sometimes "write insert with rotations". This is the textbook (CLRS) insert, the same algorithm as <code>TreeMap.fixAfterInsertion</code>, plus <code>get</code>, <code>floorKey</code> and <code>ceilingKey</code>. Delete is left out (it has six cases; nobody writes it in 45 minutes). Tested against <code>java.util.TreeMap</code>: 200 random and sorted runs up to 2,000 keys, checking every rule, the height bound and every floor/ceiling answer.</p>
-<!--RBTREE-->
+<pre class="code"><code><span class="c">// A red-black tree map from int keys to int values.</span>
+<span class="c">// Same idea as java.util.TreeMap (CLRS insert fix-up).</span>
+<span class="k">class</span> RBTree {
+    <span class="k">static</span> <span class="k">final</span> <span class="k">boolean</span> RED = <span class="k">true</span>, BLACK = <span class="k">false</span>;
+
+    <span class="k">static</span> <span class="k">class</span> Node {
+        <span class="k">int</span> key, val;
+        Node left, right, parent;
+        <span class="k">boolean</span> color = RED;        <span class="c">// new nodes start red</span>
+        Node(<span class="k">int</span> k, <span class="k">int</span> v, Node p) {
+            key = k; val = v; parent = p;
+        }
+    }
+
+    Node root;
+
+    <span class="k">Integer</span> get(<span class="k">int</span> key) {
+        Node x = root;
+        <span class="k">while</span> (x != <span class="k">null</span>) {
+            <span class="k">if</span> (key &lt; x.key) x = x.left;
+            <span class="k">else</span> <span class="k">if</span> (key &gt; x.key) x = x.right;
+            <span class="k">else</span> <span class="k">return</span> x.val;
+        }
+        <span class="k">return</span> <span class="k">null</span>;
+    }
+
+    <span class="k">void</span> put(<span class="k">int</span> key, <span class="k">int</span> val) {
+        Node p = <span class="k">null</span>, x = root;
+        <span class="k">while</span> (x != <span class="k">null</span>) {          <span class="c">// 1. normal BST walk</span>
+            p = x;
+            <span class="k">if</span> (key &lt; x.key) x = x.left;
+            <span class="k">else</span> <span class="k">if</span> (key &gt; x.key) x = x.right;
+            <span class="k">else</span> { x.val = val; <span class="k">return</span>; }   <span class="c">// replace</span>
+        }
+        Node n = <span class="k">new</span> Node(key, val, p);
+        <span class="k">if</span> (p == <span class="k">null</span>) root = n;
+        <span class="k">else</span> <span class="k">if</span> (key &lt; p.key) p.left = n;
+        <span class="k">else</span> p.right = n;
+        fixAfterInsert(n);           <span class="c">// 2. repair colours</span>
+    }
+
+    <span class="k">private</span> <span class="k">void</span> fixAfterInsert(Node x) {
+        <span class="k">while</span> (x != root &amp;&amp; x.parent.color == RED) {
+            Node p = x.parent, g = p.parent;
+            <span class="k">boolean</span> pLeft = (p == g.left);
+            Node uncle = pLeft ? g.right : g.left;
+            <span class="k">if</span> (isRed(uncle)) {      <span class="c">// case 1: recolour</span>
+                p.color = BLACK;
+                uncle.color = BLACK;
+                g.color = RED;
+                x = g;               <span class="c">// problem moves up</span>
+            } <span class="k">else</span> {
+                <span class="k">if</span> (x == (pLeft ? p.right : p.left)) {
+                    x = p;           <span class="c">// case 2: triangle</span>
+                    rotate(x, pLeft);   <span class="c">// -&gt; make a line</span>
+                    p = x.parent;
+                }
+                p.color = BLACK;     <span class="c">// case 3: line</span>
+                g.color = RED;
+                rotate(g, !pLeft);
+            }
+        }
+        root.color = BLACK;          <span class="c">// root is always black</span>
+    }
+
+    <span class="k">private</span> <span class="k">boolean</span> isRed(Node n) {
+        <span class="k">return</span> n != <span class="k">null</span> &amp;&amp; n.color == RED;
+    }
+
+    <span class="c">// left = true: rotate left (right child moves up)</span>
+    <span class="k">private</span> <span class="k">void</span> rotate(Node x, <span class="k">boolean</span> left) {
+        Node y = left ? x.right : x.left;
+        Node mid = left ? y.left : y.right;
+        <span class="k">if</span> (left) x.right = mid; <span class="k">else</span> x.left = mid;
+        <span class="k">if</span> (mid != <span class="k">null</span>) mid.parent = x;
+        y.parent = x.parent;
+        <span class="k">if</span> (x.parent == <span class="k">null</span>) root = y;
+        <span class="k">else</span> <span class="k">if</span> (x == x.parent.left) x.parent.left = y;
+        <span class="k">else</span> x.parent.right = y;
+        <span class="k">if</span> (left) y.left = x; <span class="k">else</span> y.right = x;
+        x.parent = y;
+    }
+
+    <span class="c">// largest key &lt;= k, or null</span>
+    <span class="k">Integer</span> floorKey(<span class="k">int</span> k) {
+        <span class="k">Integer</span> best = <span class="k">null</span>;
+        <span class="k">for</span> (Node x = root; x != <span class="k">null</span>; ) {
+            <span class="k">if</span> (x.key == k) <span class="k">return</span> k;
+            <span class="k">if</span> (x.key &lt; k) { best = x.key; x = x.right; }
+            <span class="k">else</span> x = x.left;
+        }
+        <span class="k">return</span> best;
+    }
+
+    <span class="c">// smallest key &gt;= k, or null</span>
+    <span class="k">Integer</span> ceilingKey(<span class="k">int</span> k) {
+        <span class="k">Integer</span> best = <span class="k">null</span>;
+        <span class="k">for</span> (Node x = root; x != <span class="k">null</span>; ) {
+            <span class="k">if</span> (x.key == k) <span class="k">return</span> k;
+            <span class="k">if</span> (x.key &gt; k) { best = x.key; x = x.left; }
+            <span class="k">else</span> x = x.right;
+        }
+        <span class="k">return</span> best;
+    }
+}</code></pre>
 <p>The direction trick: <code>rotate(x, true)</code> is a left rotation (the right child moves up), <code>rotate(x, false)</code> a right rotation. The mirror cases (parent is a right child) then share the same code by passing <code>pLeft</code> or <code>!pLeft</code>.</p>
 
 <h2>The real Java class</h2>
